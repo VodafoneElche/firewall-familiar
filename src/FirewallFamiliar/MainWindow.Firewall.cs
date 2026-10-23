@@ -59,6 +59,16 @@ public partial class MainWindow
     // Arranque
     // =====================================================================
 
+    private void CheckPortScanOption()
+    {
+        try
+        {
+            string? msg = _firewall.EnsurePortScanEvents();
+            if (msg != null) Log(msg);
+        }
+        catch (Exception ex) { Log("⚠ Detección de escaneos: " + ex.Message); }
+    }
+
     private void InitFirewall()
     {
         try
@@ -67,6 +77,10 @@ public partial class MainWindow
             _firewall.Blocked += c => Dispatcher.BeginInvoke(() => OnBlocked(c));
             _firewallReady = true;
             Log("Cortafuegos activo. Reglas guardadas en " + RuleStore.FilePath);
+            CheckPortScanOption();
+            var scanTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+            scanTimer.Tick += (_, _) => CheckPortScanOption();
+            scanTimer.Start();
         }
         catch (Exception ex)
         {

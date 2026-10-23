@@ -114,7 +114,6 @@ public sealed unsafe class WfpFirewall : IDisposable
         on.type = FWP_DATA_TYPE.FWP_UINT32;
         on.Anonymous.uint32 = 1;
         Win.FwpmEngineSetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_COLLECT_NET_EVENTS, &on);
-        EnablePortScanEvents();
 
         var sublayer = default(FWPM_SUBLAYER0);
         sublayer.subLayerKey = SublayerKey;
@@ -509,22 +508,53 @@ public sealed unsafe class WfpFirewall : IDisposable
     /// Prevention Filter") no se avisan salvo que se pida expresamente. Sin esto solo veíamos
     /// unos pocos intentos de cada escaneo. Se añade a lo que ya hubiera pedido otro programa.
     /// </summary>
-    private void EnablePortScanEvents()
+    /// <summary>
+    /// Comprueba que la opción sigue puesta y, si no, la vuelve a poner (Windows a veces la quita
+    /// al cambiar de red). Devuelve un texto para la consola si algo ha cambiado, o null si ya estaba.
+    /// </summary>
+    public string? EnsurePortScanEvents()
     {
+        if (_engine == default) return null;
         const uint PortScanningDrop = 0x20; // FWPM_NET_EVENT_KEYWORD_PORT_SCANNING_DROP
         uint current = 0;
         FWP_VALUE0* value = null;
-        if (Win.FwpmEngineGetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value) == 0 && value != null)
+        uint get = Win.FwpmEngineGetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value);
+        if (get == 0 && value != null)
         {
             if (value->type == FWP_DATA_TYPE.FWP_UINT32) current = value->Anonymous.uint32;
             Win.FwpmFreeMemory0((void**)&value);
         }
-        if ((current & PortScanningDrop) != 0) return;
+        if ((current & PortScanningDrop) != 0)
+        {
+            if (_portScanOk) return null;
+            _portScanOk = true;
+            return $"Detección de escaneos activa (opción de Windows 0x{current:X}).";
+        }
         var v = default(FWP_VALUE0);
         v.type = FWP_DATA_TYPE.FWP_UINT32;
         v.Anonymous.uint32 = current | PortScanningDrop;
-        Win.FwpmEngineSetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &v);
+        uint set = Win.FwpmEngineSetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &v);
+
+        // Volver a leer para confirmar que Windows lo ha aceptado
+        uint after = 0;
+        value = null;
+        if (Win.FwpmEngineGetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value) == 0 && value != null)
+        {
+            if (value->type == FWP_DATA_TYPE.FWP_UINT32) after = value->Anonymous.uint32;
+            Win.FwpmFreeMemory0((void**)&value);
+        }
+        bool ok = (after & PortScanningDrop) != 0;
+        string text = ok
+            ? (_portScanOk ? $"Detección de escaneos: Windows había quitado la opción; vuelta a poner (0x{after:X})."
+                           : $"Detección de escaneos activa (opción de Windows 0x{after:X}).")
+            : $"⚠ Windows no deja activar los avisos de puertos cerrados: la detección de escaneos verá solo una parte (leer 0x{get:X8}, poner 0x{set:X8}, antes 0x{current:X}, después 0x{after:X}).";
+        if (!ok && _portScanFailedLogged) return null;
+        _portScanFailedLogged = !ok;
+        _portScanOk = ok;
+        return text;
     }
+
+    private bool _portScanOk, _portScanFailedLogged;
 
     private static bool IsBroadcastOrMulticast(ref FWPM_NET_EVENT_HEADER1 h)
     {
