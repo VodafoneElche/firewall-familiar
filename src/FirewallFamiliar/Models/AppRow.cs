@@ -94,10 +94,28 @@ public sealed class AppRow : INotifyPropertyChanged
 
     public bool UsesNetwork => Connections > 0 || BytesIn > 0 || BytesOut > 0;
 
-    /// <summary>Color de fondo de la fila: naranja para los ocultos.</summary>
-    public Brush RowBrush => Kind == ProcessKind.Oculto ? HiddenBrush : Brushes.Transparent;
+    private FirewallFamiliar.Core.RuleAction _rule;
+    /// <summary>Regla del cortafuegos para este programa.</summary>
+    public FirewallFamiliar.Core.RuleAction Rule
+    {
+        get => _rule;
+        set { if (Set(ref _rule, value)) { Notify(nameof(RuleText)); Notify(nameof(RowBrush)); } }
+    }
+
+    public string RuleText => Rule switch
+    {
+        FirewallFamiliar.Core.RuleAction.Permitir => "✔ Permitir",
+        FirewallFamiliar.Core.RuleAction.Bloquear => "✖ Bloquear",
+        _ => "? Preguntar"
+    };
+
+    /// <summary>Color de fondo de la fila: rojo para los bloqueados, naranja para los ocultos.</summary>
+    public Brush RowBrush =>
+        Rule == FirewallFamiliar.Core.RuleAction.Bloquear ? BlockedBrush :
+        Kind == ProcessKind.Oculto ? HiddenBrush : Brushes.Transparent;
 
     private static readonly Brush HiddenBrush = Freeze(new SolidColorBrush(Color.FromArgb(70, 255, 150, 0)));
+    private static readonly Brush BlockedBrush = Freeze(new SolidColorBrush(Color.FromArgb(70, 230, 30, 30)));
 
     private static Brush Freeze(Brush b) { b.Freeze(); return b; }
 

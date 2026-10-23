@@ -71,9 +71,9 @@ public sealed class TrafficGraph : FrameworkElement
             dc.DrawLine(GridPen, new Point(plot.Left, y), new Point(plot.Right, y));
         }
 
-        // Escala
-        double max = Math.Max(MinScale, Math.Max(_total.DefaultIfEmpty(0).Max(), _blocked.DefaultIfEmpty(0).Max()));
-        max = NiceCeiling(max);
+        // Escala (la línea roja de bloqueos usa su propia escala: son conexiones, no bytes)
+        double max = NiceCeiling(Math.Max(MinScale, _total.DefaultIfEmpty(0).Max()));
+        double blockedMax = Math.Max(5, _blocked.DefaultIfEmpty(0).Max());
         DrawText(dc, Label(max), new Point(4, plot.Top - 2), TitleBrush, 10);
         DrawText(dc, Label(0), new Point(4, plot.Bottom - 13), TitleBrush, 10);
 
@@ -82,10 +82,10 @@ public sealed class TrafficGraph : FrameworkElement
         var legend = new FormattedText("— Total", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
             Font, 11, TitleBrush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
         dc.DrawText(legend, new Point(w - right - legend.Width - 4, 4));
-        DrawText(dc, "— Bloqueado", new Point(w - right - legend.Width - 80, 4), BlockedBrush, 11);
+        DrawText(dc, "— Bloqueos", new Point(w - right - legend.Width - 72, 4), BlockedBrush, 11);
 
         // Líneas
-        DrawSeries(dc, _blocked, BlockedPen, plot, max);
+        DrawSeries(dc, _blocked, BlockedPen, plot, blockedMax);
         DrawSeries(dc, _total, TotalPen, plot, max);
     }
 
@@ -183,7 +183,7 @@ public sealed class TrafficMeter : FrameworkElement
         var val = new FormattedText(Format.Bytes((long)_value) + "/s", CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight, Font, 10, On, dip);
         dc.DrawText(val, new Point((w - val.Width) / 2, h - 32));
-        var blk = new FormattedText(Format.Bytes((long)_blocked) + "/s", CultureInfo.CurrentCulture,
+        var blk = new FormattedText(_blocked == 0 ? "0 bloq." : $"{_blocked:0} bloq.", CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight, Font, 10, Red, dip);
         dc.DrawText(blk, new Point((w - blk.Width) / 2, h - 17));
     }

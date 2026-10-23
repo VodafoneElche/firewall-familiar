@@ -9,12 +9,29 @@ Pensado para uso familiar: sencillo, eficaz y sin publicidad.
 
 | Paso | Qué incluye | Estado |
 |------|-------------|--------|
-| 1. Monitor | Gráficas de tráfico en tiempo real, programas en ejecución (también ocultos y servicios) con memoria, CPU y tráfico, conexiones abiertas, consola de mensajes | ✅ En pruebas |
-| 2. Bloqueo y reglas | Permitir / Preguntar / Bloquear por programa, aviso "este programa quiere conectarse", Bloquear todo, reglas por puerto e IP ordenadas por prioridad | Pendiente |
+| 1. Monitor | Gráficas de tráfico en tiempo real, programas en ejecución (también ocultos y servicios) con memoria, CPU y tráfico, conexiones abiertas, consola de mensajes | ✅ Hecho |
+| 2. Bloqueo y reglas | Permitir / Preguntar / Bloquear por programa, aviso "este programa quiere conectarse", Bloquear todo, reglas por puerto e IP ordenadas por prioridad | 🧪 En pruebas |
 | 3. Registros y avisos | Visor de paquetes, detección de escaneo de puertos, avisos de procesos ocultos o sin firma | Pendiente |
 | 4. Instalación | Instalador, arranque con Windows, icono junto al reloj, contraseña | Pendiente |
 
-## Cómo probar la versión actual (paso 1)
+## Cómo usar el bloqueo (paso 2)
+
+Arriba a la derecha está el **Modo de seguridad**:
+
+- **Sin preguntas**: aplica tus reglas y deja pasar todo lo demás. Es el modo con el que arranca la primera vez.
+- **Preguntar (como Sygate)**: cuando un programa sin regla intenta salir a Internet, se bloquea y aparece una
+  ventana abajo a la derecha preguntando si se le permite. Los programas de Windows (`C:\Windows`) se permiten solos.
+- **Bloquear todo**: corta la red al momento (también con el botón *Bloquear todo*).
+
+Clic derecho en un programa → **Permitir / Preguntar / Bloquear**. El botón **Reglas** abre la lista de reglas
+por programa y las **reglas avanzadas** (por puerto, IP, protocolo y dirección), que se aplican de arriba abajo.
+
+Las reglas se guardan en `C:\ProgramData\FirewallFamiliar\reglas.json`.
+
+**Seguridad**: los bloqueos solo existen mientras Firewall Familiar está abierto. Si se cierra o falla,
+Windows quita todos sus filtros y la red vuelve a funcionar normal. El Firewall de Windows sigue activo como siempre.
+
+## Cómo probar la versión actual
 
 1. En GitHub, abre la pestaña **Actions**, entra en la última ejecución verde de **Compilar**
    y descarga **FirewallFamiliar-win-x64** (abajo, en *Artifacts*).
@@ -22,7 +39,7 @@ Pensado para uso familiar: sencillo, eficaz y sin publicidad.
 3. Ejecuta `FirewallFamiliar.exe`. Windows pedirá permiso de administrador: es necesario para ver el tráfico de cada programa.
    Si aparece "Windows protegió su PC", pulsa *Más información* → *Ejecutar de todas formas* (el programa aún no está firmado).
 
-Esta versión **no bloquea nada**, así que es seguro probarla en cualquier equipo.
+Por defecto arranca en modo **Sin preguntas** y no bloquea nada hasta que pongas una regla o cambies de modo.
 
 ### Qué significa cada color y tipo
 
@@ -37,7 +54,8 @@ Esta versión **no bloquea nada**, así que es seguro probarla en cualquier equi
 - C# / .NET 8 / WPF
 - Tráfico por programa: eventos de red del kernel de Windows (ETW), mediante `Microsoft.Diagnostics.Tracing.TraceEvent`
 - Conexiones: `GetExtendedTcpTable` / `GetExtendedUdpTable` (lo mismo que `netstat -ano`)
-- Bloqueo (paso 2): WinDivert
+- Bloqueo: Windows Filtering Platform (WFP), la misma tecnología del Firewall de Windows, sin drivers de terceros.
+  Declaraciones generadas con `Microsoft.Windows.CsWin32` a partir de los metadatos oficiales de Microsoft.
 
 ## Compilar a mano
 

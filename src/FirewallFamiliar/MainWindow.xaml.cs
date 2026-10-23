@@ -78,7 +78,6 @@ public partial class MainWindow : Window
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         Log("Firewall Familiar se ha iniciado (versión " + typeof(App).Assembly.GetName().Version?.ToString(3) + ").");
-        Log("Modo actual: SOLO MONITOR. Se muestra el tráfico, pero todavía no se bloquea nada.");
 
         _traffic.Start();
         StatusTraffic.Text = _traffic.IsRunning
@@ -87,6 +86,7 @@ public partial class MainWindow : Window
         if (_traffic.IsRunning) Log("Monitor de tráfico por programa activo.");
 
         await RefreshListsAsync();
+        InitFirewall();
         _fastTimer.Start();
         _slowTimer.Start();
     }
@@ -96,6 +96,7 @@ public partial class MainWindow : Window
         _fastTimer.Stop();
         _slowTimer.Stop();
         _traffic.Dispose();
+        _firewall.Dispose(); // al cerrar se quitan todos los filtros y la red queda como estaba
     }
 
     private void OnExit(object sender, RoutedEventArgs e) => Close();
@@ -124,10 +125,11 @@ public partial class MainWindow : Window
         {
             double rateIn = Math.Max(0, totalIn - _lastTotalIn);
             double rateOut = Math.Max(0, totalOut - _lastTotalOut);
-            GraphIn.AddSample(rateIn, 0);
-            GraphOut.AddSample(rateOut, 0);
-            MeterIn.Update(rateIn, 0);
-            MeterOut.Update(rateOut, 0);
+            GraphIn.AddSample(rateIn, _blockedInThisSecond);
+            GraphOut.AddSample(rateOut, _blockedOutThisSecond);
+            MeterIn.Update(rateIn, _blockedInThisSecond);
+            MeterOut.Update(rateOut, _blockedOutThisSecond);
+            _blockedInThisSecond = _blockedOutThisSecond = 0;
             GraphAttacks.AddSample(0, 0);
         }
         _lastTotalIn = totalIn;
@@ -214,6 +216,8 @@ public partial class MainWindow : Window
             row.Cpu = p.CpuPercent;
             row.Connections = connCount.GetValueOrDefault(p.Pid);
             row.Listening = listenCount.GetValueOrDefault(p.Pid);
+            row.Rule = p.Path.Length > 0 ? _rules.ActionFor(p.Path) : RuleAction.Preguntar;
+            if (p.Path.Length > 0 && IsWindowsComponent(p.Path)) NoteWindowsComponent(p.Path);
 
             if (traffic.TryGetValue(p.Pid, out var t))
             {
@@ -494,10 +498,15 @@ public partial class MainWindow : Window
         MessageBox.Show(
             "Firewall Familiar " + typeof(App).Assembly.GetName().Version?.ToString(3) + "\n\n" +
             "Inspirado en Sygate Personal Firewall.\n\n" +
-            "Esta versión es solo un MONITOR: muestra qué programas usan la red y cuánto, " +
-            "y señala en naranja los procesos ocultos (sin ventana, que no son servicios " +
-            "ni forman parte de Windows). Todavía no bloquea nada.\n\n" +
+            "Muestra qué programas usan la red y cuánto, señala en naranja los procesos ocultos " +
+            "y permite bloquear programas, puertos o direcciones IP.\n\n" +
+            "Modos de seguridad:\n" +
+            "• Sin preguntas: aplica tus reglas y deja pasar el resto.\n" +
+            "• Preguntar: avisa cuando un programa nuevo quiere salir a Internet.\n" +
+            "• Bloquear todo: corta la red al momento.\n\n" +
+            "Si cierras Firewall Familiar, se quitan todos los bloqueos.\n\n" +
             "Consejos:\n" +
+            "• Clic derecho en un programa para permitirlo o bloquearlo.\n" +
             "• Doble clic en un programa para ver sus conexiones.\n" +
             "• Clic derecho para abrir su carpeta o buscar en Internet qué es.\n" +
             "• Pulsa en las cabeceras de las columnas para ordenar.",

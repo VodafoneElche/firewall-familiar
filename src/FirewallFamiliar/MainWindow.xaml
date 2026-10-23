@@ -12,8 +12,13 @@
             <MenuItem Header="_Archivo">
                 <MenuItem Header="_Salir" Click="OnExit"/>
             </MenuItem>
-            <MenuItem Header="_Seguridad">
-                <MenuItem Header="Bloquear todo (disponible en el paso 2)" IsEnabled="False"/>
+            <MenuItem Header="_Seguridad" x:Name="MenuSecurity">
+                <MenuItem x:Name="MenuModeAllow" Header="Sin preguntas (aplica reglas y permite el resto)" IsCheckable="True" Click="OnMenuMode" Tag="SinPreguntas"/>
+                <MenuItem x:Name="MenuModeAsk" Header="Preguntar por cada programa nuevo" IsCheckable="True" Click="OnMenuMode" Tag="Preguntar"/>
+                <MenuItem x:Name="MenuModeBlock" Header="Bloquear todo" IsCheckable="True" Click="OnMenuMode" Tag="BloquearTodo"/>
+                <Separator/>
+                <MenuItem Header="_Reglas..." Click="OnShowRules"/>
+                <MenuItem Header="Abrir carpeta de reglas" Click="OnOpenRulesFolder"/>
             </MenuItem>
             <MenuItem Header="_Ver">
                 <MenuItem x:Name="MenuConsole" Header="Consola de mensajes" IsCheckable="True" IsChecked="True" Click="OnToggleConsole"/>
@@ -26,10 +31,10 @@
         <!-- ===== Barra de herramientas ===== -->
         <Border DockPanel.Dock="Top" BorderBrush="#DDD" BorderThickness="0,0,0,1" Background="#F7F7F7">
             <StackPanel Orientation="Horizontal" Margin="4,2">
-                <Button Style="{StaticResource ToolButton}" IsEnabled="False" ToolTip="Bloquear todo el tráfico. Disponible en el paso 2.">
+                <Button x:Name="BtnBlockAll" Style="{StaticResource ToolButton}" Click="OnToggleBlockAll" ToolTip="Corta todo el tráfico de red al momento. Vuelve a pulsar para restablecerlo.">
                     <StackPanel>
-                        <TextBlock Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Bloquear todo" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="BtnBlockAllIcon" Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="BtnBlockAllText" Text="Bloquear todo" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Button>
                 <Button Style="{StaticResource ToolButton}" Click="OnShowApps" ToolTip="Programas en ejecución">
@@ -44,6 +49,12 @@
                         <TextBlock Text="Conexiones" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button x:Name="BtnRules" Style="{StaticResource ToolButton}" Click="OnShowRules" ToolTip="Reglas por programa y reglas avanzadas">
+                    <StackPanel>
+                        <TextBlock Text="&#xE8D7;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Reglas" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Button Style="{StaticResource ToolButton}" IsEnabled="False" ToolTip="Visor de registros. Disponible en el paso 3.">
                     <StackPanel>
                         <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
@@ -56,6 +67,14 @@
                         <TextBlock Text="Ayuda" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Button>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="24,0,0,0">
+                    <TextBlock Text="Modo de seguridad" Foreground="#555" Margin="0,0,0,3"/>
+                    <ComboBox x:Name="CmbMode" Width="230" SelectionChanged="OnModeComboChanged">
+                        <ComboBoxItem Content="Sin preguntas" Tag="SinPreguntas" ToolTip="Aplica tus reglas y deja pasar todo lo demás"/>
+                        <ComboBoxItem Content="Preguntar (como Sygate)" Tag="Preguntar" ToolTip="Pregunta cada vez que un programa nuevo quiere salir a Internet"/>
+                        <ComboBoxItem Content="Bloquear todo" Tag="BloquearTodo" ToolTip="Corta todo el tráfico de red"/>
+                    </ComboBox>
+                </StackPanel>
             </StackPanel>
         </Border>
 
@@ -64,7 +83,7 @@
             <StatusBarItem>
                 <TextBlock>
                     <Run Text="Estado de seguridad:"/>
-                    <Run Text="Solo monitor (no bloquea nada)" FontWeight="SemiBold"/>
+                    <Run x:Name="StatusMode" Text="iniciando..." FontWeight="SemiBold"/>
                 </TextBlock>
             </StatusBarItem>
             <Separator/>
@@ -128,9 +147,9 @@
                         </ListView.ItemContainerStyle>
                         <ListView.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="Permitir (paso 2)" IsEnabled="False"/>
-                                <MenuItem Header="Preguntar (paso 2)" IsEnabled="False"/>
-                                <MenuItem Header="Bloquear (paso 2)" IsEnabled="False"/>
+                                <MenuItem Header="✔ Permitir" Click="OnSetRule" Tag="Permitir"/>
+                                <MenuItem Header="? Preguntar (quitar regla)" Click="OnSetRule" Tag="Preguntar"/>
+                                <MenuItem Header="✖ Bloquear" Click="OnSetRule" Tag="Bloquear"/>
                                 <Separator/>
                                 <MenuItem Header="Ver sus conexiones" Click="OnShowAppConnections"/>
                                 <MenuItem Header="Abrir ubicación del archivo" Click="OnOpenLocation"/>
@@ -154,6 +173,7 @@
                                 </GridViewColumn>
                                 <GridViewColumn Header="Descripción" Width="190" DisplayMemberBinding="{Binding Description}"/>
                                 <GridViewColumn Header="Tipo" Width="85" DisplayMemberBinding="{Binding KindText}"/>
+                                <GridViewColumn Header="Regla" Width="90" DisplayMemberBinding="{Binding RuleText}"/>
                                 <GridViewColumn Header="PID" Width="55" DisplayMemberBinding="{Binding Pid}"/>
                                 <GridViewColumn Header="Memoria" Width="75" DisplayMemberBinding="{Binding MemoryText}"/>
                                 <GridViewColumn Header="CPU %" Width="50" DisplayMemberBinding="{Binding CpuText}"/>

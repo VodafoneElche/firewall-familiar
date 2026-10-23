@@ -1,0 +1,71 @@
+<Window x:Class="FirewallFamiliar.Views.AdvancedRuleDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Regla avanzada" Width="560" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="14">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.Resources>
+                <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="0,4"/></Style>
+                <Style TargetType="TextBox"><Setter Property="Margin" Value="0,4"/><Setter Property="Height" Value="24"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+                <Style TargetType="ComboBox"><Setter Property="Margin" Value="0,4"/></Style>
+            </Grid.Resources>
+
+            <TextBlock Text="Nombre:"/>
+            <TextBox x:Name="TxtName" Grid.Column="1"/>
+
+            <TextBlock Text="Acción:" Grid.Row="1"/>
+            <ComboBox x:Name="CmbAction" Grid.Row="1" Grid.Column="1">
+                <ComboBoxItem Content="Bloquear"/>
+                <ComboBoxItem Content="Permitir"/>
+            </ComboBox>
+
+            <TextBlock Text="Dirección:" Grid.Row="2"/>
+            <ComboBox x:Name="CmbDirection" Grid.Row="2" Grid.Column="1">
+                <ComboBoxItem Content="Saliente (de este equipo hacia fuera)"/>
+                <ComboBoxItem Content="Entrante (de fuera hacia este equipo)"/>
+                <ComboBoxItem Content="Ambas"/>
+            </ComboBox>
+
+            <TextBlock Text="Protocolo:" Grid.Row="3"/>
+            <ComboBox x:Name="CmbProtocol" Grid.Row="3" Grid.Column="1">
+                <ComboBoxItem Content="Cualquiera"/>
+                <ComboBoxItem Content="TCP"/>
+                <ComboBoxItem Content="UDP"/>
+            </ComboBox>
+
+            <TextBlock Text="IP remota:" Grid.Row="4"/>
+            <TextBox x:Name="TxtAddresses" Grid.Row="4" Grid.Column="1" ToolTip="Ejemplos: 1.2.3.4   ·   192.168.1.0/24   ·   varias separadas por comas. Vacío = cualquiera"/>
+
+            <TextBlock Text="Puerto remoto:" Grid.Row="5"/>
+            <TextBox x:Name="TxtRemotePorts" Grid.Row="5" Grid.Column="1" ToolTip="Ejemplos: 443   ·   80,443   ·   6000-7000. Vacío = cualquiera"/>
+
+            <TextBlock Text="Puerto local:" Grid.Row="6"/>
+            <TextBox x:Name="TxtLocalPorts" Grid.Row="6" Grid.Column="1" ToolTip="Útil para conexiones entrantes. Vacío = cualquiera"/>
+
+            <TextBlock Text="Solo para el programa:" Grid.Row="7"/>
+            <DockPanel Grid.Row="7" Grid.Column="1">
+                <Button DockPanel.Dock="Right" Content="..." Width="30" Margin="6,4,0,4" Click="OnBrowse"/>
+                <TextBox x:Name="TxtApp" ToolTip="Vacío = todos los programas"/>
+            </DockPanel>
+
+            <CheckBox x:Name="ChkEnabled" Grid.Row="8" Grid.Column="1" Content="Regla activa" Margin="0,8,0,0"/>
+        </Grid>
+
+        <TextBlock Text="Los campos vacíos significan &quot;cualquiera&quot;." Foreground="#666" Margin="0,10,0,0"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Aceptar" Width="90" Height="28" IsDefault="True" Click="OnOk"/>
+            <Button Content="Cancelar" Width="90" Height="28" Margin="8,0,0,0" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

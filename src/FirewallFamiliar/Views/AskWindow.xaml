@@ -1,0 +1,47 @@
+<Window x:Class="FirewallFamiliar.Views.AskWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Firewall Familiar" Width="460" SizeToContent="Height"
+        ResizeMode="NoResize" Topmost="True" ShowInTaskbar="True"
+        WindowStartupLocation="Manual" WindowStyle="ToolWindow">
+    <StackPanel Margin="16">
+        <TextBlock Text="Un programa quiere conectarse a Internet" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+        <DockPanel Margin="0,0,0,10">
+            <Image x:Name="AppIcon" Width="32" Height="32" DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Top"/>
+            <StackPanel>
+                <TextBlock x:Name="AppName" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock x:Name="AppDescription" Foreground="#555" TextWrapping="Wrap"/>
+                <TextBlock x:Name="AppPath" Foreground="#777" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+            </StackPanel>
+        </DockPanel>
+
+        <Border Background="#F4F4F4" CornerRadius="3" Padding="10,6" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Destino:" Foreground="#555" Margin="0,0,10,2"/>
+                <TextBlock x:Name="Remote" Grid.Column="1" FontFamily="Consolas" TextWrapping="Wrap"/>
+                <TextBlock Text="Nombre:" Grid.Row="1" Foreground="#555" Margin="0,0,10,2"/>
+                <TextBlock x:Name="RemoteName" Grid.Row="1" Grid.Column="1" FontFamily="Consolas" TextWrapping="Wrap" Text="buscando..."/>
+                <TextBlock Text="Protocolo:" Grid.Row="2" Foreground="#555" Margin="0,0,10,0"/>
+                <TextBlock x:Name="Protocol" Grid.Row="2" Grid.Column="1" FontFamily="Consolas"/>
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="Warning" Foreground="#B35C00" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="Collapsed"/>
+
+        <CheckBox x:Name="Remember" Content="Recordar mi respuesta para este programa" IsChecked="True" Margin="0,0,0,12"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnAllow" Content="Permitir" Width="110" Height="30" Margin="0,0,8,0" Click="OnAllow" IsDefault="False"/>
+            <Button x:Name="BtnBlock" Content="Bloquear" Width="110" Height="30" Click="OnBlock" IsCancel="True"/>
+        </StackPanel>
+        <TextBlock Text="Si cierras esta ventana sin contestar, el programa sigue bloqueado." Foreground="#888" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap"/>
+    </StackPanel>
+</Window>

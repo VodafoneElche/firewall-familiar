@@ -199,7 +199,7 @@ public sealed class ProcessMonitor
         return (desc, ver, LoadIcon(path));
     }
 
-    private static ImageSource? LoadIcon(string path)
+    public static ImageSource? LoadIcon(string path)
     {
         try
         {
