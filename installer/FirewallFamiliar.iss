@@ -45,7 +45,7 @@ Name: "{autodesktop}\Firewall Familiar"; Filename: "{app}\FirewallFamiliar.exe";
 [Run]
 Filename: "{app}\FirewallFamiliar.exe"; Parameters: "--registrar-arranque"; Flags: runhidden waituntilterminated; Tasks: autostart
 ; Instalación normal: casilla "Abrir ahora". Actualización automática (silenciosa): se vuelve a abrir sola junto al reloj.
-Filename: "{app}\FirewallFamiliar.exe"; Description: "Abrir Firewall Familiar ahora"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\FirewallFamiliar.exe"; Description: "Abrir Firewall Familiar ahora"; Flags: postinstall nowait skipifsilent runascurrentuser
 Filename: "{app}\FirewallFamiliar.exe"; Parameters: "--bandeja"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]

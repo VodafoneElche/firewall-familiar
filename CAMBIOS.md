@@ -1,6 +1,4 @@
-Novedades de esta versión:
+Novedades de esta versión (0.5.1):
 
-- Instalador normal (FirewallFamiliar-Instalar.exe) y actualización automática.
-- Icono junto al reloj con el logo FF y flechas de tráfico.
-- Contraseña para cerrar el programa y cambiar reglas o modo.
-- Informe para análisis desde la ventana de Registros.
+- Arreglado: al terminar la instalación, "Abrir Firewall Familiar ahora" daba el error 740 (faltaba pedir permisos de administrador).
+- Sirve también de prueba de la actualización automática.
