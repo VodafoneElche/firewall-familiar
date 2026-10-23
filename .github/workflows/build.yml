@@ -31,10 +31,12 @@ jobs:
         run: Compress-Archive -Path publish/FirewallFamiliar/* -DestinationPath publish/FirewallFamiliar-win-x64.zip
 
       - name: Crear el instalador
+        id: setup
         shell: pwsh
         run: |
           [xml]$proj = Get-Content src/FirewallFamiliar/FirewallFamiliar.csproj
           $version = ($proj.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          "version=$version" >> $env:GITHUB_OUTPUT
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
           & $iscc "/DMyVersion=$version" installer/FirewallFamiliar.iss
@@ -59,16 +61,30 @@ jobs:
           Set-Content -Path publish/FirewallFamiliar-Instalar.exe.sha256 -Value "$h  FirewallFamiliar-Instalar.exe" -NoNewline
 
       # Las versiones se publican en un repositorio público aparte, de donde se actualizan los PCs.
-      # El código de este repositorio sigue siendo privado.
-      - name: Publicar versión en firewall-familiar-versiones (solo con etiquetas v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # El código de este repositorio sigue siendo privado. Se publica sola cada versión nueva
+      # (al cambiar <Version> en el .csproj y subirlo a main).
+      - name: ¿Esta versión ya está publicada?
+        id: check
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.VERSIONES_TOKEN }}
+        run: |
+          if (-not $env:GH_TOKEN) { "publish=false" >> $env:GITHUB_OUTPUT; Write-Host "Falta el secreto VERSIONES_TOKEN"; exit 0 }
+          gh release view "v${{ steps.setup.outputs.version }}" -R VodafoneElche/firewall-familiar-versiones *> $null
+          if ($LASTEXITCODE -eq 0) { "publish=false" >> $env:GITHUB_OUTPUT } else { "publish=true" >> $env:GITHUB_OUTPUT }
+          exit 0
+
+      - name: Publicar versión en firewall-familiar-versiones
+        if: steps.check.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           repository: VodafoneElche/firewall-familiar-versiones
           token: ${{ secrets.VERSIONES_TOKEN }}
-          tag_name: ${{ github.ref_name }}
-          name: Firewall Familiar ${{ github.ref_name }}
+          tag_name: v${{ steps.setup.outputs.version }}
+          name: Firewall Familiar ${{ steps.setup.outputs.version }}
           body_path: CAMBIOS.md
+          make_latest: true
           files: |
             publish/FirewallFamiliar-Instalar.exe
             publish/FirewallFamiliar-Instalar.exe.sha256
