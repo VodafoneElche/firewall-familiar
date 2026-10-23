@@ -32,6 +32,10 @@ public sealed class TrafficGraph : FrameworkElement
 
     public int MaxSamples { get; set; } = 120;
 
+    /// <summary>Leyenda de la línea verde y de la roja.</summary>
+    public string TotalLabel { get; set; } = "Total";
+    public string BlockedLabel { get; set; } = "Bloqueos";
+
     private static readonly Pen GridPen = MakePen(Color.FromRgb(0, 80, 0), 1);
     private static readonly Pen TotalPen = MakePen(Color.FromRgb(0, 230, 0), 1.5);
     private static readonly Pen BlockedPen = MakePen(Color.FromRgb(230, 30, 30), 1.5);
@@ -79,10 +83,14 @@ public sealed class TrafficGraph : FrameworkElement
 
         // Título y leyenda
         DrawText(dc, Title, new Point(left + 4, 3), TitleBrush, 12, bold: true);
-        var legend = new FormattedText("— Total", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-            Font, 11, TitleBrush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
-        dc.DrawText(legend, new Point(w - right - legend.Width - 4, 4));
-        DrawText(dc, "— Bloqueos", new Point(w - right - legend.Width - 72, 4), BlockedBrush, 11);
+        double dip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        var legend = new FormattedText("— " + TotalLabel, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+            Font, 11, TitleBrush, dip);
+        var legendRed = new FormattedText("— " + BlockedLabel, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+            Font, 11, BlockedBrush, dip);
+        double legendY = w > 380 ? 4 : 18; // si la gráfica es estrecha, la leyenda baja una línea
+        dc.DrawText(legend, new Point(w - right - legend.Width - 4, legendY));
+        dc.DrawText(legendRed, new Point(w - right - legend.Width - legendRed.Width - 14, legendY));
 
         // Líneas
         DrawSeries(dc, _blocked, BlockedPen, plot, blockedMax);

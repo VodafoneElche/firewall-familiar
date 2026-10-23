@@ -285,6 +285,14 @@ public partial class MainWindow
     {
         if (c.Inbound) _blockedInThisSecond++; else _blockedOutThisSecond++;
         _blockedTotal++;
+        LogTrafficBlock(c);
+        if (c.Inbound && c.RemoteAddress != null)
+        {
+            _attemptsThisSecond++;
+            _attemptsTotal++;
+            CheckScan(c);
+            UpdateAttackStatus();
+        }
 
         string name = c.AppPath.Length == 0 ? "(programa desconocido)" : ProcessMonitor.FileName(c.AppPath);
 

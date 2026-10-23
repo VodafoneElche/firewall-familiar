@@ -10,8 +10,8 @@ Pensado para uso familiar: sencillo, eficaz y sin publicidad.
 | Paso | Qué incluye | Estado |
 |------|-------------|--------|
 | 1. Monitor | Gráficas de tráfico en tiempo real, programas en ejecución (también ocultos y servicios) con memoria, CPU y tráfico, conexiones abiertas, consola de mensajes | ✅ Hecho |
-| 2. Bloqueo y reglas | Permitir / Preguntar / Bloquear por programa, aviso "este programa quiere conectarse", Bloquear todo, reglas por puerto e IP ordenadas por prioridad | 🧪 En pruebas |
-| 3. Registros y avisos | Visor de paquetes, detección de escaneo de puertos, avisos de procesos ocultos o sin firma | Pendiente |
+| 2. Bloqueo y reglas | Permitir / Preguntar / Bloquear por programa, aviso "este programa quiere conectarse", Bloquear todo, reglas por puerto e IP ordenadas por prioridad | ✅ Hecho |
+| 3. Registros y avisos | Visor de registros (30 días), detección de escaneo de puertos, comprobación de firma digital, avisos de procesos sospechosos | 🧪 En pruebas |
 | 4. Instalación | Instalador, arranque con Windows, icono junto al reloj, contraseña | Pendiente |
 
 ## Cómo usar el bloqueo (paso 2)
@@ -31,6 +31,19 @@ Las reglas se guardan en `C:\ProgramData\FirewallFamiliar\reglas.json`.
 **Seguridad**: los bloqueos solo existen mientras Firewall Familiar está abierto. Si se cierra o falla,
 Windows quita todos sus filtros y la red vuelve a funcionar normal. El Firewall de Windows sigue activo como siempre.
 
+## Registros y avisos (paso 3)
+
+- **Firma digital**: la columna *Firma* comprueba de verdad cada programa con Windows (firma dentro del .exe o en
+  los catálogos de Windows). ✔ válida, ✖ sin firma, ⚠ firma NO válida (archivo modificado o certificado no fiable).
+- **Programas sospechosos** (fondo naranja fuerte y aviso en la consola): ocultos y sin firma, ocultos y metidos en
+  carpetas raras (temporales, Descargas, raíz de AppData...), o con firma no válida.
+- **Escaneo de puertos**: si un mismo equipo intenta entrar por 10 o más puertos distintos en un minuto, sale un aviso
+  "POSIBLE ATAQUE". La gráfica *Historial de ataques* muestra los intentos de entrada bloqueados (por Firewall Familiar
+  o por el Firewall de Windows).
+- **Registros**: botón *Registros*. Dos tipos: *Seguridad* (todo lo de la consola) y *Tráfico* (cada conexión nueva y
+  cada intento bloqueado). Se guardan 30 días en `C:\ProgramData\FirewallFamiliar\registros` y se pueden exportar a Excel.
+  Doble clic en una línea abre su ficha.
+
 ## Cómo probar la versión actual
 
 1. En GitHub, abre la pestaña **Actions**, entra en la última ejecución verde de **Compilar**
@@ -46,6 +59,7 @@ Por defecto arranca en modo **Sin preguntas** y no bloquea nada hasta que pongas
 - **Con ventana**: programas que ves en pantalla.
 - **Servicio**: servicios registrados de Windows o de otros programas.
 - **Sistema**: componentes de Windows sin ventana.
+- **⚠ SOSPECHOSO** (naranja fuerte): oculto y además sin firma o en una carpeta rara. Mira su ficha.
 - **OCULTO** (fondo naranja): procesos sin ventana, que no son servicios y no están en `C:\Windows`.
   No significa que sean malos (muchos son actualizadores o iconos de la bandeja), pero son los que conviene revisar.
 

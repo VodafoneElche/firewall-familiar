@@ -50,6 +50,8 @@ public partial class EventDetailsWindow : Window
             "Pregunta" => ("?  ESPERANDO TU RESPUESTA", Color.FromRgb(255, 235, 200)),
             "Oculto" => ("⚠  PROGRAMA OCULTO", Color.FromRgb(255, 235, 200)),
             "Red" => ("ℹ  PROGRAMA USANDO INTERNET", Color.FromRgb(225, 235, 250)),
+            "Escaneo" => ("⚠  POSIBLE ATAQUE: ESCANEO DE PUERTOS", Color.FromRgb(255, 200, 200)),
+            "Sospechoso" => ("⚠  PROGRAMA SOSPECHOSO", Color.FromRgb(255, 220, 190)),
             _ => ("ℹ  INFORMACIÓN", Color.FromRgb(235, 235, 235))
         };
         Outcome.Text = text;
@@ -74,11 +76,8 @@ public partial class EventDetailsWindow : Window
         AppName.Text = name;
         AppDescription.Text = info.Description.Length > 0 ? info.Description : "(el archivo no lo indica)";
         AppCompany.Text = info.Company.Length > 0 ? info.Company : "(el archivo no lo indica)";
-        AppSigner.Text = info.Signer.Length > 0
-            ? "Firmado por " + info.Signer
-            : path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.OrdinalIgnoreCase)
-                ? "Componente de Windows (firmado por Microsoft en catálogo)"
-                : "⚠ Sin firma digital: no se puede saber quién lo ha hecho";
+        AppSigner.Text = "comprobando...";
+        _ = CheckSignatureAsync(path);
         AppVersion.Text = info.Version;
         AppPath.Text = path;
 
@@ -94,6 +93,19 @@ public partial class EventDetailsWindow : Window
         string friendly = info.Description.Length > 0 && !info.Description.Equals(name, StringComparison.OrdinalIgnoreCase)
             ? $"{info.Description} ({name})" : name;
         _appLabel = info.Company.Length > 0 ? $"{friendly}, de {info.Company}," : friendly;
+    }
+
+    private async Task CheckSignatureAsync(string path)
+    {
+        var sig = await Task.Run(() => Signature.CheckNow(path));
+        AppSigner.Text = sig.Long;
+        AppSigner.Foreground = sig.Status switch
+        {
+            SignatureStatus.Valida => Brushes.DarkGreen,
+            SignatureStatus.NoValida => Brushes.Red,
+            SignatureStatus.SinFirma => Brushes.DarkOrange,
+            _ => Brushes.Black
+        };
     }
 
     private void UpdateRule()
@@ -183,6 +195,15 @@ public partial class EventDetailsWindow : Window
         if (ip == null)
         {
             Sentence.Text = _event.Text;
+            return;
+        }
+
+        if (_event.Outcome == "Escaneo")
+        {
+            string from = _ownerLabel.Length > 0 ? $"{ip} ({_ownerLabel})" : ip.ToString();
+            Sentence.Text = $"El equipo {from} ha llamado a muchas puertas distintas de este ordenador en poco tiempo. " +
+                            "Eso suele ser alguien buscando una forma de entrar. Las entradas se han bloqueado. " +
+                            "Si es un aparato de casa (impresora, consola, otro PC), puede ser normal.";
             return;
         }
 

@@ -85,6 +85,12 @@ public sealed unsafe class WfpFirewall : IDisposable
     /// <summary>Se lanza (desde un hilo de Windows) cada vez que nuestros filtros bloquean una conexión.</summary>
     public event Action<BlockedConnection>? Blocked;
 
+    /// <summary>
+    /// Entradas desde fuera que ha bloqueado otro filtro (normalmente el Firewall de Windows),
+    /// por ejemplo alguien probando puertos cerrados. Sirve para detectar escaneos.
+    /// </summary>
+    public event Action<BlockedConnection>? ForeignInboundBlocked;
+
     public bool IsOpen => _engine != default;
 
     /// <summary>Abre la conexión con el motor de filtrado de Windows. Lanza una excepción si falla.</summary>
@@ -440,7 +446,13 @@ public sealed unsafe class WfpFirewall : IDisposable
         if (e == null || e->type != FWPM_NET_EVENT_TYPE.FWPM_NET_EVENT_TYPE_CLASSIFY_DROP) return;
         var drop = e->Anonymous.classifyDrop;
         if (drop == null) return;
-        if (!_filterInfo.TryGetValue(drop->filterId, out var filter)) return; // no es nuestro
+        bool ours = _filterInfo.TryGetValue(drop->filterId, out var filter);
+        if (!ours)
+        {
+            // De otro filtro: solo interesan las entradas desde fuera (posibles ataques)
+            if (drop->isLoopback || !IsInboundDrop(drop->msFwpDirection, drop->layerId)) return;
+            filter = new FilterInfo("Firewall de Windows", false, true);
+        }
 
         ref var h = ref e->header;
         string app = "";
@@ -475,17 +487,43 @@ public sealed unsafe class WfpFirewall : IDisposable
             var p => "IP " + p
         };
 
-        Blocked?.Invoke(new BlockedConnection
+        var c = new BlockedConnection
         {
             AppPath = app,
             Protocol = protocol,
             RemoteAddress = remote,
             RemotePort = (h.flags & FLAG_REMOTE_PORT_SET) != 0 ? h.remotePort : 0,
             LocalPort = (h.flags & FLAG_LOCAL_PORT_SET) != 0 ? h.localPort : 0,
-            Inbound = filter.Inbound,
+            Inbound = filter!.Inbound,
             NeedsAnswer = filter.IsAskDefault,
             Reason = filter.Reason
-        });
+        };
+        if (!ours && IsBroadcastOrMulticast(ref h)) return; // avisos de aparatos de casa, no ataques
+        if (ours) Blocked?.Invoke(c);
+        else if (remote != null) ForeignInboundBlocked?.Invoke(c);
+    }
+
+    private static bool IsBroadcastOrMulticast(ref FWPM_NET_EVENT_HEADER1 h)
+    {
+        if ((h.flags & 0x2) == 0) return false; // FWPM_NET_EVENT_FLAG_LOCAL_ADDR_SET
+        if (h.ipVersion == FWP_IP_VERSION.FWP_IP_VERSION_V4)
+        {
+            uint v = h.Anonymous1.localAddrV4;
+            return (v >> 28) == 0xE || (v & 0xFF) == 0xFF; // 224.0.0.0/4 o x.x.x.255
+        }
+        return h.Anonymous1.localAddrV6.byteArray16[0] == 0xFF; // ff00::/8
+    }
+
+    /// <summary>
+    /// ¿El paquete venía de fuera? Windows a veces da la dirección como 0/1 y otras como
+    /// MS_FWP_DIRECTION_IN/OUT (0x3900/0x3901); por si acaso también se mira la capa.
+    /// </summary>
+    private static bool IsInboundDrop(uint direction, ushort layer)
+    {
+        if (direction is 1 or 0x3900) return true;
+        if (direction is 0x3901) return false;
+        // FWPS_LAYER_*: INBOUND_IPPACKET 0-3, INBOUND_TRANSPORT 12-15, INBOUND_ICMP_ERROR 28-31, ALE_AUTH_RECV_ACCEPT 44-47
+        return layer is <= 3 or (>= 12 and <= 15) or (>= 28 and <= 31) or (>= 44 and <= 47);
     }
 
     // ------------------------------------------------------------------

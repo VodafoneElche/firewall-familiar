@@ -36,7 +36,9 @@ public sealed class AppRow : INotifyPropertyChanged
     public string Version { get => _version; set => Set(ref _version, value); }
 
     private string _path = "";
-    public string Path { get => _path; set => Set(ref _path, value); }
+    public string Path { get => _path; set { if (Set(ref _path, value)) Notify(nameof(ToolTipText)); } }
+
+    public string ToolTipText => Suspicious.Length > 0 ? $"⚠ Sospechoso: {Suspicious}\n{Path}" : Path;
 
     private string _serviceNames = "";
     /// <summary>Servicios de Windows que corren dentro de este proceso.</summary>
@@ -55,7 +57,7 @@ public sealed class AppRow : INotifyPropertyChanged
         ProcessKind.Servicio => "Servicio",
         ProcessKind.Sistema => "Sistema",
         ProcessKind.SegundoPlano => "Segundo plano",
-        _ => "OCULTO"
+        _ => Suspicious.Length > 0 ? "⚠ SOSPECHOSO" : "OCULTO"
     };
 
     private ImageSource? _icon;
@@ -109,12 +111,32 @@ public sealed class AppRow : INotifyPropertyChanged
         _ => "? Preguntar"
     };
 
+    private FirewallFamiliar.Core.SignatureInfo _signature = FirewallFamiliar.Core.SignatureInfo.Pending;
+    /// <summary>Resultado de comprobar la firma digital del .exe.</summary>
+    public FirewallFamiliar.Core.SignatureInfo Signature
+    {
+        get => _signature;
+        set { if (Set(ref _signature, value)) Notify(nameof(SignatureText)); }
+    }
+
+    public string SignatureText => Signature.Short;
+
+    private string _suspicious = "";
+    /// <summary>Motivos por los que este programa parece sospechoso ("" si no lo parece).</summary>
+    public string Suspicious
+    {
+        get => _suspicious;
+        set { if (Set(ref _suspicious, value)) { Notify(nameof(RowBrush)); Notify(nameof(KindText)); Notify(nameof(ToolTipText)); } }
+    }
+
     /// <summary>Color de fondo de la fila: rojo para los bloqueados, naranja para los ocultos.</summary>
     public Brush RowBrush =>
         Rule == FirewallFamiliar.Core.RuleAction.Bloquear ? BlockedBrush :
+        Suspicious.Length > 0 ? SuspiciousBrush :
         Kind == ProcessKind.Oculto ? HiddenBrush : Brushes.Transparent;
 
     private static readonly Brush HiddenBrush = Freeze(new SolidColorBrush(Color.FromArgb(70, 255, 150, 0)));
+    private static readonly Brush SuspiciousBrush = Freeze(new SolidColorBrush(Color.FromArgb(140, 255, 90, 0)));
     private static readonly Brush BlockedBrush = Freeze(new SolidColorBrush(Color.FromArgb(70, 230, 30, 30)));
 
     private static Brush Freeze(Brush b) { b.Freeze(); return b; }

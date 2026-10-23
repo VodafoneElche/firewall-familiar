@@ -86,6 +86,7 @@ public partial class MainWindow : Window
         if (_traffic.IsRunning) Log("Monitor de tráfico por programa activo.");
 
         await RefreshListsAsync();
+        InitSecurity();
         InitFirewall();
         _fastTimer.Start();
         _slowTimer.Start();
@@ -130,7 +131,8 @@ public partial class MainWindow : Window
             MeterIn.Update(rateIn, _blockedInThisSecond);
             MeterOut.Update(rateOut, _blockedOutThisSecond);
             _blockedInThisSecond = _blockedOutThisSecond = 0;
-            GraphAttacks.AddSample(0, 0);
+            GraphAttacks.AddSample(_attemptsThisSecond, _scansThisSecond);
+            _attemptsThisSecond = _scansThisSecond = 0;
         }
         _lastTotalIn = totalIn;
         _lastTotalOut = totalOut;
@@ -218,6 +220,8 @@ public partial class MainWindow : Window
             row.Listening = listenCount.GetValueOrDefault(p.Pid);
             row.Rule = p.Path.Length > 0 ? _rules.ActionFor(p.Path) : RuleAction.Preguntar;
             if (p.Path.Length > 0 && IsWindowsComponent(p.Path)) NoteWindowsComponent(p.Path);
+            if (p.Path.Length > 0) row.Signature = Signature.Get(p.Path);
+            CheckSuspicious(row);
 
             if (traffic.TryGetValue(p.Pid, out var t))
             {
@@ -275,6 +279,8 @@ public partial class MainWindow : Window
     private void MergeConnections(List<ConnectionInfo> conns)
     {
         var seen = new HashSet<string>();
+        // Puertos en escucha de cada programa: si una conexión llega a uno de ellos, es entrante
+        var listening = conns.Where(c => c.IsListening).Select(c => (c.Pid, c.LocalPort)).ToHashSet();
         foreach (var c in conns)
         {
             string key = $"{c.Pid}|{c.Protocol}|{c.Local}|{c.Remote}";
@@ -292,7 +298,10 @@ public partial class MainWindow : Window
                 _connsByKey[key] = row;
                 _conns.Add(row);
                 if (!c.IsListening && c.RemoteAddress.Length > 0)
+                {
                     _ = ResolveNameAsync(row, c.RemoteAddress);
+                    LogTrafficConnection(c, app, c.Protocol.StartsWith("TCP") && listening.Contains((c.Pid, c.LocalPort)));
+                }
             }
         }
 
@@ -399,6 +408,7 @@ public partial class MainWindow : Window
             "Enviado" => nameof(AppRow.BytesOut),
             "Ahora" => nameof(AppRow.RateIn),
             "Versión" => nameof(AppRow.Version),
+            "Firma" => nameof(AppRow.SignatureText),
             "Ruta" => nameof(AppRow.Path),
             "Servicios" => nameof(AppRow.ServiceNames),
             "Protocolo" => nameof(ConnRow.Protocol),
@@ -494,6 +504,7 @@ public partial class MainWindow : Window
             Time = e.Time, Text = e.Text, Pid = e.Pid, RemoteAddress = e.RemoteAddress, RemotePort = e.RemotePort,
             Protocol = e.Protocol, Inbound = e.Inbound, Outcome = e.Outcome
         };
+        LogStore.Write(LogKind.Seguridad, LogEntry.From(e));
         ConsoleList.Items.Add(e);
         while (ConsoleList.Items.Count > MaxConsoleLines) ConsoleList.Items.RemoveAt(0);
         ConsoleList.ScrollIntoView(ConsoleList.Items[^1]);
@@ -562,6 +573,9 @@ public partial class MainWindow : Window
             "• Clic derecho en un programa para permitirlo o bloquearlo.\n" +
             "• Doble clic en un programa para ver sus conexiones.\n" +
             "• Clic derecho para abrir su carpeta o buscar en Internet qué es.\n" +
+            "• Pincha en un mensaje de la consola con ⓘ para ver su ficha.\n" +
+            "• Los programas en naranja fuerte son sospechosos: ocultos y sin firma, o en carpetas raras.\n" +
+            "• El botón Registros guarda todo lo que ha pasado durante 30 días.\n" +
             "• Pulsa en las cabeceras de las columnas para ordenar.",
             "Acerca de Firewall Familiar", MessageBoxButton.OK, MessageBoxImage.Information);
     }

@@ -19,6 +19,9 @@
                 <Separator/>
                 <MenuItem Header="_Reglas..." Click="OnShowRules"/>
                 <MenuItem Header="Abrir carpeta de reglas" Click="OnOpenRulesFolder"/>
+                <Separator/>
+                <MenuItem Header="Ver re_gistros..." Click="OnShowLogs"/>
+                <MenuItem Header="Abrir carpeta de registros" Click="OnOpenLogsFolder"/>
             </MenuItem>
             <MenuItem Header="_Ver">
                 <MenuItem x:Name="MenuConsole" Header="Consola de mensajes" IsCheckable="True" IsChecked="True" Click="OnToggleConsole"/>
@@ -55,7 +58,7 @@
                         <TextBlock Text="Reglas" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Button>
-                <Button Style="{StaticResource ToolButton}" IsEnabled="False" ToolTip="Visor de registros. Disponible en el paso 3.">
+                <Button Style="{StaticResource ToolButton}" Click="OnShowLogs" ToolTip="Todo lo que ha pasado: avisos, bloqueos y conexiones (últimos 30 días)">
                     <StackPanel>
                         <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
                         <TextBlock Text="Registros" HorizontalAlignment="Center" Margin="0,4,0,0"/>
@@ -90,6 +93,8 @@
             <StatusBarItem><TextBlock x:Name="StatusTraffic" Text="Monitor de tráfico: iniciando..."/></StatusBarItem>
             <Separator/>
             <StatusBarItem><TextBlock x:Name="StatusCounts"/></StatusBarItem>
+            <Separator/>
+            <StatusBarItem><TextBlock x:Name="StatusAttacks"/></StatusBarItem>
         </StatusBar>
 
         <Grid Margin="6">
@@ -117,8 +122,8 @@
                     <c:TrafficMeter x:Name="MeterOut" Title="Saliente" Grid.Row="1" Grid.Column="0" Margin="1"/>
                     <c:TrafficGraph x:Name="GraphIn" Title="Historial de tráfico entrante" Grid.Row="0" Grid.Column="1" Margin="1"/>
                     <c:TrafficGraph x:Name="GraphOut" Title="Historial de tráfico saliente" Grid.Row="1" Grid.Column="1" Margin="1"/>
-                    <c:TrafficGraph x:Name="GraphAttacks" Title="Historial de ataques (paso 3)" Grid.RowSpan="2" Grid.Column="2" Margin="1"
-                                    IsBytes="False" MinScale="10"/>
+                    <c:TrafficGraph x:Name="GraphAttacks" Title="Historial de ataques" Grid.RowSpan="2" Grid.Column="2" Margin="1"
+                                    IsBytes="False" MinScale="10" TotalLabel="Intentos de entrada" BlockedLabel="Escaneos"/>
                 </Grid>
             </Border>
 
@@ -142,7 +147,7 @@
                             <Style TargetType="ListViewItem">
                                 <Setter Property="Background" Value="{Binding RowBrush}"/>
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                <Setter Property="ToolTip" Value="{Binding Path}"/>
+                                <Setter Property="ToolTip" Value="{Binding ToolTipText}"/>
                             </Style>
                         </ListView.ItemContainerStyle>
                         <ListView.ContextMenu>
@@ -174,6 +179,7 @@
                                 <GridViewColumn Header="Descripción" Width="190" DisplayMemberBinding="{Binding Description}"/>
                                 <GridViewColumn Header="Tipo" Width="85" DisplayMemberBinding="{Binding KindText}"/>
                                 <GridViewColumn Header="Regla" Width="90" DisplayMemberBinding="{Binding RuleText}"/>
+                                <GridViewColumn Header="Firma" Width="150" DisplayMemberBinding="{Binding SignatureText}"/>
                                 <GridViewColumn Header="PID" Width="55" DisplayMemberBinding="{Binding Pid}"/>
                                 <GridViewColumn Header="Memoria" Width="75" DisplayMemberBinding="{Binding MemoryText}"/>
                                 <GridViewColumn Header="CPU %" Width="50" DisplayMemberBinding="{Binding CpuText}"/>
@@ -231,6 +237,20 @@
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Style.Triggers>
+                            <DataTrigger Binding="{Binding Outcome}" Value="Bloqueado">
+                                <Setter Property="Foreground" Value="#B00000"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Outcome}" Value="Permitido">
+                                <Setter Property="Foreground" Value="#006400"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Outcome}" Value="Escaneo">
+                                <Setter Property="Background" Value="#FFC8C8"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Outcome}" Value="Sospechoso">
+                                <Setter Property="Background" Value="#FFDCB4"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding HasDetails}" Value="True">
                                 <Setter Property="Cursor" Value="Hand"/>
                             </DataTrigger>
