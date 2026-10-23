@@ -30,6 +30,22 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path publish/FirewallFamiliar/* -DestinationPath publish/FirewallFamiliar-win-x64.zip
 
+      - name: Crear el instalador
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content src/FirewallFamiliar/FirewallFamiliar.csproj
+          $version = ($proj.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc "/DMyVersion=$version" installer/FirewallFamiliar.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Subir el instalador como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirewallFamiliar-Instalar
+          path: publish/FirewallFamiliar-Instalar.exe
+
       - name: Subir el programa como artefacto
         uses: actions/upload-artifact@v4
         with:
@@ -40,4 +56,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: publish/FirewallFamiliar-win-x64.zip
+          files: |
+            publish/FirewallFamiliar-Instalar.exe
+            publish/FirewallFamiliar-win-x64.zip

@@ -143,8 +143,6 @@ public partial class MainWindow
         MenuTrayAlerts.IsChecked = _settings.TrayAlerts;
         foreach (var m in new[] { MenuProtectExit, MenuProtectRules, MenuProtectAsk }) m.IsEnabled = _settings.HasPassword;
 
-        bool installed = Installer.RunningInstalled;
-        MenuInstall.Header = installed ? "Desinstalar de este PC..." : Installer.IsInstalled ? "Actualizar la copia instalada con esta versión..." : "Instalar en este PC...";
         try { MenuAutostart.IsChecked = Installer.AutostartEnabled; } catch { }
     }
 
@@ -157,56 +155,6 @@ public partial class MainWindow
     // =====================================================================
     // Instalar, desinstalar y arrancar con Windows
     // =====================================================================
-
-    private void OnInstallMenu(object sender, RoutedEventArgs e)
-    {
-        if (Installer.RunningInstalled) Uninstall();
-        else Install();
-    }
-
-    private void Install()
-    {
-        if (MessageBox.Show(this,
-                $"Se copiará Firewall Familiar a:\n{Installer.InstallDir}\n\n" +
-                "• Se abrirá solo junto al reloj cada vez que alguien inicie sesión.\n" +
-                "• Tendrás accesos directos en el menú Inicio y en el Escritorio.\n\n" +
-                (_settings.HasPassword ? "" : "Consejo: después pon una contraseña (menú Seguridad) para que los niños no puedan cerrarlo ni cambiar reglas.\n\n") +
-                "¿Instalar ahora?",
-                "Instalar Firewall Familiar", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-            return;
-        if (!Authorize("Escribe la contraseña para instalar.")) return;
-        try
-        {
-            Installer.Install();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, "No se pudo instalar: " + ex.Message, "Instalar", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        Log("Instalado en " + Installer.InstallDir + ". Se abrirá solo al iniciar sesión.");
-        // Se abre la copia instalada y esta se cierra
-        Process.Start(new ProcessStartInfo(Installer.InstalledExe, $"--esperar={Environment.ProcessId}") { UseShellExecute = true });
-        _reallyExit = true;
-        Close();
-    }
-
-    private void Uninstall()
-    {
-        if (!PasswordWindow.Ask(this, _settings, "Escribe la contraseña para desinstalar.")) return;
-        if (MessageBox.Show(this,
-                "Se quitará Firewall Familiar de este PC: el arranque con Windows, los accesos directos y la carpeta del programa.\n\n" +
-                $"Tus reglas y registros se quedan en {RuleStore.Folder} por si lo vuelves a instalar.\n\n¿Desinstalar?",
-                "Desinstalar Firewall Familiar", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
-            return;
-        try { Installer.Uninstall(); }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, "No se pudo desinstalar del todo: " + ex.Message, "Desinstalar", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        _reallyExit = true;
-        Close();
-    }
 
     private void OnToggleAutostart(object sender, RoutedEventArgs e)
     {

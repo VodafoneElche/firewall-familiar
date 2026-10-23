@@ -10,7 +10,6 @@
         <!-- ===== Menú ===== -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_Archivo">
-                <MenuItem x:Name="MenuInstall" Header="Instalar en este PC..." Click="OnInstallMenu"/>
                 <MenuItem x:Name="MenuAutostart" Header="Abrir al iniciar Windows" IsCheckable="True" Click="OnToggleAutostart"/>
                 <Separator/>
                 <MenuItem Header="_Esconder junto al reloj" Click="OnHideToTray"/>

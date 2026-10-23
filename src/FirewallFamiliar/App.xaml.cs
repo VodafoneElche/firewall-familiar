@@ -23,6 +23,14 @@ public partial class App : Application
         base.OnStartup(e);
         var args = e.Args;
 
+        // Llamado por el instalador: solo crea (o quita) la tarea de arranque y termina
+        if (args.Contains("--registrar-arranque") || args.Contains("--quitar-arranque"))
+        {
+            try { Core.Installer.SetAutostart(args.Contains("--registrar-arranque"), Environment.ProcessPath!); } catch { }
+            Shutdown();
+            return;
+        }
+
         // Tras instalar o actualizar: esperar a que se cierre la copia anterior
         var wait = args.FirstOrDefault(a => a.StartsWith("--esperar="));
         if (wait != null && int.TryParse(wait["--esperar=".Length..], out int oldPid))
