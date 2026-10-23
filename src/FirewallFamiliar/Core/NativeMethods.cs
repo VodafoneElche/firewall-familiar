@@ -52,6 +52,50 @@ internal static class NativeMethods
         finally { CloseHandle(h); }
     }
 
+    // ---------- Proceso padre ----------
+
+    private const uint TH32CS_SNAPPROCESS = 0x2;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct PROCESSENTRY32
+    {
+        public uint dwSize;
+        public uint cntUsage;
+        public int th32ProcessID;
+        public IntPtr th32DefaultHeapID;
+        public uint th32ModuleID;
+        public uint cntThreads;
+        public int th32ParentProcessID;
+        public int pcPriClassBase;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szExeFile;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool Process32FirstW(IntPtr snapshot, ref PROCESSENTRY32 entry);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool Process32NextW(IntPtr snapshot, ref PROCESSENTRY32 entry);
+
+    /// <summary>PID de cada proceso → PID del proceso que lo abrió.</summary>
+    public static Dictionary<int, int> GetParentPids()
+    {
+        var map = new Dictionary<int, int>();
+        IntPtr snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snap == IntPtr.Zero || snap == new IntPtr(-1)) return map;
+        try
+        {
+            var e = new PROCESSENTRY32 { dwSize = (uint)Marshal.SizeOf<PROCESSENTRY32>() };
+            if (!Process32FirstW(snap, ref e)) return map;
+            do { map[e.th32ProcessID] = e.th32ParentProcessID; } while (Process32NextW(snap, ref e));
+        }
+        finally { CloseHandle(snap); }
+        return map;
+    }
+
     // ---------- Ventanas visibles ----------
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);

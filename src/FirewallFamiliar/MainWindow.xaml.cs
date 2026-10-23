@@ -317,7 +317,7 @@ public partial class MainWindow : Window
     private bool FilterApp(object o)
     {
         var a = (AppRow)o;
-        if (ChkHideWindows.IsChecked == true && a.Kind is ProcessKind.Servicio or ProcessKind.Sistema) return false;
+        if (ChkHideWindows.IsChecked == true && a.Kind is ProcessKind.Servicio or ProcessKind.Sistema or ProcessKind.SegundoPlano) return false;
         if (ChkOnlyNetwork.IsChecked == true && !a.UsesNetwork) return false;
         string q = SearchBox.Text.Trim();
         return q.Length == 0 ||

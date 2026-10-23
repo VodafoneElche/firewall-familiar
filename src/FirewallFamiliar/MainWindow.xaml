@@ -109,7 +109,7 @@
                 <TextBox DockPanel.Dock="Left" x:Name="SearchBox" Width="200" TextChanged="OnFilterChanged" VerticalContentAlignment="Center"/>
                 <CheckBox DockPanel.Dock="Right" x:Name="ChkOnlyNetwork" Content="Solo programas que usan la red" Margin="14,0,0,0"
                           VerticalAlignment="Center" Click="OnFilterChanged"/>
-                <CheckBox DockPanel.Dock="Right" x:Name="ChkHideWindows" Content="Ocultar servicios y componentes de Windows" Margin="14,0,0,0"
+                <CheckBox DockPanel.Dock="Right" x:Name="ChkHideWindows" Content="Ocultar servicios, Windows y segundo plano" Margin="14,0,0,0"
                           VerticalAlignment="Center" Click="OnFilterChanged"/>
                 <CheckBox DockPanel.Dock="Right" x:Name="ChkHideListening" Content="Ocultar puertos en escucha" Margin="14,0,0,0"
                           VerticalAlignment="Center" Click="OnFilterChanged" IsChecked="False"/>
