@@ -41,6 +41,12 @@ public partial class MainWindow : Window
     private readonly HashSet<int> _announcedNetwork = new();
     private readonly Dictionary<int, (long In, long Out)> _lastBytes = new();
     private string? _connFilterProgram;
+    private readonly HashSet<int> _hiddenToAnnounce = new();
+
+    private static bool IsTrustedVendor(SignatureInfo sig) =>
+        sig.Status == SignatureStatus.Valida &&
+        (sig.Signer.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) ||
+         sig.Signer.StartsWith("Intel", StringComparison.OrdinalIgnoreCase));
 
     public MainWindow()
     {
@@ -212,7 +218,9 @@ public partial class MainWindow : Window
             row.Version = p.Version;
             row.Path = p.Path;
             row.ServiceNames = p.Services;
-            row.Kind = p.Kind;
+            if (p.Path.Length > 0) row.Signature = Signature.Get(p.Path);
+            // Ocultos firmados por Microsoft o Intel: son piezas de Windows o de los drivers, no hace falta vigilarlos
+            row.Kind = p.Kind == ProcessKind.Oculto && IsTrustedVendor(row.Signature) ? ProcessKind.SegundoPlano : p.Kind;
             row.Icon = p.Icon;
             row.Memory = p.Memory;
             row.Cpu = p.CpuPercent;
@@ -220,7 +228,6 @@ public partial class MainWindow : Window
             row.Listening = listenCount.GetValueOrDefault(p.Pid);
             row.Rule = p.Path.Length > 0 ? _rules.ActionFor(p.Path) : RuleAction.Preguntar;
             if (p.Path.Length > 0 && IsWindowsComponent(p.Path)) NoteWindowsComponent(p.Path);
-            if (p.Path.Length > 0) row.Signature = Signature.Get(p.Path);
             CheckSuspicious(row);
 
             if (traffic.TryGetValue(p.Pid, out var t))
@@ -239,12 +246,15 @@ public partial class MainWindow : Window
 
             // Solo se avisa de los procesos nuevos que arrancan ocultos; el resto
             // (pestañas del navegador, componentes de Windows...) llenaría la consola.
-            if (isNew && _firstRefreshDone && p.Kind == ProcessKind.Oculto)
+            if (isNew && _firstRefreshDone && p.Kind == ProcessKind.Oculto) _hiddenToAnnounce.Add(p.Pid);
+            // Se espera a saber su firma: si resulta ser de Microsoft o Intel, no se avisa
+            if (_hiddenToAnnounce.Contains(p.Pid) && row.Signature.Status != SignatureStatus.Pendiente &&
+                _hiddenToAnnounce.Remove(p.Pid) && row.Kind == ProcessKind.Oculto)
                 Log(new ConsoleEvent { Text = $"⚠ Nuevo proceso oculto: {p.Name} (PID {p.Pid})  {p.Path}", AppPath = p.Path, Pid = p.Pid, Outcome = "Oculto" });
 
             if (row.UsesNetwork && _announcedNetwork.Add(p.Pid) && _firstRefreshDone)
             {
-                string kind = p.Kind == ProcessKind.Oculto ? "  ⚠ proceso oculto" : "";
+                string kind = row.Kind == ProcessKind.Oculto ? "  ⚠ proceso oculto" : "";
                 // Primera conexión de ese programa, para poder enseñar con quién habla
                 var first = conns.FirstOrDefault(c => c.Pid == p.Pid && !c.IsListening && c.RemoteAddress.Length > 0);
                 IPAddress.TryParse(first?.RemoteAddress, out var firstIp);
@@ -270,6 +280,7 @@ public partial class MainWindow : Window
             _appsByPid.Remove(pid);
             _lastBytes.Remove(pid);
             _announcedNetwork.Remove(pid);
+            _hiddenToAnnounce.Remove(pid);
             if (row.Kind == ProcessKind.Oculto || row.UsesNetwork)
                 Log(new ConsoleEvent { Text = $"Ha terminado: {row.Name} (PID {pid}).", AppPath = row.Path, Pid = pid });
         }
