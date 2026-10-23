@@ -52,7 +52,17 @@ public sealed class BlockedConnection
 /// </summary>
 public sealed unsafe class WfpFirewall : IDisposable
 {
-    private static readonly Guid SublayerKey = new("6f3a3c0e-6a1b-4b8e-9a52-6a1f0c7a2b11");
+    /// <summary>
+    /// La ventana y el servicio usan cada uno su propia subcapa: así, aunque durante el relevo
+    /// estén los dos un instante a la vez, no se pisan (un filtro solo se puede añadir a una
+    /// subcapa de la misma sesión, si no da el error 0x8032000C).
+    /// </summary>
+    private readonly Guid SublayerKey;
+
+    public WfpFirewall(bool service = false)
+    {
+        SublayerKey = service ? new Guid("6f3a3c0e-6a1b-4b8e-9a52-6a1f0c7a2b12") : new Guid("6f3a3c0e-6a1b-4b8e-9a52-6a1f0c7a2b11");
+    }
     private const uint RPC_C_AUTHN_WINNT = 10;
     private const uint FWP_E_ALREADY_EXISTS = 0x80320009;
 

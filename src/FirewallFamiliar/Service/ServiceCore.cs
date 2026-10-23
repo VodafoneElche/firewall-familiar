@@ -121,7 +121,7 @@ internal sealed class ServiceCore
         _settings = AppSettings.Load();
         try
         {
-            var fw = new WfpFirewall();
+            var fw = new WfpFirewall(service: true);
             fw.Open();
             // Se atienden en otro hilo: el aviso llega desde Windows y no hay que hacerle esperar
             fw.Blocked += c => ThreadPool.QueueUserWorkItem(_ => SafeRun(() => OnBlocked(c)));
@@ -604,6 +604,7 @@ internal sealed class ServiceCore
     private async Task OnPauseAsync(Client client)
     {
         bool admin = false;
+        string why = "";
         try
         {
             client.Server.RunAsClient(() =>
@@ -612,7 +613,11 @@ internal sealed class ServiceCore
                 admin = new WindowsPrincipal(id).IsInRole(WindowsBuiltInRole.Administrator);
             });
         }
-        catch { admin = false; }
+        catch (Exception ex) { why = ex.Message; }
+        // Otra forma de comprobarlo: si el programa que se conecta tiene permisos elevados
+        if (!admin && GetNamedPipeClientProcessId(client.Server.SafePipeHandle.DangerousGetHandle(), out uint pid))
+            admin = IsElevated((int)pid);
+        if (!admin) Log("La ventana pidió el control sin permisos de administrador" + (why.Length > 0 ? " (" + why + ")" : "") + ".");
         if (!admin)
         {
             await client.Channel.SendAsync(new PipeMessage { T = "pausado", Ok = false, Error = "Hace falta abrirlo como administrador." });
@@ -664,4 +669,31 @@ internal sealed class ServiceCore
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GetNamedPipeClientSessionId(IntPtr pipe, out uint sessionId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetNamedPipeClientProcessId(IntPtr pipe, out uint processId);
+
+    private static bool IsElevated(int pid)
+    {
+        try
+        {
+            using var p = System.Diagnostics.Process.GetProcessById(pid);
+            if (!OpenProcessToken(p.Handle, 0x0008 /* TOKEN_QUERY */, out IntPtr token)) return false;
+            try
+            {
+                return GetTokenInformation(token, 20 /* TokenElevation */, out int elevated, 4, out _) && elevated != 0;
+            }
+            finally { CloseHandle(token); }
+        }
+        catch { return false; }
+    }
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool OpenProcessToken(IntPtr process, uint access, out IntPtr token);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool GetTokenInformation(IntPtr token, int infoClass, out int info, int length, out int returned);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr handle);
 }

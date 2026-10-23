@@ -1,4 +1,9 @@
-Novedades de esta versión (0.6.1):
+Novedades de esta versión (0.6.2):
+
+- Arreglado: "No se pudo añadir el filtro Permitir tráfico interno (0x8032000C)" al abrir la ventana con el servicio funcionando. Ventana y servicio usan ahora cada uno su propia subcapa de filtros.
+- El servicio comprueba de otra forma que la ventana tiene permisos de administrador.
+
+De la 0.6.1:
 
 - Arreglado: la detección de escaneos de puertos no se activaba (Windows no deja cambiar esa opción desde la conexión del cortafuegos; ahora se usa una aparte).
 
