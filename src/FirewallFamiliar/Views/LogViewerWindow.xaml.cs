@@ -197,13 +197,29 @@ public partial class LogViewerWindow : Window
             var progress = new Progress<string>(msg => StatusText.Text = msg);
             string report = await AnalysisReport.BuildAsync(days, rules, procs, progress);
 
-            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string file = Path.Combine(desktop, $"FirewallFamiliar-analisis-{Environment.MachineName}-{DateTime.Now:yyyy-MM-dd_HHmm}.md");
+            // Se guarda siempre en la carpeta del programa (ahí nunca falla) y, si se puede, también
+            // en el Escritorio. En algunos PCs el Escritorio está redirigido y no deja entrar.
+            string name = $"FirewallFamiliar-analisis-{Environment.MachineName}-{DateTime.Now:yyyy-MM-dd_HHmm}.md";
+            string folder = Path.Combine(RuleStore.Folder, "informes");
+            Directory.CreateDirectory(folder);
+            string file = Path.Combine(folder, name);
             await File.WriteAllTextAsync(file, report, new UTF8Encoding(false));
+            bool onDesktop = false;
+            try
+            {
+                string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                if (desktop.Length > 0 && Directory.Exists(desktop))
+                {
+                    File.Copy(file, Path.Combine(desktop, name), true);
+                    onDesktop = true;
+                }
+            }
+            catch { }
             StatusText.Text = $"Informe guardado: {file} ({report.Length / 1024} KB)";
             Process.Start("explorer.exe", $"/select,\"{file}\"");
             MessageBox.Show(this,
-                "El informe está en el Escritorio:\n\n" + Path.GetFileName(file) + "\n\n" +
+                "Informe guardado" + (onDesktop ? " en el Escritorio y en:" : " en:") + "\n\n" + file + "\n\n" +
+                "Se ha abierto esa carpeta con el archivo marcado.\n\n" +
                 "Arrástralo al chat de Claude y pídele que lo revise. Incluye los avisos, con quién se conecta cada programa, " +
                 "a quién pertenecen las IP, los intentos de entrada, las horas de uso y tus reglas.\n\n" +
                 "Ojo: contiene qué programas y webs se usan en este PC. Compártelo solo con quien quieras.",
