@@ -114,6 +114,7 @@ public sealed unsafe class WfpFirewall : IDisposable
         on.type = FWP_DATA_TYPE.FWP_UINT32;
         on.Anonymous.uint32 = 1;
         Win.FwpmEngineSetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_COLLECT_NET_EVENTS, &on);
+        EnablePortScanEvents();
 
         var sublayer = default(FWPM_SUBLAYER0);
         sublayer.subLayerKey = SublayerKey;
@@ -501,6 +502,28 @@ public sealed unsafe class WfpFirewall : IDisposable
         if (!ours && IsBroadcastOrMulticast(ref h)) return; // avisos de aparatos de casa, no ataques
         if (ours) Blocked?.Invoke(c);
         else if (remote != null) ForeignInboundBlocked?.Invoke(c);
+    }
+
+    /// <summary>
+    /// Desde Windows 10 (1903), los paquetes que llegan a puertos cerrados ("Port Scanning
+    /// Prevention Filter") no se avisan salvo que se pida expresamente. Sin esto solo veíamos
+    /// unos pocos intentos de cada escaneo. Se añade a lo que ya hubiera pedido otro programa.
+    /// </summary>
+    private void EnablePortScanEvents()
+    {
+        const uint PortScanningDrop = 0x20; // FWPM_NET_EVENT_KEYWORD_PORT_SCANNING_DROP
+        uint current = 0;
+        FWP_VALUE0* value = null;
+        if (Win.FwpmEngineGetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value) == 0 && value != null)
+        {
+            if (value->type == FWP_DATA_TYPE.FWP_UINT32) current = value->Anonymous.uint32;
+            Win.FwpmFreeMemory0((void**)&value);
+        }
+        if ((current & PortScanningDrop) != 0) return;
+        var v = default(FWP_VALUE0);
+        v.type = FWP_DATA_TYPE.FWP_UINT32;
+        v.Anonymous.uint32 = current | PortScanningDrop;
+        Win.FwpmEngineSetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &v);
     }
 
     private static bool IsBroadcastOrMulticast(ref FWPM_NET_EVENT_HEADER1 h)

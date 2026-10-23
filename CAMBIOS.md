@@ -1,4 +1,3 @@
-Novedades de esta versión (0.5.1):
+Novedades de esta versión (0.5.2):
 
-- Arreglado: al terminar la instalación, "Abrir Firewall Familiar ahora" daba el error 740 (faltaba pedir permisos de administrador).
-- Sirve también de prueba de la actualización automática.
+- Detección de escaneos de puertos: ahora Windows avisa de todos los intentos de entrar por puertos cerrados, no solo de unos pocos. Antes un escaneo podía pasar sin aviso.
