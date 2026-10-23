@@ -1,0 +1,197 @@
+<Window x:Class="FirewallFamiliar.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:FirewallFamiliar.Controls"
+        Title="Firewall Familiar" Width="1100" Height="800" MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Loaded="OnLoaded" Closed="OnClosed">
+
+    <DockPanel>
+        <!-- ===== Menú ===== -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Archivo">
+                <MenuItem Header="_Salir" Click="OnExit"/>
+            </MenuItem>
+            <MenuItem Header="_Seguridad">
+                <MenuItem Header="Bloquear todo (disponible en el paso 2)" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="_Ver">
+                <MenuItem x:Name="MenuConsole" Header="Consola de mensajes" IsCheckable="True" IsChecked="True" Click="OnToggleConsole"/>
+            </MenuItem>
+            <MenuItem Header="A_yuda">
+                <MenuItem Header="_Acerca de Firewall Familiar" Click="OnAbout"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- ===== Barra de herramientas ===== -->
+        <Border DockPanel.Dock="Top" BorderBrush="#DDD" BorderThickness="0,0,0,1" Background="#F7F7F7">
+            <StackPanel Orientation="Horizontal" Margin="4,2">
+                <Button Style="{StaticResource ToolButton}" IsEnabled="False" ToolTip="Bloquear todo el tráfico. Disponible en el paso 2.">
+                    <StackPanel>
+                        <TextBlock Text="&#xE72E;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Bloquear todo" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolButton}" Click="OnShowApps" ToolTip="Programas en ejecución">
+                    <StackPanel>
+                        <TextBlock Text="&#xE71D;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Aplicaciones" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolButton}" Click="OnShowConnections" ToolTip="Conexiones abiertas ahora mismo">
+                    <StackPanel>
+                        <TextBlock Text="&#xE968;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Conexiones" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolButton}" IsEnabled="False" ToolTip="Visor de registros. Disponible en el paso 3.">
+                    <StackPanel>
+                        <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Registros" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolButton}" Click="OnAbout" ToolTip="Ayuda">
+                    <StackPanel>
+                        <TextBlock Text="&#xE897;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Ayuda" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- ===== Barra de estado ===== -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock>
+                    <Run Text="Estado de seguridad:"/>
+                    <Run Text="Solo monitor (no bloquea nada)" FontWeight="SemiBold"/>
+                </TextBlock>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem><TextBlock x:Name="StatusTraffic" Text="Monitor de tráfico: iniciando..."/></StatusBarItem>
+            <Separator/>
+            <StatusBarItem><TextBlock x:Name="StatusCounts"/></StatusBarItem>
+        </StatusBar>
+
+        <Grid Margin="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="200"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="160"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition x:Name="ConsoleRow" Height="130"/>
+            </Grid.RowDefinitions>
+
+            <!-- ===== Gráficas de tráfico ===== -->
+            <Border Grid.Row="0" Background="#202020" Padding="3" CornerRadius="2">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="0.8*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <c:TrafficMeter x:Name="MeterIn" Title="Entrante" Grid.Row="0" Grid.Column="0" Margin="1"/>
+                    <c:TrafficMeter x:Name="MeterOut" Title="Saliente" Grid.Row="1" Grid.Column="0" Margin="1"/>
+                    <c:TrafficGraph x:Name="GraphIn" Title="Historial de tráfico entrante" Grid.Row="0" Grid.Column="1" Margin="1"/>
+                    <c:TrafficGraph x:Name="GraphOut" Title="Historial de tráfico saliente" Grid.Row="1" Grid.Column="1" Margin="1"/>
+                    <c:TrafficGraph x:Name="GraphAttacks" Title="Historial de ataques (paso 3)" Grid.RowSpan="2" Grid.Column="2" Margin="1"
+                                    IsBytes="False" MinScale="10"/>
+                </Grid>
+            </Border>
+
+            <!-- ===== Filtros ===== -->
+            <DockPanel Grid.Row="1" Margin="0,8,0,4" LastChildFill="False">
+                <TextBlock DockPanel.Dock="Left" Text="Buscar:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox DockPanel.Dock="Left" x:Name="SearchBox" Width="200" TextChanged="OnFilterChanged" VerticalContentAlignment="Center"/>
+                <CheckBox DockPanel.Dock="Right" x:Name="ChkOnlyNetwork" Content="Solo programas que usan la red" Margin="14,0,0,0"
+                          VerticalAlignment="Center" Click="OnFilterChanged"/>
+                <CheckBox DockPanel.Dock="Right" x:Name="ChkHideWindows" Content="Ocultar servicios y componentes de Windows" Margin="14,0,0,0"
+                          VerticalAlignment="Center" Click="OnFilterChanged"/>
+                <CheckBox DockPanel.Dock="Right" x:Name="ChkHideListening" Content="Ocultar puertos en escucha" Margin="14,0,0,0"
+                          VerticalAlignment="Center" Click="OnFilterChanged" IsChecked="False"/>
+            </DockPanel>
+
+            <!-- ===== Pestañas: programas y conexiones ===== -->
+            <TabControl Grid.Row="2" x:Name="Tabs" SelectionChanged="OnTabChanged">
+                <TabItem x:Name="TabApps" Header="Programas en ejecución">
+                    <ListView x:Name="AppsList" GridViewColumnHeader.Click="OnHeaderClick" MouseDoubleClick="OnAppDoubleClick">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Background" Value="{Binding RowBrush}"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="ToolTip" Value="{Binding Path}"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Permitir (paso 2)" IsEnabled="False"/>
+                                <MenuItem Header="Preguntar (paso 2)" IsEnabled="False"/>
+                                <MenuItem Header="Bloquear (paso 2)" IsEnabled="False"/>
+                                <Separator/>
+                                <MenuItem Header="Ver sus conexiones" Click="OnShowAppConnections"/>
+                                <MenuItem Header="Abrir ubicación del archivo" Click="OnOpenLocation"/>
+                                <MenuItem Header="Copiar ruta" Click="OnCopyPath"/>
+                                <MenuItem Header="Buscar en Internet qué es" Click="OnSearchWeb"/>
+                                <Separator/>
+                                <MenuItem Header="Terminar proceso..." Click="OnKillProcess"/>
+                            </ContextMenu>
+                        </ListView.ContextMenu>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Programa" Width="190">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding Name}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Descripción" Width="190" DisplayMemberBinding="{Binding Description}"/>
+                                <GridViewColumn Header="Tipo" Width="85" DisplayMemberBinding="{Binding KindText}"/>
+                                <GridViewColumn Header="PID" Width="55" DisplayMemberBinding="{Binding Pid}"/>
+                                <GridViewColumn Header="Memoria" Width="75" DisplayMemberBinding="{Binding MemoryText}"/>
+                                <GridViewColumn Header="CPU %" Width="50" DisplayMemberBinding="{Binding CpuText}"/>
+                                <GridViewColumn Header="Conex." Width="50" DisplayMemberBinding="{Binding Connections}"/>
+                                <GridViewColumn Header="Recibido" Width="75" DisplayMemberBinding="{Binding BytesInText}"/>
+                                <GridViewColumn Header="Enviado" Width="75" DisplayMemberBinding="{Binding BytesOutText}"/>
+                                <GridViewColumn Header="Ahora" Width="140" DisplayMemberBinding="{Binding RateText}"/>
+                                <GridViewColumn Header="Versión" Width="110" DisplayMemberBinding="{Binding Version}"/>
+                                <GridViewColumn Header="Ruta" Width="320" DisplayMemberBinding="{Binding Path}"/>
+                                <GridViewColumn Header="Servicios" Width="250" DisplayMemberBinding="{Binding ServiceNames}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </TabItem>
+
+                <TabItem x:Name="TabConnections" Header="Conexiones">
+                    <ListView x:Name="ConnList" GridViewColumnHeader.Click="OnHeaderClick">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Programa" Width="170" DisplayMemberBinding="{Binding Program}"/>
+                                <GridViewColumn Header="PID" Width="55" DisplayMemberBinding="{Binding Pid}"/>
+                                <GridViewColumn Header="Protocolo" Width="70" DisplayMemberBinding="{Binding Protocol}"/>
+                                <GridViewColumn Header="Dirección local" Width="200" DisplayMemberBinding="{Binding Local}"/>
+                                <GridViewColumn Header="Equipo remoto" Width="230" DisplayMemberBinding="{Binding Remote}"/>
+                                <GridViewColumn Header="Nombre remoto" Width="230" DisplayMemberBinding="{Binding RemoteName}"/>
+                                <GridViewColumn Header="Estado" Width="110" DisplayMemberBinding="{Binding State}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </TabItem>
+            </TabControl>
+
+            <!-- ===== Consola de mensajes ===== -->
+            <DockPanel Grid.Row="3" Margin="0,6,0,2" LastChildFill="False">
+                <TextBlock DockPanel.Dock="Left" Text="Consola de mensajes" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button DockPanel.Dock="Right" Content="Limpiar" Padding="10,1" Click="OnClearConsole"/>
+            </DockPanel>
+            <ListBox Grid.Row="4" x:Name="ConsoleList" FontFamily="Consolas" FontSize="12"/>
+        </Grid>
+    </DockPanel>
+</Window>
