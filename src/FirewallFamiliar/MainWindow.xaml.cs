@@ -412,18 +412,16 @@ public partial class MainWindow : Window
     /// <summary>Ordena una lista al pulsar la cabecera de una columna.</summary>
     private void OnHeaderClick(object sender, RoutedEventArgs e)
     {
-        if (e.OriginalSource is not GridViewColumnHeader { Column: { } column } || sender is not ListView list) return;
-
-        if (list == AppsList && column.Header is "Riesgo" &&
-            !(CollectionViewSource.GetDefaultView(_apps).SortDescriptions is { Count: > 1 } sd && sd[0].PropertyName == nameof(AppRow.Severity)))
+        if (e.OriginalSource is not GridViewColumnHeader { Column: { } column } header || sender is not ListView list) return;
+        if (header.Tag is "OrdenInicial")
         {
-            SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps)); // vuelve al orden de origen
+            SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps));
             return;
         }
 
         string? prop = column.Header switch
         {
-            "Riesgo" => nameof(AppRow.Severity),
+            "Nivel" => nameof(AppRow.Severity),
             "Regla" => nameof(AppRow.RuleText),
             "Programa" => list == AppsList ? nameof(AppRow.Name) : nameof(ConnRow.Program),
             "Descripción" => nameof(AppRow.Description),

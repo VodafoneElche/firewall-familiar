@@ -167,20 +167,30 @@
                         </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Programa" Width="210">
+                                <GridViewColumn Width="62">
+                                    <GridViewColumn.Header>
+                                        <GridViewColumnHeader Content="⟲ Riesgo" Tag="OrdenInicial" FontWeight="Bold" Foreground="#1E6FD9"
+                                                              ToolTip="Volver al orden inicial: primero lo crítico, luego lo medio y después el resto"/>
+                                    </GridViewColumn.Header>
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="ⓘ" Click="OnAppInfo" Cursor="Hand" Padding="0"
+                                                    Background="Transparent" BorderThickness="0" Foreground="#1E6FD9"
+                                                    FontWeight="Bold" ToolTip="Ver la ficha de este programa"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Programa" Width="190">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal">
-                                                <Button Content="ⓘ" Click="OnAppInfo" Cursor="Hand" Padding="0" Margin="0,0,5,0"
-                                                        Background="Transparent" BorderThickness="0" Foreground="#1E6FD9"
-                                                        FontWeight="Bold" ToolTip="Ver la ficha de este programa"/>
                                                 <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,6,0"/>
                                                 <TextBlock Text="{Binding Name}"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Header="Riesgo" Width="75" DisplayMemberBinding="{Binding SeverityText}"/>
+                                <GridViewColumn Header="Nivel" Width="75" DisplayMemberBinding="{Binding SeverityText}"/>
                                 <GridViewColumn Header="Descripción" Width="190" DisplayMemberBinding="{Binding Description}"/>
                                 <GridViewColumn Header="Tipo" Width="85" DisplayMemberBinding="{Binding KindText}"/>
                                 <GridViewColumn Header="Regla" Width="90" DisplayMemberBinding="{Binding RuleText}"/>
