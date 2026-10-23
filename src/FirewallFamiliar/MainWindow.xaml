@@ -176,6 +176,7 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
+                                <GridViewColumn Header="Riesgo" Width="75" DisplayMemberBinding="{Binding SeverityText}"/>
                                 <GridViewColumn Header="Descripción" Width="190" DisplayMemberBinding="{Binding Description}"/>
                                 <GridViewColumn Header="Tipo" Width="85" DisplayMemberBinding="{Binding KindText}"/>
                                 <GridViewColumn Header="Regla" Width="90" DisplayMemberBinding="{Binding RuleText}"/>

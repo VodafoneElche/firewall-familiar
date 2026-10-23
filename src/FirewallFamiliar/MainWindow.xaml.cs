@@ -51,7 +51,7 @@ public partial class MainWindow : Window
 
         var appsView = CollectionViewSource.GetDefaultView(_apps);
         appsView.Filter = FilterApp;
-        appsView.SortDescriptions.Add(new SortDescription(nameof(AppRow.Name), ListSortDirection.Ascending));
+        SetDefaultAppOrder(appsView);
         if (appsView is ICollectionViewLiveShaping live && live.CanChangeLiveSorting)
         {
             live.IsLiveSorting = true;
@@ -334,6 +334,14 @@ public partial class MainWindow : Window
     // Filtros, orden y pestañas
     // =====================================================================
 
+    /// <summary>Orden de origen: primero los críticos, luego los medios y después el resto.</summary>
+    private static void SetDefaultAppOrder(ICollectionView view)
+    {
+        view.SortDescriptions.Clear();
+        view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Severity), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Name), ListSortDirection.Ascending));
+    }
+
     private bool FilterApp(object o)
     {
         var a = (AppRow)o;
@@ -395,8 +403,17 @@ public partial class MainWindow : Window
     {
         if (e.OriginalSource is not GridViewColumnHeader { Column: { } column } || sender is not ListView list) return;
 
+        if (list == AppsList && column.Header is "Riesgo" &&
+            !(CollectionViewSource.GetDefaultView(_apps).SortDescriptions is { Count: > 1 } sd && sd[0].PropertyName == nameof(AppRow.Severity)))
+        {
+            SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps)); // vuelve al orden de origen
+            return;
+        }
+
         string? prop = column.Header switch
         {
+            "Riesgo" => nameof(AppRow.Severity),
+            "Regla" => nameof(AppRow.RuleText),
             "Programa" => list == AppsList ? nameof(AppRow.Name) : nameof(ConnRow.Program),
             "Descripción" => nameof(AppRow.Description),
             "Tipo" => nameof(AppRow.Kind),

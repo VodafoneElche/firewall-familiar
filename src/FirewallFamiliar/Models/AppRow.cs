@@ -48,8 +48,20 @@ public sealed class AppRow : INotifyPropertyChanged
     public ProcessKind Kind
     {
         get => _kind;
-        set { if (Set(ref _kind, value)) { Notify(nameof(KindText)); Notify(nameof(RowBrush)); } }
+        set { if (Set(ref _kind, value)) { Notify(nameof(KindText)); Notify(nameof(RowBrush)); NotifySeverity(); } }
     }
+
+    /// <summary>
+    /// Nivel de riesgo para el orden de la lista: 0 crítico (sospechoso o firma no válida),
+    /// 1 medio (oculto o sin firma), 2 normal.
+    /// </summary>
+    public int Severity =>
+        Suspicious.Length > 0 || Signature.Status == FirewallFamiliar.Core.SignatureStatus.NoValida ? 0 :
+        Kind == ProcessKind.Oculto || Signature.Status == FirewallFamiliar.Core.SignatureStatus.SinFirma ? 1 : 2;
+
+    public string SeverityText => Severity switch { 0 => "⚠ Crítico", 1 => "Medio", _ => "Normal" };
+
+    private void NotifySeverity() { Notify(nameof(Severity)); Notify(nameof(SeverityText)); }
 
     public string KindText => Kind switch
     {
@@ -116,7 +128,7 @@ public sealed class AppRow : INotifyPropertyChanged
     public FirewallFamiliar.Core.SignatureInfo Signature
     {
         get => _signature;
-        set { if (Set(ref _signature, value)) Notify(nameof(SignatureText)); }
+        set { if (Set(ref _signature, value)) { Notify(nameof(SignatureText)); NotifySeverity(); } }
     }
 
     public string SignatureText => Signature.Short;
@@ -126,7 +138,7 @@ public sealed class AppRow : INotifyPropertyChanged
     public string Suspicious
     {
         get => _suspicious;
-        set { if (Set(ref _suspicious, value)) { Notify(nameof(RowBrush)); Notify(nameof(KindText)); Notify(nameof(ToolTipText)); } }
+        set { if (Set(ref _suspicious, value)) { Notify(nameof(RowBrush)); Notify(nameof(KindText)); Notify(nameof(ToolTipText)); NotifySeverity(); } }
     }
 
     /// <summary>Color de fondo de la fila: rojo para los bloqueados, naranja para los ocultos.</summary>
