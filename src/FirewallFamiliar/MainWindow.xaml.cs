@@ -229,11 +229,10 @@ public partial class MainWindow : Window
                 row.RateIn = row.RateOut = 0;
             }
 
-            if (isNew && _firstRefreshDone)
-            {
-                string kind = p.Kind == ProcessKind.Oculto ? "  ⚠ OCULTO (sin ventana)" : "";
-                Log($"Nuevo proceso: {p.Name} (PID {p.Pid}){kind}  {p.Path}");
-            }
+            // Solo se avisa de los procesos nuevos que arrancan ocultos; el resto
+            // (pestañas del navegador, componentes de Windows...) llenaría la consola.
+            if (isNew && _firstRefreshDone && p.Kind == ProcessKind.Oculto)
+                Log($"⚠ Nuevo proceso oculto: {p.Name} (PID {p.Pid})  {p.Path}");
 
             if (row.UsesNetwork && _announcedNetwork.Add(p.Pid) && _firstRefreshDone)
             {
