@@ -1,0 +1,118 @@
+<Window x:Class="FirewallFamiliar.Views.EventDetailsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Detalles - Firewall Familiar" Width="640" SizeToContent="Height" MaxHeight="900"
+        ResizeMode="CanResizeWithGrip" WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="Margin" Value="0,3,12,3"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+        <Style x:Key="Value" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style x:Key="Section" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,14,0,6"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16">
+            <!-- Resumen -->
+            <Border x:Name="Banner" CornerRadius="4" Padding="12,8" Background="#EEE">
+                <StackPanel>
+                    <TextBlock x:Name="Outcome" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock x:Name="Time" Foreground="#555" Margin="0,2,0,0"/>
+                </StackPanel>
+            </Border>
+            <TextBlock x:Name="Sentence" FontSize="14" TextWrapping="Wrap" Margin="0,12,0,0"/>
+
+            <!-- Programa -->
+            <StackPanel x:Name="AppSection">
+                <TextBlock Text="El programa" Style="{StaticResource Section}"/>
+                <DockPanel>
+                    <Image x:Name="AppIcon" Width="32" Height="32" DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Top"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Nombre:" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppName" Grid.Column="1" Style="{StaticResource Value}" FontWeight="SemiBold"/>
+                        <TextBlock Text="Qué es:" Grid.Row="1" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppDescription" Grid.Row="1" Grid.Column="1" Style="{StaticResource Value}"/>
+                        <TextBlock Text="Empresa:" Grid.Row="2" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppCompany" Grid.Row="2" Grid.Column="1" Style="{StaticResource Value}"/>
+                        <TextBlock Text="Firma digital:" Grid.Row="3" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppSigner" Grid.Row="3" Grid.Column="1" Style="{StaticResource Value}"/>
+                        <TextBlock Text="Versión:" Grid.Row="4" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppVersion" Grid.Row="4" Grid.Column="1" Style="{StaticResource Value}"/>
+                        <TextBlock Text="Estado:" Grid.Row="5" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppState" Grid.Row="5" Grid.Column="1" Style="{StaticResource Value}"/>
+                        <TextBlock Text="Regla actual:" Grid.Row="6" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppRule" Grid.Row="6" Grid.Column="1" Style="{StaticResource Value}" FontWeight="SemiBold"/>
+                        <TextBlock Text="Ubicación:" Grid.Row="7" Style="{StaticResource Label}"/>
+                        <TextBox x:Name="AppPath" Grid.Row="7" Grid.Column="1" Style="{StaticResource Value}" FontFamily="Consolas" FontSize="11"/>
+                    </Grid>
+                </DockPanel>
+                <WrapPanel Margin="0,8,0,0">
+                    <Button x:Name="BtnAllow" Content="✔ Permitir siempre" Click="OnAllow"/>
+                    <Button x:Name="BtnBlock" Content="✖ Bloquear siempre" Click="OnBlock"/>
+                    <Button x:Name="BtnAsk" Content="? Quitar regla" Click="OnAsk"/>
+                    <Button x:Name="BtnFolder" Content="Abrir carpeta" Click="OnFolder"/>
+                    <Button Content="¿Qué es este programa?" Click="OnSearchApp"/>
+                </WrapPanel>
+            </StackPanel>
+
+            <!-- Destino -->
+            <StackPanel x:Name="RemoteSection">
+                <TextBlock x:Name="RemoteTitle" Text="Con quién intentaba conectarse" Style="{StaticResource Section}"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Dirección IP:" Style="{StaticResource Label}"/>
+                    <TextBox x:Name="RemoteIp" Grid.Column="1" Style="{StaticResource Value}" FontFamily="Consolas"/>
+                    <TextBlock Text="Pertenece a:" Grid.Row="1" Style="{StaticResource Label}"/>
+                    <TextBox x:Name="RemoteOwner" Grid.Row="1" Grid.Column="1" Style="{StaticResource Value}" FontWeight="SemiBold" Text="consultando..."/>
+                    <TextBlock Text="País:" Grid.Row="2" Style="{StaticResource Label}"/>
+                    <TextBox x:Name="RemoteCountry" Grid.Row="2" Grid.Column="1" Style="{StaticResource Value}"/>
+                    <TextBlock Text="Nombre del servidor:" Grid.Row="3" Style="{StaticResource Label}"/>
+                    <TextBox x:Name="RemoteName" Grid.Row="3" Grid.Column="1" Style="{StaticResource Value}" FontFamily="Consolas" Text="buscando..."/>
+                    <TextBlock Text="Puerto:" Grid.Row="4" Style="{StaticResource Label}"/>
+                    <TextBox x:Name="RemotePort" Grid.Row="4" Grid.Column="1" Style="{StaticResource Value}"/>
+                    <TextBlock Text="Protocolo:" Grid.Row="5" Style="{StaticResource Label}"/>
+                    <TextBox x:Name="RemoteProtocol" Grid.Row="5" Grid.Column="1" Style="{StaticResource Value}"/>
+                </Grid>
+                <WrapPanel Margin="0,8,0,0">
+                    <Button Content="Buscar esta IP en Internet" Click="OnSearchIp"/>
+                    <Button Content="Copiar IP" Click="OnCopyIp"/>
+                </WrapPanel>
+            </StackPanel>
+
+            <Button Content="Cerrar" HorizontalAlignment="Right" Width="90" Height="28" Margin="0,16,0,0" IsCancel="True" Click="OnClose"/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

@@ -28,7 +28,9 @@ public partial class AskWindow : Window
         AppDescription.Text = description;
         AppPath.Text = c.AppPath;
         AppIcon.Source = icon;
-        Remote.Text = c.RemoteAddress == null ? "(desconocido)" : $"{c.RemoteAddress}  puerto {c.RemotePort}{PortHint(c.RemotePort)}";
+        string meaning = Ports.Describe(c.RemotePort, c.Protocol);
+        Remote.Text = c.RemoteAddress == null ? "(desconocido)"
+            : $"{c.RemoteAddress}  puerto {c.RemotePort}{(meaning.Length > 0 ? " (" + meaning + ")" : "")}";
         Protocol.Text = c.Protocol;
 
         if (hidden)
@@ -45,7 +47,12 @@ public partial class AskWindow : Window
             SystemSounds();
         };
 
-        if (c.RemoteAddress != null) _ = ResolveAsync(c.RemoteAddress);
+        if (c.RemoteAddress != null)
+        {
+            _ = ResolveAsync(c.RemoteAddress);
+            _ = OwnerAsync(c.RemoteAddress);
+        }
+        else OwnerText.Text = "";
     }
 
     private async System.Threading.Tasks.Task ResolveAsync(IPAddress ip)
@@ -61,18 +68,13 @@ public partial class AskWindow : Window
         }
     }
 
-    private static string PortHint(int port) => port switch
+    private async System.Threading.Tasks.Task OwnerAsync(IPAddress ip)
     {
-        80 => " (web)",
-        443 => " (web segura)",
-        53 => " (DNS)",
-        21 => " (FTP)",
-        22 => " (SSH)",
-        25 or 465 or 587 => " (correo)",
-        110 or 995 or 143 or 993 => " (correo)",
-        3389 => " (escritorio remoto)",
-        _ => ""
-    };
+        var owner = await IpInfo.LookupAsync(ip);
+        OwnerText.Text = owner.Note.Length > 0 ? "(no se pudo consultar)"
+            : owner.Country.Length > 0 && IpInfo.Special(ip) == null ? $"{owner.Organization} ({owner.Country})"
+            : owner.Organization;
+    }
 
     private static void SystemSounds()
     {

@@ -236,12 +236,20 @@ public partial class MainWindow : Window
             // Solo se avisa de los procesos nuevos que arrancan ocultos; el resto
             // (pestañas del navegador, componentes de Windows...) llenaría la consola.
             if (isNew && _firstRefreshDone && p.Kind == ProcessKind.Oculto)
-                Log($"⚠ Nuevo proceso oculto: {p.Name} (PID {p.Pid})  {p.Path}");
+                Log(new ConsoleEvent { Text = $"⚠ Nuevo proceso oculto: {p.Name} (PID {p.Pid})  {p.Path}", AppPath = p.Path, Pid = p.Pid, Outcome = "Oculto" });
 
             if (row.UsesNetwork && _announcedNetwork.Add(p.Pid) && _firstRefreshDone)
             {
                 string kind = p.Kind == ProcessKind.Oculto ? "  ⚠ proceso oculto" : "";
-                Log($"{p.Name} (PID {p.Pid}) ha empezado a usar la red{kind}.");
+                // Primera conexión de ese programa, para poder enseñar con quién habla
+                var first = conns.FirstOrDefault(c => c.Pid == p.Pid && !c.IsListening && c.RemoteAddress.Length > 0);
+                IPAddress.TryParse(first?.RemoteAddress, out var firstIp);
+                Log(new ConsoleEvent
+                {
+                    Text = $"{p.Name} (PID {p.Pid}) ha empezado a usar la red{kind}.",
+                    AppPath = p.Path, Pid = p.Pid, Outcome = "Red",
+                    RemoteAddress = firstIp, RemotePort = first?.RemotePort ?? 0, Protocol = first?.Protocol ?? ""
+                });
             }
             else if (!_firstRefreshDone && row.UsesNetwork)
             {
@@ -259,7 +267,7 @@ public partial class MainWindow : Window
             _lastBytes.Remove(pid);
             _announcedNetwork.Remove(pid);
             if (row.Kind == ProcessKind.Oculto || row.UsesNetwork)
-                Log($"Ha terminado: {row.Name} (PID {pid}).");
+                Log(new ConsoleEvent { Text = $"Ha terminado: {row.Name} (PID {pid}).", AppPath = row.Path, Pid = pid });
         }
         _traffic.Forget(dead);
     }
@@ -477,11 +485,56 @@ public partial class MainWindow : Window
     // Consola de mensajes y varios
     // =====================================================================
 
-    private void Log(string message)
+    private void Log(string message) => Log(new ConsoleEvent { Text = message });
+
+    private void Log(ConsoleEvent e)
     {
-        ConsoleList.Items.Add($"{DateTime.Now:dd/MM/yyyy HH:mm:ss}  {message}");
+        if (e.AppPath == "") e = new ConsoleEvent
+        {
+            Time = e.Time, Text = e.Text, Pid = e.Pid, RemoteAddress = e.RemoteAddress, RemotePort = e.RemotePort,
+            Protocol = e.Protocol, Inbound = e.Inbound, Outcome = e.Outcome
+        };
+        ConsoleList.Items.Add(e);
         while (ConsoleList.Items.Count > MaxConsoleLines) ConsoleList.Items.RemoveAt(0);
         ConsoleList.ScrollIntoView(ConsoleList.Items[^1]);
+    }
+
+    /// <summary>Al pinchar en un mensaje con detalles, se abre su ficha.</summary>
+    private void OnConsoleClick(object sender, MouseButtonEventArgs e)
+    {
+        var item = ItemsControl.ContainerFromElement(ConsoleList, (DependencyObject)e.OriginalSource) as ListBoxItem;
+        if (item?.DataContext is ConsoleEvent ev && ev.HasDetails) ShowDetails(ev);
+    }
+
+    private void OnConnectionDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (ConnList.SelectedItem is not ConnRow c) return;
+        _appsByPid.TryGetValue(c.Pid, out var app);
+        var parts = c.Remote.Length > 0 ? c.Remote : "";
+        int colon = parts.LastIndexOf(':');
+        IPAddress? ip = null;
+        int port = 0;
+        if (colon > 0)
+        {
+            IPAddress.TryParse(parts[..colon], out ip);
+            int.TryParse(parts[(colon + 1)..], out port);
+        }
+        ShowDetails(new ConsoleEvent
+        {
+            Text = $"{c.Program}: conexión {c.State.ToLowerInvariant()} con {c.Remote}",
+            AppPath = app?.Path, Pid = c.Pid, RemoteAddress = ip, RemotePort = port,
+            Protocol = c.Protocol.Replace("v6", ""), Outcome = "Red"
+        });
+    }
+
+    private void ShowDetails(ConsoleEvent ev)
+    {
+        AppRow? row = ev.AppPath == null ? null :
+            (ev.Pid > 0 && _appsByPid.TryGetValue(ev.Pid, out var byPid) && string.Equals(byPid.Path, ev.AppPath, StringComparison.OrdinalIgnoreCase))
+                ? byPid
+                : _apps.FirstOrDefault(a => string.Equals(a.Path, ev.AppPath, StringComparison.OrdinalIgnoreCase));
+        var win = new Views.EventDetailsWindow(ev, row, path => _rules.ActionFor(path), SetRuleFromDetails) { Owner = this };
+        win.Show();
     }
 
     private void OnClearConsole(object sender, RoutedEventArgs e) => ConsoleList.Items.Clear();

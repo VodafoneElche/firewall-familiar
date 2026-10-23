@@ -23,14 +23,16 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                 </Grid.RowDefinitions>
                 <TextBlock Text="Destino:" Foreground="#555" Margin="0,0,10,2"/>
                 <TextBlock x:Name="Remote" Grid.Column="1" FontFamily="Consolas" TextWrapping="Wrap"/>
                 <TextBlock Text="Nombre:" Grid.Row="1" Foreground="#555" Margin="0,0,10,2"/>
                 <TextBlock x:Name="RemoteName" Grid.Row="1" Grid.Column="1" FontFamily="Consolas" TextWrapping="Wrap" Text="buscando..."/>
-                <TextBlock Text="Protocolo:" Grid.Row="2" Foreground="#555" Margin="0,0,10,0"/>
-                <TextBlock x:Name="Protocol" Grid.Row="2" Grid.Column="1" FontFamily="Consolas"/>
+                <TextBlock Text="Pertenece a:" Grid.Row="2" Foreground="#555" Margin="0,0,10,2"/>
+                <TextBlock x:Name="OwnerText" Grid.Row="2" Grid.Column="1" FontWeight="SemiBold" TextWrapping="Wrap" Text="consultando..."/>
+                <TextBlock Text="Protocolo:" Grid.Row="3" Foreground="#555" Margin="0,0,10,0"/>
+                <TextBlock x:Name="Protocol" Grid.Row="3" Grid.Column="1" FontFamily="Consolas"/>
             </Grid>
         </Border>
 

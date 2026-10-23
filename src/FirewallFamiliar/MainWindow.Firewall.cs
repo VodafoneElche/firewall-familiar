@@ -23,7 +23,15 @@ public partial class MainWindow
         Environment.GetFolderPath(Environment.SpecialFolder.Windows).TrimEnd('\\') + "\\";
 
     private readonly WfpFirewall _firewall = new();
-    private RuleSet _rules = RuleStore.Load();
+    private RuleSet _rules = NormalizePaths(RuleStore.Load());
+
+    /// <summary>Las reglas antiguas pueden tener rutas en minúsculas: se recuperan las mayúsculas reales.</summary>
+    private static RuleSet NormalizePaths(RuleSet rules)
+    {
+        foreach (var a in rules.Apps) a.Path = FileDetails.ProperCase(a.Path);
+        foreach (var r in rules.Advanced) if (r.AppPath.Length > 0) r.AppPath = FileDetails.ProperCase(r.AppPath);
+        return rules;
+    }
 
     /// <summary>Programas de Windows vistos en ejecución (se permiten solos si está activada la opción).</summary>
     private readonly HashSet<string> _windowsPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -216,18 +224,41 @@ public partial class MainWindow
                 "Bloquear componente de Windows", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
             return;
 
-        _rules.SetApp(app.Path, action);
-        _sessionAllows.Remove(app.Path);
-        _sessionDenied.Remove(app.Path);
+        SetRuleFromDetails(app.Path, action);
+    }
+
+    /// <summary>Cambia la regla de un programa (desde el clic derecho o desde una ficha de detalles).</summary>
+    private void SetRuleFromDetails(string path, RuleAction action)
+    {
+        _rules.SetApp(path, action);
+        _sessionAllows.Remove(path);
+        _sessionDenied.Remove(path);
         SaveRules();
         ApplyRules();
-        Log(action switch
+        string name = ProcessMonitor.FileName(path);
+        Log(new ConsoleEvent
         {
-            RuleAction.Permitir => $"Regla: {app.Name} PERMITIDO.",
-            RuleAction.Bloquear => $"Regla: {app.Name} BLOQUEADO.",
-            _ => $"Regla de {app.Name} quitada: seguirá el modo general."
+            AppPath = path,
+            Outcome = action == RuleAction.Bloquear ? "Bloqueado" : action == RuleAction.Permitir ? "Permitido" : "",
+            Text = action switch
+            {
+                RuleAction.Permitir => $"Regla: {name} PERMITIDO.",
+                RuleAction.Bloquear => $"Regla: {name} BLOQUEADO.",
+                _ => $"Regla de {name} quitada: seguirá el modo general."
+            }
         });
     }
+
+    private static ConsoleEvent Event(BlockedConnection c, string text, string outcome) => new()
+    {
+        Text = text,
+        AppPath = c.AppPath.Length > 0 ? c.AppPath : null,
+        RemoteAddress = c.RemoteAddress,
+        RemotePort = c.RemotePort,
+        Protocol = c.Protocol,
+        Inbound = c.Inbound,
+        Outcome = outcome
+    };
 
     private void OnShowRules(object sender, RoutedEventArgs e)
     {
@@ -266,7 +297,7 @@ public partial class MainWindow
                 if (!_appliedPermits.Contains(c.AppPath))
                 {
                     _appliedPermits.Add(c.AppPath); // evita repetir el aviso mientras se aplica
-                    Log($"Permitido automáticamente (componente de Windows): {name}");
+                    Log(Event(c, $"Permitido automáticamente (componente de Windows): {name}", "Permitido"));
                     ApplyRulesSoon();
                 }
                 return;
@@ -277,7 +308,7 @@ public partial class MainWindow
 
             if (_askQueued.Add(c.AppPath))
             {
-                Log($"{name} quiere conectarse a {c.Remote} ({c.Protocol}). Esperando tu respuesta...");
+                Log(Event(c, $"{name} quiere conectarse a {c.Remote} ({c.Protocol}). Esperando tu respuesta...", "Pregunta"));
                 _askQueue.Enqueue(c);
                 ShowNextQuestion();
             }
@@ -289,7 +320,7 @@ public partial class MainWindow
         if (_lastBlockLog.TryGetValue(key, out var last) && DateTime.Now - last < TimeSpan.FromSeconds(30)) return;
         _lastBlockLog[key] = DateTime.Now;
         string dir = c.Inbound ? "desde" : "hacia";
-        Log($"✖ Bloqueado: {name} {dir} {(c.Remote.Length > 0 ? c.Remote : "?")} {c.Protocol}  ({c.Reason})");
+        Log(Event(c, $"✖ Bloqueado: {name} {dir} {(c.Remote.Length > 0 ? c.Remote : "?")} {c.Protocol}  ({c.Reason})", "Bloqueado"));
     }
 
     private void ShowNextQuestion()
@@ -324,7 +355,7 @@ public partial class MainWindow
         if (answer == null)
         {
             _sessionDenied.Add(c.AppPath);
-            Log($"Sin respuesta para {name}: sigue bloqueado hasta cerrar Firewall Familiar.");
+            Log(Event(c, $"Sin respuesta para {name}: sigue bloqueado hasta cerrar Firewall Familiar.", "Bloqueado"));
             return;
         }
 
@@ -336,9 +367,10 @@ public partial class MainWindow
         else if (answer.Allow) _sessionAllows.Add(c.AppPath);
         else _sessionDenied.Add(c.AppPath);
 
-        Log(answer.Allow
+        Log(Event(c, answer.Allow
             ? $"✔ Permitido: {name}{(answer.Remember ? " (regla guardada)" : " (solo esta sesión)")}"
-            : $"✖ Bloqueado: {name}{(answer.Remember ? " (regla guardada)" : " (solo esta sesión)")}");
+            : $"✖ Bloqueado: {name}{(answer.Remember ? " (regla guardada)" : " (solo esta sesión)")}",
+            answer.Allow ? "Permitido" : "Bloqueado"));
         ApplyRules();
     }
 }

@@ -447,7 +447,7 @@ public sealed unsafe class WfpFirewall : IDisposable
         if ((h.flags & FLAG_APP_ID_SET) != 0 && h.appId.data != null && h.appId.size > 0)
         {
             string raw = new string((char*)h.appId.data, 0, (int)h.appId.size / 2).TrimEnd('\0');
-            app = DevicePathToDosPath(raw);
+            app = FileDetails.ProperCase(DevicePathToDosPath(raw));
         }
 
         IPAddress? remote = null;

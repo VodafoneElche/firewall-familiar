@@ -190,7 +190,8 @@
                 </TabItem>
 
                 <TabItem x:Name="TabConnections" Header="Conexiones">
-                    <ListView x:Name="ConnList" GridViewColumnHeader.Click="OnHeaderClick">
+                    <ListView x:Name="ConnList" GridViewColumnHeader.Click="OnHeaderClick" MouseDoubleClick="OnConnectionDoubleClick"
+                              ToolTip="Doble clic en una conexión para ver a quién pertenece">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Programa" Width="170" DisplayMemberBinding="{Binding Program}"/>
@@ -211,7 +212,32 @@
                 <TextBlock DockPanel.Dock="Left" Text="Consola de mensajes" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <Button DockPanel.Dock="Right" Content="Limpiar" Padding="10,1" Click="OnClearConsole"/>
             </DockPanel>
-            <ListBox Grid.Row="4" x:Name="ConsoleList" FontFamily="Consolas" FontSize="12"/>
+            <ListBox Grid.Row="4" x:Name="ConsoleList" FontFamily="Consolas" FontSize="12"
+                     PreviewMouseLeftButtonUp="OnConsoleClick"
+                     ToolTip="Pincha en un mensaje con ⓘ para ver qué programa es y con quién se conecta">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Display}"/>
+                            <TextBlock x:Name="Info" Text="  ⓘ" Foreground="#1E6FD9" FontWeight="Bold" Visibility="Collapsed"/>
+                        </StackPanel>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding HasDetails}" Value="True">
+                                <Setter TargetName="Info" Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasDetails}" Value="True">
+                                <Setter Property="Cursor" Value="Hand"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
         </Grid>
     </DockPanel>
 </Window>
