@@ -168,9 +168,18 @@ public partial class MainWindow
             _logViewer.Activate();
             return;
         }
-        _logViewer = new LogViewerWindow(ShowDetails) { Owner = this };
+        _logViewer = new LogViewerWindow(ShowDetails, ReportSnapshot) { Owner = this };
         _logViewer.Closed += (_, _) => _logViewer = null;
         _logViewer.Show();
+    }
+
+    /// <summary>Copia de las reglas y de los programas en ejecución, para el informe de análisis.</summary>
+    private (RuleSet, IReadOnlyList<ProcessSummary>) ReportSnapshot()
+    {
+        var procs = _apps.Select(a => new ProcessSummary(a.Name, a.Pid, a.Path, a.KindText, a.SeverityText, a.SignatureText,
+            a.RuleText, a.Memory, a.Connections, a.Listening, a.BytesIn, a.BytesOut, a.Suspicious)).ToList();
+        var json = System.Text.Json.JsonSerializer.Serialize(_rules);
+        return (System.Text.Json.JsonSerializer.Deserialize<RuleSet>(json)!, procs);
     }
 
     private void OnOpenLogsFolder(object sender, RoutedEventArgs e)

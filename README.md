@@ -11,8 +11,8 @@ Pensado para uso familiar: sencillo, eficaz y sin publicidad.
 |------|-------------|--------|
 | 1. Monitor | Gráficas de tráfico en tiempo real, programas en ejecución (también ocultos y servicios) con memoria, CPU y tráfico, conexiones abiertas, consola de mensajes | ✅ Hecho |
 | 2. Bloqueo y reglas | Permitir / Preguntar / Bloquear por programa, aviso "este programa quiere conectarse", Bloquear todo, reglas por puerto e IP ordenadas por prioridad | ✅ Hecho |
-| 3. Registros y avisos | Visor de registros (30 días), detección de escaneo de puertos, comprobación de firma digital, avisos de procesos sospechosos | 🧪 En pruebas |
-| 4. Instalación | Instalador, arranque con Windows, icono junto al reloj, contraseña | Pendiente |
+| 3. Registros y avisos | Visor de registros (30 días), detección de escaneo de puertos, comprobación de firma digital, avisos de procesos sospechosos | ✅ Hecho |
+| 4. Instalación | Instalar desde el propio programa, arranque con Windows, icono junto al reloj, contraseña, informe para análisis, actualización automática | 🧪 En pruebas |
 
 ## Cómo usar el bloqueo (paso 2)
 
@@ -43,6 +43,17 @@ Windows quita todos sus filtros y la red vuelve a funcionar normal. El Firewall 
 - **Registros**: botón *Registros*. Dos tipos: *Seguridad* (todo lo de la consola) y *Tráfico* (cada conexión nueva y
   cada intento bloqueado). Se guardan 30 días en `C:\ProgramData\FirewallFamiliar\registros` y se pueden exportar a Excel.
   Doble clic en una línea abre su ficha.
+
+## Instalación y protección (paso 4)
+
+- **Archivo → Instalar en este PC**: copia el programa a `C:\Program Files\Firewall Familiar`, crea accesos directos y
+  una tarea programada que lo abre junto al reloj cada vez que alguien inicia sesión (sin pedir permiso de administrador).
+- **Icono junto al reloj**: el escudo FF entre una flecha verde (entran datos) y una roja (salen datos). Rojo entero = todo bloqueado.
+  Cerrar la ventana la esconde junto al reloj; para salir del todo: clic derecho en el icono → Salir.
+- **Seguridad → Poner contraseña**: pide la contraseña para cerrar el programa, cambiar reglas o modo, y (si quieres)
+  para pulsar "Permitir" en las preguntas. Bloquear todo siempre se puede sin contraseña.
+- **Registros → Preparar para análisis**: crea en el Escritorio un informe `.md` con avisos, resumen por programa y por IP
+  (con su dueño), intentos de entrada, horas de uso y reglas, listo para arrastrarlo al chat de Claude.
 
 ## Cómo probar la versión actual
 

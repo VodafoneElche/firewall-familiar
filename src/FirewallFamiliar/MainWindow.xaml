@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="clr-namespace:FirewallFamiliar.Controls"
-        Title="Firewall Familiar" Width="1100" Height="800" MinWidth="760" MinHeight="560"
+        Title="Firewall Familiar" Icon="/Assets/FirewallFamiliar.ico" Width="1100" Height="800" MinWidth="760" MinHeight="560"
         WindowStartupLocation="CenterScreen"
         Loaded="OnLoaded" Closed="OnClosed">
 
@@ -10,6 +10,10 @@
         <!-- ===== Menú ===== -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_Archivo">
+                <MenuItem x:Name="MenuInstall" Header="Instalar en este PC..." Click="OnInstallMenu"/>
+                <MenuItem x:Name="MenuAutostart" Header="Abrir al iniciar Windows" IsCheckable="True" Click="OnToggleAutostart"/>
+                <Separator/>
+                <MenuItem Header="_Esconder junto al reloj" Click="OnHideToTray"/>
                 <MenuItem Header="_Salir" Click="OnExit"/>
             </MenuItem>
             <MenuItem Header="_Seguridad" x:Name="MenuSecurity">
@@ -20,11 +24,17 @@
                 <MenuItem Header="_Reglas..." Click="OnShowRules"/>
                 <MenuItem Header="Abrir carpeta de reglas" Click="OnOpenRulesFolder"/>
                 <Separator/>
+                <MenuItem x:Name="MenuPassword" Header="Poner contraseña..." Click="OnSetPassword"/>
+                <MenuItem x:Name="MenuProtectExit" Header="Pedir contraseña para cerrar" IsCheckable="True" Tag="Exit" Click="OnToggleProtection"/>
+                <MenuItem x:Name="MenuProtectRules" Header="Pedir contraseña para cambiar reglas y modo" IsCheckable="True" Tag="Rules" Click="OnToggleProtection"/>
+                <MenuItem x:Name="MenuProtectAsk" Header="Pedir contraseña para pulsar &quot;Permitir&quot; en las preguntas" IsCheckable="True" Tag="Ask" Click="OnToggleProtection"/>
+                <Separator/>
                 <MenuItem Header="Ver re_gistros..." Click="OnShowLogs"/>
                 <MenuItem Header="Abrir carpeta de registros" Click="OnOpenLogsFolder"/>
             </MenuItem>
             <MenuItem Header="_Ver">
                 <MenuItem x:Name="MenuConsole" Header="Consola de mensajes" IsCheckable="True" IsChecked="True" Click="OnToggleConsole"/>
+                <MenuItem x:Name="MenuTrayAlerts" Header="Avisos junto al reloj (ataques y sospechosos)" IsCheckable="True" Tag="Alerts" Click="OnToggleProtection"/>
             </MenuItem>
             <MenuItem Header="A_yuda">
                 <MenuItem Header="_Acerca de Firewall Familiar" Click="OnAbout"/>
@@ -77,6 +87,11 @@
                         <ComboBoxItem Content="Preguntar (como Sygate)" Tag="Preguntar" ToolTip="Pregunta cada vez que un programa nuevo quiere salir a Internet"/>
                         <ComboBoxItem Content="Bloquear todo" Tag="BloquearTodo" ToolTip="Corta todo el tráfico de red"/>
                     </ComboBox>
+                </StackPanel>
+                <Image Source="/Assets/logo.png" Width="44" Height="44" Margin="40,0,8,0" VerticalAlignment="Center"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Firewall Familiar" FontSize="18" FontWeight="Bold" Foreground="#165CBE"/>
+                    <TextBlock x:Name="VersionText" Foreground="#777"/>
                 </StackPanel>
             </StackPanel>
         </Border>

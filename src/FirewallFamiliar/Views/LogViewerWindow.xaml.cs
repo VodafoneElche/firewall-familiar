@@ -22,13 +22,15 @@ namespace FirewallFamiliar.Views;
 public partial class LogViewerWindow : Window
 {
     private readonly Action<ConsoleEvent> _showDetails;
+    private readonly Func<(RuleSet Rules, IReadOnlyList<ProcessSummary> Processes)> _snapshot;
     private List<LogEntry> _entries = new();
     private bool _loading;
 
-    public LogViewerWindow(Action<ConsoleEvent> showDetails)
+    public LogViewerWindow(Action<ConsoleEvent> showDetails, Func<(RuleSet, IReadOnlyList<ProcessSummary>)> snapshot)
     {
         InitializeComponent();
         _showDetails = showDetails;
+        _snapshot = snapshot;
         Loaded += (_, _) => LoadDays();
     }
 
@@ -177,6 +179,46 @@ public partial class LogViewerWindow : Window
 
     private static string Csv(string v) => v.Contains(';') || v.Contains('"') || v.Contains('\n')
         ? "\"" + v.Replace("\"", "\"\"") + "\"" : v;
+
+    private void OnAnalysis(object sender, RoutedEventArgs e)
+    {
+        BtnAnalysis.ContextMenu.PlacementTarget = BtnAnalysis;
+        BtnAnalysis.ContextMenu.IsOpen = true;
+    }
+
+    /// <summary>Genera el informe para Claude y lo deja en el Escritorio.</summary>
+    private async void OnAnalysisDays(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string tag } || !int.TryParse(tag, out int days)) return;
+        BtnAnalysis.IsEnabled = false;
+        try
+        {
+            var (rules, procs) = _snapshot();
+            var progress = new Progress<string>(msg => StatusText.Text = msg);
+            string report = await AnalysisReport.BuildAsync(days, rules, procs, progress);
+
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string file = Path.Combine(desktop, $"FirewallFamiliar-analisis-{Environment.MachineName}-{DateTime.Now:yyyy-MM-dd_HHmm}.md");
+            await File.WriteAllTextAsync(file, report, new UTF8Encoding(false));
+            StatusText.Text = $"Informe guardado: {file} ({report.Length / 1024} KB)";
+            Process.Start("explorer.exe", $"/select,\"{file}\"");
+            MessageBox.Show(this,
+                "El informe está en el Escritorio:\n\n" + Path.GetFileName(file) + "\n\n" +
+                "Arrástralo al chat de Claude y pídele que lo revise. Incluye los avisos, con quién se conecta cada programa, " +
+                "a quién pertenecen las IP, los intentos de entrada, las horas de uso y tus reglas.\n\n" +
+                "Ojo: contiene qué programas y webs se usan en este PC. Compártelo solo con quien quieras.",
+                "Informe para análisis", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "";
+            MessageBox.Show(this, "No se pudo preparar el informe: " + ex.Message, "Informe para análisis", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            BtnAnalysis.IsEnabled = true;
+        }
+    }
 
     private void OnOpenFolder(object sender, RoutedEventArgs e)
     {

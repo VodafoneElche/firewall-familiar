@@ -25,7 +25,17 @@
             <TextBox x:Name="SearchBox" Width="170" TextChanged="OnFilterChanged" VerticalContentAlignment="Center" Margin="0,0,16,0"/>
             <Button Content="Actualizar" Padding="10,2" Margin="0,0,6,0" Click="OnRefresh"/>
             <Button Content="Exportar..." Padding="10,2" Margin="0,0,6,0" Click="OnExport" ToolTip="Guardar lo que se ve en un archivo para abrir con Excel"/>
-            <Button Content="Abrir carpeta" Padding="10,2" Click="OnOpenFolder"/>
+            <Button Content="Abrir carpeta" Padding="10,2" Margin="0,0,6,0" Click="OnOpenFolder"/>
+            <Button x:Name="BtnAnalysis" Content="🔍 Preparar para análisis..." Padding="10,2" FontWeight="SemiBold" Click="OnAnalysis"
+                    ToolTip="Crea un informe en el Escritorio para enviárselo a Claude y que lo revise a fondo">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Solo hoy" Tag="1" Click="OnAnalysisDays"/>
+                        <MenuItem Header="Últimos 7 días" Tag="7" Click="OnAnalysisDays"/>
+                        <MenuItem Header="Últimos 30 días" Tag="30" Click="OnAnalysisDays"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
         </WrapPanel>
 
         <TextBlock DockPanel.Dock="Bottom" x:Name="StatusText" Margin="0,6,0,0" Foreground="#555"/>

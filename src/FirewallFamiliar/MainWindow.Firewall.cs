@@ -141,6 +141,12 @@ public partial class MainWindow
     private void SetMode(FirewallMode mode)
     {
         if (_rules.Mode == mode) { UpdateModeUi(); return; }
+        // Cortar la red siempre se puede; abrirla o cambiar de modo necesita la contraseña
+        if (mode != FirewallMode.BloquearTodo && !Authorize("Escribe la contraseña para cambiar el modo de seguridad."))
+        {
+            UpdateModeUi();
+            return;
+        }
         if (mode == FirewallMode.BloquearTodo) _modeBeforeBlockAll = _rules.Mode;
         _rules.Mode = mode;
         SaveRules();
@@ -159,6 +165,7 @@ public partial class MainWindow
         try
         {
             var mode = _rules.Mode;
+            _tray?.SetMode(mode);
             CmbMode.SelectedIndex = (int)mode;
             MenuModeAllow.IsChecked = mode == FirewallMode.SinPreguntas;
             MenuModeAsk.IsChecked = mode == FirewallMode.Preguntar;
@@ -230,6 +237,7 @@ public partial class MainWindow
     /// <summary>Cambia la regla de un programa (desde el clic derecho o desde una ficha de detalles).</summary>
     private void SetRuleFromDetails(string path, RuleAction action)
     {
+        if (!Authorize("Escribe la contraseña para cambiar la regla de " + ProcessMonitor.FileName(path) + ".")) return;
         _rules.SetApp(path, action);
         _sessionAllows.Remove(path);
         _sessionDenied.Remove(path);
@@ -262,6 +270,7 @@ public partial class MainWindow
 
     private void OnShowRules(object sender, RoutedEventArgs e)
     {
+        if (!Authorize("Escribe la contraseña para ver y cambiar las reglas.")) return;
         var win = new RulesWindow(_rules) { Owner = this };
         if (win.ShowDialog() != true || win.Result == null) return;
         win.Result.Mode = _rules.Mode;
@@ -364,6 +373,14 @@ public partial class MainWindow
         {
             _sessionDenied.Add(c.AppPath);
             Log(Event(c, $"Sin respuesta para {name}: sigue bloqueado hasta cerrar Firewall Familiar.", "Bloqueado"));
+            return;
+        }
+
+        if (answer.Allow && _settings.ProtectAsk && _settings.HasPassword &&
+            !PasswordWindow.Ask(null, _settings, $"Para dejar que {name} se conecte hace falta la contraseña."))
+        {
+            _sessionDenied.Add(c.AppPath);
+            Log(Event(c, $"✖ Bloqueado: {name} (no se puso la contraseña para permitirlo)", "Bloqueado"));
             return;
         }
 

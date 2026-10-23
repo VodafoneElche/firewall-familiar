@@ -84,6 +84,7 @@ public partial class MainWindow : Window
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         Log("Firewall Familiar se ha iniciado (versión " + typeof(App).Assembly.GetName().Version?.ToString(3) + ").");
+        VersionText.Text = "versión " + typeof(App).Assembly.GetName().Version?.ToString(3);
 
         _traffic.Start();
         StatusTraffic.Text = _traffic.IsRunning
@@ -91,6 +92,8 @@ public partial class MainWindow : Window
             : "Monitor de tráfico: solo totales (sin detalle por programa)";
         if (_traffic.IsRunning) Log("Monitor de tráfico por programa activo.");
 
+        if (StartHidden) Hide();
+        InitTray();
         await RefreshListsAsync();
         InitSecurity();
         InitFirewall();
@@ -104,9 +107,10 @@ public partial class MainWindow : Window
         _slowTimer.Stop();
         _traffic.Dispose();
         _firewall.Dispose(); // al cerrar se quitan todos los filtros y la red queda como estaba
+        _tray?.Dispose();
+        Application.Current.Shutdown();
     }
 
-    private void OnExit(object sender, RoutedEventArgs e) => Close();
 
     // =====================================================================
     // Cada segundo: gráficas y medidores
@@ -132,6 +136,7 @@ public partial class MainWindow : Window
         {
             double rateIn = Math.Max(0, totalIn - _lastTotalIn);
             double rateOut = Math.Max(0, totalOut - _lastTotalOut);
+            UpdateTray(rateIn, rateOut);
             GraphIn.AddSample(rateIn, _blockedInThisSecond);
             GraphOut.AddSample(rateOut, _blockedOutThisSecond);
             MeterIn.Update(rateIn, _blockedInThisSecond);
@@ -543,6 +548,7 @@ public partial class MainWindow : Window
     private void OnKillProcess(object sender, RoutedEventArgs e)
     {
         if (SelectedApp is not { } app) return;
+        if (!Authorize("Escribe la contraseña para terminar un proceso.")) return;
         var answer = MessageBox.Show(
             $"¿Seguro que quieres terminar \"{app.Name}\" (PID {app.Pid})?\n\n{app.Path}\n\n" +
             "Si es un componente de Windows, el equipo podría dejar de funcionar bien hasta reiniciar.",
@@ -574,6 +580,7 @@ public partial class MainWindow : Window
             Protocol = e.Protocol, Inbound = e.Inbound, Outcome = e.Outcome
         };
         LogStore.Write(LogKind.Seguridad, LogEntry.From(e));
+        TrayAlert(e);
         ConsoleList.Items.Add(e);
         while (ConsoleList.Items.Count > MaxConsoleLines) ConsoleList.Items.RemoveAt(0);
         ConsoleList.ScrollIntoView(ConsoleList.Items[^1]);
