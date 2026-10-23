@@ -18,6 +18,7 @@ namespace FirewallFamiliar.Core;
 public sealed class ProcessSnapshot
 {
     public int Pid;
+    public int ParentPid;
     public string Name = "";
     public string Path = "";
     public string Description = "";
@@ -55,6 +56,7 @@ public sealed class ProcessMonitor
         }
 
         var visible = NativeMethods.GetPidsWithVisibleWindows();
+        var parents = NativeMethods.GetParentPids();
         var now = DateTime.UtcNow;
         var result = new List<ProcessSnapshot>();
         var alive = new HashSet<int>();
@@ -67,6 +69,7 @@ public sealed class ProcessMonitor
                 alive.Add(p.Id);
 
                 var snap = new ProcessSnapshot { Pid = p.Id, Name = p.ProcessName };
+                parents.TryGetValue(p.Id, out snap.ParentPid);
                 try { snap.Memory = p.WorkingSet64; } catch { }
 
                 snap.Path = p.Id == 4 ? "" : NativeMethods.GetProcessPath(p.Id) ?? "";
@@ -103,11 +106,60 @@ public sealed class ProcessMonitor
             }
         }
 
+        ReclassifyHelpers(result);
+
         foreach (var dead in _lastCpu.Keys.Where(k => !alive.Contains(k)).ToList())
             _lastCpu.Remove(dead);
 
         return result;
     }
+
+    /// <summary>
+    /// Muchos programas (Chrome, Brave, Edge, Teams, Discord...) abren varios procesos sin ventana
+    /// para pestañas, extensiones o actualizaciones. No son "ocultos" de verdad: pertenecen a un
+    /// programa que el usuario ve. Se marcan como "Segundo plano" si:
+    ///  - son el mismo ejecutable que un programa con ventana, o
+    ///  - están en la misma carpeta que un programa con ventana, o
+    ///  - los ha abierto (directa o indirectamente) un programa con ventana que no es de Windows.
+    /// El Explorador de Windows no cuenta como "padre", porque abre todo lo que arranca con el equipo,
+    /// que es justo lo que interesa vigilar.
+    /// </summary>
+    private static void ReclassifyHelpers(List<ProcessSnapshot> all)
+    {
+        var byPid = all.ToDictionary(s => s.Pid);
+        var visibleApps = all.Where(s => s.Kind == ProcessKind.Ventana &&
+                                         !s.Path.StartsWith(WindowsDir, StringComparison.OrdinalIgnoreCase)).ToList();
+        var visiblePids = visibleApps.Select(s => s.Pid).ToHashSet();
+        var visiblePaths = visibleApps.Select(s => s.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Solo carpetas de programas instalados: no vale el Escritorio, Descargas o Temp,
+        // porque ahí un proceso oculto sí sería sospechoso.
+        var visibleDirs = visibleApps.Select(s => System.IO.Path.GetDirectoryName(s.Path) ?? "")
+                                     .Where(IsInstallDir).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var s in all)
+        {
+            if (s.Kind != ProcessKind.Oculto) continue;
+
+            if (visiblePaths.Contains(s.Path) || visibleDirs.Contains(System.IO.Path.GetDirectoryName(s.Path) ?? ""))
+            {
+                s.Kind = ProcessKind.SegundoPlano;
+                continue;
+            }
+
+            // Subir por la cadena de padres (máximo 6 niveles, por si hay ciclos de PIDs reutilizados)
+            int parent = s.ParentPid;
+            for (int i = 0; i < 6 && parent > 4 && byPid.TryGetValue(parent, out var ps); i++)
+            {
+                if (visiblePids.Contains(parent)) { s.Kind = ProcessKind.SegundoPlano; break; }
+                parent = ps.ParentPid;
+            }
+        }
+    }
+
+    private static bool IsInstallDir(string dir) =>
+        (dir.Contains(@"\Program Files", StringComparison.OrdinalIgnoreCase) ||
+         dir.Contains(@"\AppData\Local\", StringComparison.OrdinalIgnoreCase)) &&
+        !dir.Contains(@"\Temp", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>PID → nombres de los servicios de Windows que corren en ese proceso.</summary>
     private static Dictionary<int, string> ReadServices()

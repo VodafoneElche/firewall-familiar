@@ -13,6 +13,8 @@ public enum ProcessKind
     Servicio,
     /// <summary>Componente del propio Windows sin ventana (en C:\Windows).</summary>
     Sistema,
+    /// <summary>Sin ventana, pero pertenece a un programa que sí la tiene (p. ej. las pestañas de Chrome).</summary>
+    SegundoPlano,
     /// <summary>Sin ventana, no es servicio y no está en C:\Windows: conviene revisarlo.</summary>
     Oculto
 }
@@ -52,6 +54,7 @@ public sealed class AppRow : INotifyPropertyChanged
         ProcessKind.Ventana => "Con ventana",
         ProcessKind.Servicio => "Servicio",
         ProcessKind.Sistema => "Sistema",
+        ProcessKind.SegundoPlano => "Segundo plano",
         _ => "OCULTO"
     };
 
