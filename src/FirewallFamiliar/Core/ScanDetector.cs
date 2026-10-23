@@ -21,13 +21,41 @@ public sealed class ScanDetector
 
     private readonly Dictionary<IPAddress, List<(DateTime Time, int Port)>> _hits = new();
     private readonly Dictionary<IPAddress, DateTime> _alerted = new();
+    private readonly Dictionary<IPAddress, DateTime> _contacted = new();
+
+    /// <summary>
+    /// Este PC ha hablado (o ha intentado hablar) con esa IP. Lo que llegue luego de ella son
+    /// respuestas, no un escaneo: por ejemplo al pulsar "Bloquear todo" con conexiones abiertas,
+    /// las respuestas del DNS o de las webs llegan a muchos puertos distintos y se bloquean.
+    /// </summary>
+    public void NoteOutbound(IPAddress remote, DateTime now)
+    {
+        // En la red de casa los aparatos se hablan entre ellos a menudo: ahí no se aplica,
+        // para no esconder un escaneo de verdad desde otro ordenador de casa.
+        if (IpInfo.Special(remote) != null) return;
+        _contacted[remote] = now;
+        if (_contacted.Count > 5000)
+            foreach (var k in _contacted.Where(kv => now - kv.Value > ContactMemory).Select(kv => kv.Key).ToList())
+                _contacted.Remove(k);
+    }
+
+    private static readonly TimeSpan ContactMemory = TimeSpan.FromMinutes(15);
+
+    /// <summary>
+    /// Respuesta típica: viene de un puerto de servicio (web 80/443, DNS 53, hora 123...) hacia
+    /// un puerto alto de este PC. Un escaneo es al revés: desde un puerto alto hacia los nuestros.
+    /// </summary>
+    private static bool LooksLikeReply(int remotePort, int localPort) =>
+        localPort >= 1024 && remotePort is > 0 and (< 1024 or 5228 or 8080 or 8443 or 3478 or 19302);
 
     /// <summary>
     /// Anota un intento de entrada bloqueado. Devuelve el número de puertos probados si
     /// acaba de detectarse un escaneo de ese equipo, o 0 si no.
     /// </summary>
-    public int Add(IPAddress remote, int localPort, DateTime now)
+    public int Add(IPAddress remote, int remotePort, int localPort, DateTime now)
     {
+        if (LooksLikeReply(remotePort, localPort)) return 0;
+        if (_contacted.TryGetValue(remote, out var contacted) && now - contacted < ContactMemory) return 0;
         if (!_hits.TryGetValue(remote, out var list)) _hits[remote] = list = new();
         list.Add((now, localPort));
         list.RemoveAll(h => now - h.Time > Window);

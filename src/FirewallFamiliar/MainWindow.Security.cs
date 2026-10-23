@@ -98,7 +98,7 @@ public partial class MainWindow
     private void CheckScan(BlockedConnection c)
     {
         if (c.RemoteAddress == null || c.LocalPort == 0) return;
-        int ports = _scan.Add(c.RemoteAddress, c.LocalPort, DateTime.Now);
+        int ports = _scan.Add(c.RemoteAddress, c.RemotePort, c.LocalPort, DateTime.Now);
         if (ports == 0) return;
 
         _scansThisSecond++;

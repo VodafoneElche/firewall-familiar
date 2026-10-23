@@ -202,6 +202,7 @@ internal sealed class ServiceCore
     {
         LogTrafficBlock(c);
         if (c.Inbound && c.RemoteAddress != null) CheckScan(c);
+        else if (c.RemoteAddress != null) lock (_scan) _scan.NoteOutbound(c.RemoteAddress, DateTime.Now);
 
         lock (_gate)
         {
@@ -340,7 +341,7 @@ internal sealed class ServiceCore
         IReadOnlyList<int> list;
         lock (_scan)
         {
-            ports = _scan.Add(c.RemoteAddress, c.LocalPort, DateTime.Now);
+            ports = _scan.Add(c.RemoteAddress, c.RemotePort, c.LocalPort, DateTime.Now);
             if (ports == 0) return;
             list = _scan.PortsFrom(c.RemoteAddress);
         }
@@ -404,6 +405,7 @@ internal sealed class ServiceCore
         {
             alive.Add(c.Pid);
             if (c.IsListening || c.RemoteAddress.Length == 0) continue;
+            if (IPAddress.TryParse(c.RemoteAddress, out var seenIp)) lock (_scan) _scan.NoteOutbound(seenIp, DateTime.Now);
             string key = $"{c.Pid}|{c.Protocol}|{c.Local}|{c.Remote}";
             now.Add(key);
             if (_knownConnections.Contains(key)) continue;
