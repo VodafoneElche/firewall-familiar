@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -56,11 +57,45 @@ public static class IpInfo
         return Cache.GetOrAdd(ip.ToString(), _ => QueryAsync(ip));
     }
 
+    // El servicio público limita las consultas: como mucho 2 a la vez y un poco separadas
+    private static readonly System.Threading.SemaphoreSlim Gate = new(2, 2);
+    private static DateTime _lastQuery = DateTime.MinValue;
+    private static readonly object TimeLock = new();
+
+    private static async Task<string> GetThrottledAsync(string url)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            await Gate.WaitAsync();
+            try
+            {
+                TimeSpan wait;
+                lock (TimeLock)
+                {
+                    var next = _lastQuery.AddMilliseconds(400);
+                    wait = next > DateTime.UtcNow ? next - DateTime.UtcNow : TimeSpan.Zero;
+                    _lastQuery = DateTime.UtcNow + wait;
+                }
+                if (wait > TimeSpan.Zero) await Task.Delay(wait);
+                using var resp = await Http.GetAsync(url);
+                if ((int)resp.StatusCode == 429 && attempt < 3)
+                {
+                    // Demasiadas consultas: esperar y volver a probar (2, 4 y 8 segundos)
+                    lock (TimeLock) _lastQuery = DateTime.UtcNow.AddSeconds(2 << attempt);
+                    continue;
+                }
+                resp.EnsureSuccessStatusCode();
+                return await resp.Content.ReadAsStringAsync();
+            }
+            finally { Gate.Release(); }
+        }
+    }
+
     private static async Task<IpOwner> QueryAsync(IPAddress ip)
     {
         try
         {
-            using var doc = JsonDocument.Parse(await Http.GetStringAsync("https://rdap.org/ip/" + ip));
+            using var doc = JsonDocument.Parse(await GetThrottledAsync("https://rdap.org/ip/" + ip));
             var root = doc.RootElement;
             string network = Str(root, "name");
             string country = Str(root, "country");
@@ -73,7 +108,9 @@ public static class IpInfo
         catch (Exception ex)
         {
             Cache.TryRemove(ip.ToString(), out _); // reintentar la próxima vez
-            return new IpOwner("", "", "", "No se pudo consultar el dueño: " + ex.Message);
+            string why = ex.Message.Contains("429") ? "demasiadas consultas seguidas, prueba dentro de un rato"
+                : ex is HttpRequestException or TaskCanceledException ? "sin conexión con el servicio de consulta" : ex.Message;
+            return new IpOwner("", "", "", "No se pudo consultar el dueño (" + why + ")");
         }
     }
 
@@ -108,10 +145,24 @@ public static class IpInfo
     private static string Str(JsonElement e, string name) =>
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
 
+    private static readonly Dictionary<string, string> Countries = new()
+    {
+        ["ES"] = "España", ["US"] = "Estados Unidos", ["IE"] = "Irlanda", ["NL"] = "Países Bajos", ["DE"] = "Alemania",
+        ["FR"] = "Francia", ["GB"] = "Reino Unido", ["IT"] = "Italia", ["PT"] = "Portugal", ["BE"] = "Bélgica",
+        ["CH"] = "Suiza", ["AT"] = "Austria", ["SE"] = "Suecia", ["NO"] = "Noruega", ["DK"] = "Dinamarca",
+        ["FI"] = "Finlandia", ["PL"] = "Polonia", ["CZ"] = "Chequia", ["CY"] = "Chipre", ["LU"] = "Luxemburgo",
+        ["RU"] = "Rusia", ["UA"] = "Ucrania", ["CN"] = "China", ["HK"] = "Hong Kong", ["JP"] = "Japón",
+        ["KR"] = "Corea del Sur", ["IN"] = "India", ["SG"] = "Singapur", ["AU"] = "Australia", ["CA"] = "Canadá",
+        ["BR"] = "Brasil", ["MX"] = "México", ["AR"] = "Argentina", ["TR"] = "Turquía", ["IL"] = "Israel",
+        ["RO"] = "Rumanía", ["BG"] = "Bulgaria", ["GR"] = "Grecia", ["HU"] = "Hungría", ["VN"] = "Vietnam",
+        ["IR"] = "Irán", ["KP"] = "Corea del Norte", ["ZA"] = "Sudáfrica", ["EU"] = "Unión Europea"
+    };
+
     private static string CountryName(string code)
     {
         if (code.Length != 2) return code;
-        try { return new System.Globalization.RegionInfo(code).DisplayName; }
+        if (Countries.TryGetValue(code.ToUpperInvariant(), out var es)) return es;
+        try { return new System.Globalization.RegionInfo(code).EnglishName; }
         catch { return code; }
     }
 }

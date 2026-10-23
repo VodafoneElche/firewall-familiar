@@ -48,7 +48,7 @@ public static class AnalysisReport
             .GroupBy(e => e.Remote!).OrderByDescending(g => g.Count()).Take(MaxOwnerLookups).Select(g => g.Key).ToList();
         var owners = new Dictionary<string, IpOwner>();
         int n = 0;
-        foreach (var batch in topIps.Chunk(8))
+        foreach (var batch in topIps.Chunk(4))
         {
             cancel.ThrowIfCancellationRequested();
             progress?.Report($"Buscando a quién pertenecen las IP ({n}/{topIps.Count})...");
@@ -57,7 +57,7 @@ public static class AnalysisReport
                 try
                 {
                     var lookup = IpInfo.LookupAsync(IPAddress.Parse(ip));
-                    var done = await Task.WhenAny(lookup, Task.Delay(8000, cancel));
+                    var done = await Task.WhenAny(lookup, Task.Delay(30000, cancel));
                     return (ip, done == lookup ? lookup.Result : null);
                 }
                 catch { return (ip, (IpOwner?)null); }
@@ -78,7 +78,7 @@ public static class AnalysisReport
         {
             if (ip == null) return "";
             if (IPAddress.TryParse(ip, out var a) && IpInfo.Special(a) is { } special) return special;
-            if (!owners.TryGetValue(ip, out var o)) return "";
+            if (!owners.TryGetValue(ip, out var o) || o.Note.StartsWith("No se pudo")) return "";
             return o.Note.Length > 0 ? o.Note : o.Country.Length > 0 ? $"{o.Organization} ({o.Country})" : o.Organization;
         }
         static string Cell(string? s) => (s ?? "").Replace("|", "/").Replace("\n", " ").Trim();
@@ -119,7 +119,7 @@ public static class AnalysisReport
         sb.AppendLine();
 
         // ---------------- Por programa ----------------
-        var byApp = traffic.GroupBy(e => e.App ?? "(desconocido / Windows)").OrderByDescending(g => g.Count()).ToList();
+        var byApp = traffic.GroupBy(e => e.App ?? "").OrderByDescending(g => g.Count()).ToList();
         sb.AppendLine($"## 3. Resumen del tráfico por programa ({byApp.Count})");
         sb.AppendLine();
         sb.AppendLine("| Programa | Conexiones | Bloqueos | IP distintas | Primera | Última | Destinos principales (IP:puerto, dueño, veces) |");
@@ -129,7 +129,7 @@ public static class AnalysisReport
             var top = g.Where(e => e.Remote != null).GroupBy(e => (e.Remote, Port: e.Inbound ? e.LocalPort : e.RemotePort))
                 .OrderByDescending(x => x.Count()).Take(6)
                 .Select(x => $"{x.Key.Remote}:{x.Key.Port} {Owner(x.Key.Remote)} ×{x.Count()}");
-            sb.AppendLine($"| {Cell(Path.GetFileName(g.Key))} | {g.Count(e => e.Outcome == "Permitido")} | {g.Count(e => e.Outcome == "Bloqueado")} | " +
+            sb.AppendLine($"| {(g.Key.Length == 0 ? "(sin programa: Windows o servicio del sistema)" : Cell(Path.GetFileName(g.Key)))} | {g.Count(e => e.Outcome == "Permitido")} | {g.Count(e => e.Outcome == "Bloqueado")} | " +
                           $"{g.Select(e => e.Remote).Distinct().Count()} | {g.Min(e => e.Time):dd/MM HH:mm} | {g.Max(e => e.Time):dd/MM HH:mm} | {Cell(string.Join("; ", top))} |");
         }
         sb.AppendLine();

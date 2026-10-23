@@ -68,6 +68,8 @@ public static class Signature
         if (string.IsNullOrEmpty(path)) return new SignatureInfo(SignatureStatus.Desconocida, "", "sin ruta");
         if (string.Equals(path, "System", StringComparison.OrdinalIgnoreCase))
             return new SignatureInfo(SignatureStatus.Valida, "Microsoft Windows", "");
+        if (string.Equals(path, Environment.ProcessPath, StringComparison.OrdinalIgnoreCase))
+            return new SignatureInfo(SignatureStatus.Valida, "Firewall Familiar (este programa)", "");
         if (Cache.TryGetValue(path, out var hit)) return hit.Info;
         if (Queued.TryAdd(path, 0))
         {
@@ -132,7 +134,41 @@ public static class Signature
         if (cat == 0) return new SignatureInfo(SignatureStatus.Valida, signer, " (catálogo de Windows)");
         if (cat != NOT_IN_CATALOG && cat != TRUST_E_NOSIGNATURE)
             return new SignatureInfo(SignatureStatus.NoValida, signer, Explain(cat));
+
+        // 3) Apps de la Microsoft Store: la firma va en el paquete (AppxSignature.p7x), no en cada .exe
+        if (PackageSigner(path) is { } pkg)
+            return new SignatureInfo(SignatureStatus.Valida, pkg, " (paquete de la Microsoft Store)");
         return new SignatureInfo(SignatureStatus.SinFirma, "", "");
+    }
+
+    /// <summary>
+    /// Si el archivo es de una app instalada desde la Tienda (C:\Program Files\WindowsApps\...),
+    /// devuelve quién firmó el paquete. Esa carpeta solo la puede tocar Windows.
+    /// </summary>
+    private static string? PackageSigner(string path)
+    {
+        const string marker = @"\WindowsApps\";
+        int i = path.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (i < 0) return null;
+        int start = i + marker.Length;
+        int end = path.IndexOf('\\', start);
+        if (end < 0) return null;
+        string sigFile = Path.Combine(path[..end], "AppxSignature.p7x");
+        try
+        {
+            if (!File.Exists(sigFile)) return null;
+            byte[] data = File.ReadAllBytes(sigFile);
+            // El archivo empieza por "PKCX" y luego va la firma PKCS#7
+            if (data.Length < 8 || data[0] != 'P' || data[1] != 'K' || data[2] != 'C' || data[3] != 'X') return null;
+            var cms = new System.Security.Cryptography.Pkcs.SignedCms();
+            cms.Decode(data.AsSpan(4).ToArray());
+            cms.CheckSignature(true); // firma bien formada (sin comprobar la cadena por Internet)
+            var cert = cms.SignerInfos.Count > 0 ? cms.SignerInfos[0].Certificate : null;
+            if (cert == null) return null;
+            string cn = cert.GetNameInfo(X509NameType.SimpleName, false);
+            return string.IsNullOrEmpty(cn) ? cert.Subject : cn;
+        }
+        catch { return null; }
     }
 
     private static string Explain(uint code) => code switch

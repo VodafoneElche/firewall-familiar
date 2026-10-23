@@ -23,6 +23,21 @@ public partial class MainWindow
     private int _attemptsTotal, _scansTotal;
     private LogViewerWindow? _logViewer;
 
+    /// <summary>
+    /// Programas de los que ya se avisó en los últimos 7 días: no se repite el aviso cada vez
+    /// que se abre Firewall Familiar (siguen marcados en naranja en la lista).
+    /// </summary>
+    private void LoadPreviousAlerts()
+    {
+        try
+        {
+            for (int d = 0; d < 7; d++)
+                foreach (var e in LogStore.Read(LogKind.Seguridad, DateTime.Today.AddDays(-d)))
+                    if (e.Outcome == "Sospechoso" && !string.IsNullOrEmpty(e.App)) _alertedSuspicious.Add(e.App);
+        }
+        catch { }
+    }
+
     private void InitSecurity()
     {
         _firewall.ForeignInboundBlocked += c => Dispatcher.BeginInvoke(() => OnInboundAttempt(c));
@@ -54,6 +69,8 @@ public partial class MainWindow
 
         row.Suspicious = string.Join("; ", reasons);
         if (reasons.Count == 0 || !_alertedSuspicious.Add(row.Path)) return;
+        // Si ya lo has bloqueado, no hace falta volver a avisar
+        if (_rules.ActionFor(row.Path) == RuleAction.Bloquear) return;
 
         Log(new ConsoleEvent
         {

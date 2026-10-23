@@ -42,6 +42,16 @@ public partial class MainWindow : Window
     private readonly Dictionary<int, (long In, long Out)> _lastBytes = new();
     private string? _connFilterProgram;
     private readonly HashSet<int> _hiddenToAnnounce = new();
+    private readonly Dictionary<string, DateTime> _hiddenNoticeAt = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Un programa que abre varias copias ocultas a la vez solo se anuncia una vez por minuto.</summary>
+    private bool FirstHiddenNotice(string path)
+    {
+        var now = DateTime.Now;
+        if (_hiddenNoticeAt.TryGetValue(path, out var last) && now - last < TimeSpan.FromMinutes(1)) return false;
+        _hiddenNoticeAt[path] = now;
+        return true;
+    }
 
     private static bool IsTrustedVendor(SignatureInfo sig) =>
         sig.Status == SignatureStatus.Valida &&
@@ -94,6 +104,7 @@ public partial class MainWindow : Window
 
         if (StartHidden) Hide();
         InitTray();
+        LoadPreviousAlerts();
         await RefreshListsAsync();
         InitSecurity();
         InitFirewall();
@@ -254,7 +265,7 @@ public partial class MainWindow : Window
             if (isNew && _firstRefreshDone && p.Kind == ProcessKind.Oculto) _hiddenToAnnounce.Add(p.Pid);
             // Se espera a saber su firma: si resulta ser de Microsoft o Intel, no se avisa
             if (_hiddenToAnnounce.Contains(p.Pid) && row.Signature.Status != SignatureStatus.Pendiente &&
-                _hiddenToAnnounce.Remove(p.Pid) && row.Kind == ProcessKind.Oculto)
+                _hiddenToAnnounce.Remove(p.Pid) && row.Kind == ProcessKind.Oculto && FirstHiddenNotice(p.Path))
                 Log(new ConsoleEvent { Text = $"⚠ Nuevo proceso oculto: {p.Name} (PID {p.Pid})  {p.Path}", AppPath = p.Path, Pid = p.Pid, Outcome = "Oculto" });
 
             if (row.UsesNetwork && _announcedNetwork.Add(p.Pid) && _firstRefreshDone)
