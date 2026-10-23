@@ -47,13 +47,18 @@ Windows quita todos sus filtros y la red vuelve a funcionar normal. El Firewall 
 ## Instalación y protección (paso 4)
 
 - **Instalador**: `FirewallFamiliar-Instalar.exe` (Siguiente → Instalar). Lo deja en `C:\Program Files\Firewall Familiar`,
-  crea accesos directos y una tarea que lo abre junto al reloj cada vez que alguien inicia sesión (sin pedir permiso).
+  crea accesos directos y registra el **servicio de Windows "Firewall Familiar"**.
   Se desinstala desde Configuración → Aplicaciones. Si Windows lo bloquea la primera vez: clic derecho → Propiedades → *Desbloquear*.
-- **Icono junto al reloj**: el escudo FF entre una flecha verde (entran datos) y una roja (salen datos). Rojo entero = todo bloqueado.
-  Cerrar la ventana la esconde junto al reloj; para salir del todo: clic derecho en el icono → Salir.
+- **Servicio** (desde la 0.6.0): bloquea desde que arranca el PC, con cualquier usuario (también cuentas estándar),
+  guarda los registros, detecta escaneos y programas sospechosos, y se actualiza solo.
+- **Icono junto al reloj** (`FirewallFamiliar.exe --icono`, para todos los usuarios): el escudo FF entre una flecha verde
+  (entran datos) y una roja (salen datos). Rojo entero = todo bloqueado. Desde ahí se contesta en modo "Preguntar"
+  y se cambia el modo (con contraseña).
+- **Ventana completa**: pide permiso de administrador. Mientras está abierta, ella aplica las reglas; al cerrarla,
+  el servicio retoma el bloqueo.
 - **Seguridad → Poner contraseña**: pide la contraseña para cerrar el programa, cambiar reglas o modo, y (si quieres)
   para pulsar "Permitir" en las preguntas. Bloquear todo siempre se puede sin contraseña.
-- **Registros → Preparar para análisis**: crea en el Escritorio un informe `.md` con avisos, resumen por programa y por IP
+- **Registros → Preparar para análisis**: crea en `C:\ProgramData\FirewallFamiliar\informes` (y en el Escritorio) un informe `.md` con avisos, resumen por programa y por IP
   (con su dueño), intentos de entrada, horas de uso y reglas, listo para arrastrarlo al chat de Claude.
 
 ## Cómo probar la versión actual

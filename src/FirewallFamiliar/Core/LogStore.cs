@@ -109,10 +109,10 @@ public static class LogStore
                             sb.Append(JsonSerializer.Serialize(more.Entry, Json)).Append('\n');
                         else
                         {
-                            File.AppendAllText(FilePath(more.Kind, more.Entry.Time), JsonSerializer.Serialize(more.Entry, Json) + "\n");
+                            Append(FilePath(more.Kind, more.Entry.Time), JsonSerializer.Serialize(more.Entry, Json) + "\n");
                         }
                     }
-                    File.AppendAllText(path, sb.ToString());
+                    Append(path, sb.ToString());
                 }
                 catch (Exception ex)
                 {
@@ -122,6 +122,25 @@ public static class LogStore
         })
         { IsBackground = true, Name = "Registros", Priority = ThreadPriority.BelowNormal };
         t.Start();
+    }
+
+    /// <summary>
+    /// Añade al archivo. El servicio y la ventana pueden escribir a la vez en el mismo archivo
+    /// durante el relevo: si está ocupado, se reintenta un momento después.
+    /// </summary>
+    private static void Append(string path, string text)
+    {
+        for (int i = 0; ; i++)
+        {
+            try
+            {
+                using var fs = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
+                var bytes = new UTF8Encoding(false).GetBytes(text);
+                fs.Write(bytes, 0, bytes.Length);
+                return;
+            }
+            catch (IOException) when (i < 10) { Thread.Sleep(50); }
+        }
     }
 
     private static void Prune()

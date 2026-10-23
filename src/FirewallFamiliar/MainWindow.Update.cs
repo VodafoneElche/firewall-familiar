@@ -19,7 +19,8 @@ public partial class MainWindow
         _updateTimer.Tick += async (_, _) =>
         {
             _updateTimer.Interval = TimeSpan.FromHours(6);
-            if (_settings.AutoUpdate) await CheckUpdatesAsync(manual: false);
+            // Con el servicio instalado, es él quien busca e instala las versiones nuevas
+            if (_settings.AutoUpdate && !ServiceProtects) await CheckUpdatesAsync(manual: false);
         };
         _updateTimer.Start();
     }
@@ -56,7 +57,7 @@ public partial class MainWindow
                 string notes = info.Notes.Length > 600 ? info.Notes[..600] + "..." : info.Notes;
                 if (MessageBox.Show(this,
                         $"Hay una versión nueva: {v} (tienes la {Updater.Current.ToString(3)}).\n\n{notes}\n\n" +
-                        "¿Instalarla ahora? Firewall Familiar se cerrará unos segundos y se volverá a abrir solo.",
+                        "¿Instalarla ahora? Firewall Familiar se cerrará unos segundos mientras se instala.",
                         "Actualizaciones", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
                     return;
             }
@@ -69,7 +70,9 @@ public partial class MainWindow
 
             Log($"Descargando la versión {v}...");
             string file = await Updater.DownloadAsync(info);
-            Log($"Instalando la versión {v}. Firewall Familiar se volverá a abrir en unos segundos.");
+            Log(ServiceProtects
+                ? $"Instalando la versión {v}. Esta ventana se cerrará; la protección vuelve sola en unos segundos."
+                : $"Instalando la versión {v}. Firewall Familiar se volverá a abrir en unos segundos.");
             _tray?.Alert("Actualizando Firewall Familiar", $"Instalando la versión {v}. Vuelve en unos segundos.", false);
             await Task.Delay(1500);
             Updater.RunInstaller(file);

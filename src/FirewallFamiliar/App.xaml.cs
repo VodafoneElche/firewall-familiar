@@ -13,6 +13,13 @@ public partial class App : Application
     private const string ShowEventName = @"Global\FirewallFamiliar-mostrar";
 
     private Mutex? _mutex;
+    private TrayClient? _trayClient;
+
+    private static bool IsElevated()
+    {
+        using var id = System.Security.Principal.WindowsIdentity.GetCurrent();
+        return new System.Security.Principal.WindowsPrincipal(id).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+    }
     private EventWaitHandle? _showEvent;
 
     /// <summary>true si Windows se está apagando o cerrando sesión (entonces se cierra sin preguntar).</summary>
@@ -23,10 +30,61 @@ public partial class App : Application
         base.OnStartup(e);
         var args = e.Args;
 
-        // Llamado por el instalador: solo crea (o quita) la tarea de arranque y termina
+        // Llamado por el instalador: tareas sueltas y terminar
         if (args.Contains("--registrar-arranque") || args.Contains("--quitar-arranque"))
         {
-            try { Core.Installer.SetAutostart(args.Contains("--registrar-arranque"), Environment.ProcessPath!); } catch { }
+            // La tarea de arranque de las versiones 0.5 ya no hace falta: ahora arranca el servicio
+            try { Core.Installer.SetAutostart(false, Environment.ProcessPath!); } catch { }
+            Shutdown();
+            return;
+        }
+        if (args.Contains("--instalar-servicio"))
+        {
+            try { Core.Installer.SetAutostart(false, Environment.ProcessPath!); } catch { }
+            try { Core.ServiceSetup.Install(Environment.ProcessPath!); } catch { }
+            Shutdown();
+            return;
+        }
+        if (args.Contains("--quitar-servicio"))
+        {
+            try { Core.ServiceSetup.Uninstall(); } catch { }
+            Shutdown();
+            return;
+        }
+
+        // El servicio de Windows: sin ventana, hasta que Windows lo pare
+        if (args.Contains("--servicio"))
+        {
+            var serviceThread = new Thread(() =>
+            {
+                try { System.ServiceProcess.ServiceBase.Run(new Service.FirewallService()); }
+                catch { }
+                Dispatcher.BeginInvoke(() => Shutdown());
+            })
+            { IsBackground = true, Name = "Servicio" };
+            serviceThread.Start();
+            return;
+        }
+
+        // El icono junto al reloj de cada usuario (sin permisos de administrador)
+        if (args.Contains("--icono"))
+        {
+            _mutex = new Mutex(true, @"Local\FirewallFamiliar-icono", out bool firstIcon);
+            if (!firstIcon) { _mutex = null; Shutdown(); return; }
+            DispatcherUnhandledException += (_, ev) => ev.Handled = true; // el icono no debe caerse nunca
+            _trayClient = new TrayClient();
+            return;
+        }
+
+        // La ventana completa necesita ser administrador: si no lo es, se pide permiso a Windows
+        if (!IsElevated())
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(Environment.ProcessPath!, string.Join(" ", args.Select(a => $"\"{a}\"")))
+                { UseShellExecute = true, Verb = "runas" });
+            }
+            catch { /* se canceló */ }
             Shutdown();
             return;
         }

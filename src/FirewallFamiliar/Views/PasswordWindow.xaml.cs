@@ -35,6 +35,13 @@ public partial class PasswordWindow : Window
         return w.ShowDialog() == true;
     }
 
+    /// <summary>Pide la contraseña sin comprobarla aquí (la comprueba el servicio). null si se cancela.</summary>
+    public static string? AskText(string why)
+    {
+        var w = new PasswordWindow(why, null, false) { WindowStartupLocation = WindowStartupLocation.CenterScreen, Topmost = true };
+        return w.ShowDialog() == true ? w.Password : null;
+    }
+
     /// <summary>Pide una contraseña nueva. Devuelve null si se cancela.</summary>
     public static string? AskNew(Window? owner)
     {
@@ -52,7 +59,8 @@ public partial class PasswordWindow : Window
             DialogResult = true;
             return;
         }
-        if (_check!.CheckPassword(Pwd1.Password)) { DialogResult = true; return; }
+        if (_check == null) { DialogResult = true; return; } // la comprueba el servicio
+        if (_check.CheckPassword(Pwd1.Password)) { DialogResult = true; return; }
         _tries++;
         Pwd1.Clear();
         ShowError(_tries >= 3 ? "Contraseña incorrecta otra vez." : "Contraseña incorrecta.");

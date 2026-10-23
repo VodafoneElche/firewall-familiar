@@ -72,6 +72,7 @@ public partial class MainWindow
     private void OnClosingToTray(object? sender, CancelEventArgs e)
     {
         if (_reallyExit || App.IsSessionEnding || _tray == null) return;
+        if (ServiceProtects) return; // con el servicio, cerrar la ventana no quita la protección
         e.Cancel = true;
         Hide();
         if (!_toldAboutTray)
@@ -86,7 +87,7 @@ public partial class MainWindow
 
     private void ExitApp()
     {
-        if (_settings.ProtectExit && !PasswordWindow.Ask(IsVisible ? this : null, _settings,
+        if (!ServiceProtects && _settings.ProtectExit && !PasswordWindow.Ask(IsVisible ? this : null, _settings,
                 "Para cerrar Firewall Familiar hace falta la contraseña. Al cerrarlo se quitan todos los bloqueos."))
             return;
         _reallyExit = true;
@@ -145,7 +146,9 @@ public partial class MainWindow
         MenuAutoUpdate.IsChecked = _settings.AutoUpdate;
         foreach (var m in new[] { MenuProtectExit, MenuProtectRules, MenuProtectAsk }) m.IsEnabled = _settings.HasPassword;
 
-        try { MenuAutostart.IsChecked = Installer.AutostartEnabled; } catch { }
+        // Con el servicio ya no hace falta abrir la ventana al iniciar sesión
+        MenuAutostart.Visibility = ServiceProtects ? Visibility.Collapsed : Visibility.Visible;
+        if (!ServiceProtects) try { MenuAutostart.IsChecked = Installer.AutostartEnabled; } catch { }
     }
 
     private void SaveSettings()

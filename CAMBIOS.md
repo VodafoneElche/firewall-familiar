@@ -1,4 +1,6 @@
-Novedades de esta versión (0.5.4):
+Novedades de esta versión (0.6.0):
 
-- Detección de escaneos: el programa comprueba cada minuto que Windows sigue avisando de los intentos a puertos cerrados, lo vuelve a activar si se ha quitado, y escribe en la consola si lo ha conseguido.
-- "Preparar para análisis": el informe se guarda siempre en C:\ProgramData\FirewallFamiliar\informes (y una copia en el Escritorio si se puede).
+- Nuevo servicio de Windows "Firewall Familiar": bloquea desde que arranca el PC, aunque nadie abra el programa y aunque el usuario no sea administrador. Guarda los registros, detecta escaneos y programas sospechosos y se actualiza solo.
+- Icono junto al reloj para todos los usuarios, también en cuentas estándar: flechas de tráfico, avisos, preguntas del modo "Preguntar" y cambio de modo (con contraseña).
+- La ventana completa pide permiso de administrador al abrirse. Mientras está abierta, es ella la que bloquea; al cerrarla, el servicio vuelve a encargarse solo.
+- Ya no hace falta la tarea "Abrir al iniciar Windows": se quita sola.

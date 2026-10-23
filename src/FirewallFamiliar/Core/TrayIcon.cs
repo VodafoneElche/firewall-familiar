@@ -88,6 +88,15 @@ public sealed class TrayIcon : IDisposable
         _icon.Text = text.Length > 63 ? text[..63] : text;
     }
 
+    /// <summary>Texto al pasar el ratón por encima del icono.</summary>
+    public void SetText(string text) => _icon.Text = text.Length > 63 ? text[..63] : text;
+
+    public bool Visible
+    {
+        get => _icon.Visible;
+        set { if (_icon.Visible != value) _icon.Visible = value; }
+    }
+
     public void Alert(string title, string text, bool warning)
     {
         _icon.ShowBalloonTip(8000, title, text.Length > 250 ? text[..250] + "..." : text,

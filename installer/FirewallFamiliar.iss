@@ -33,7 +33,6 @@ Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear un acceso directo en el Escritorio"; GroupDescription: "Accesos directos:"
-Name: "autostart"; Description: "Abrir Firewall Familiar al iniciar sesión (recomendado)"; GroupDescription: "Arranque:"
 
 [Files]
 Source: "..\publish\FirewallFamiliar\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -42,13 +41,17 @@ Source: "..\publish\FirewallFamiliar\*"; DestDir: "{app}"; Flags: ignoreversion 
 Name: "{group}\Firewall Familiar"; Filename: "{app}\FirewallFamiliar.exe"
 Name: "{autodesktop}\Firewall Familiar"; Filename: "{app}\FirewallFamiliar.exe"; Tasks: desktopicon
 
+[Registry]
+; El icono junto al reloj, para todos los usuarios (no necesita ser administrador)
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "FirewallFamiliar"; ValueData: """{app}\FirewallFamiliar.exe"" --icono"; Flags: uninsdeletevalue
+
 [Run]
-Filename: "{app}\FirewallFamiliar.exe"; Parameters: "--registrar-arranque"; Flags: runhidden waituntilterminated; Tasks: autostart
-; Instalación normal: casilla "Abrir ahora". Actualización automática (silenciosa): se vuelve a abrir sola junto al reloj.
+; El servicio de Windows hace el bloqueo desde que arranca el PC (y vuelve a poner el icono a cada usuario)
+Filename: "{app}\FirewallFamiliar.exe"; Parameters: "--instalar-servicio"; Flags: runhidden waituntilterminated; StatusMsg: "Activando la protección..."
 Filename: "{app}\FirewallFamiliar.exe"; Description: "Abrir Firewall Familiar ahora"; Flags: postinstall nowait skipifsilent runascurrentuser
-Filename: "{app}\FirewallFamiliar.exe"; Parameters: "--bandeja"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
+Filename: "{app}\FirewallFamiliar.exe"; Parameters: "--quitar-servicio"; Flags: runhidden waituntilterminated; RunOnceId: "QuitarServicio"
 Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM FirewallFamiliar.exe"; Flags: runhidden; RunOnceId: "Cerrar"
 Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""Firewall Familiar"" /F"; Flags: runhidden; RunOnceId: "QuitarArranque"
 
@@ -57,7 +60,9 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
 begin
-  { Cerrar la copia que esté abierta para poder sustituir los archivos }
+  { Parar el servicio y cerrar las copias abiertas (ventana e iconos) para poder sustituir los archivos }
+  Exec(ExpandConstant('{sys}\sc.exe'), 'stop FirewallFamiliar', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Sleep(2000);
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM FirewallFamiliar.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Sleep(1000);
   Result := '';

@@ -108,7 +108,9 @@ public partial class MainWindow : Window
         LoadPreviousAlerts();
         await RefreshListsAsync();
         InitSecurity();
+        await TakeOverFromServiceAsync();
         InitFirewall();
+        UpdateProtectionMenu();
         _fastTimer.Start();
         _slowTimer.Start();
     }
@@ -119,6 +121,7 @@ public partial class MainWindow : Window
         _slowTimer.Stop();
         _traffic.Dispose();
         _firewall.Dispose(); // al cerrar se quitan todos los filtros y la red queda como estaba
+        ReturnToService();   // ...y, si está instalado, el servicio vuelve a poner los suyos
         _tray?.Dispose();
         Application.Current.Shutdown();
     }

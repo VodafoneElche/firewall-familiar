@@ -14,7 +14,7 @@
     <AssemblyName>FirewallFamiliar</AssemblyName>
     <RootNamespace>FirewallFamiliar</RootNamespace>
     <Product>Firewall Familiar</Product>
-    <Version>0.5.4</Version>
+    <Version>0.6.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <Platforms>x64</Platforms>
@@ -32,6 +32,8 @@
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.1.20" />
     <!-- Consulta de servicios de Windows (WMI) -->
     <PackageReference Include="System.Management" Version="8.0.0" />
+    <!-- Servicio de Windows (bloqueo aunque no haya nadie con la ventana abierta) -->
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
     <!-- Genera las declaraciones de la API de Windows (WFP) a partir de los metadatos oficiales -->
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.183" PrivateAssets="all" />
   </ItemGroup>
