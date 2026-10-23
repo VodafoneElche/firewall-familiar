@@ -515,43 +515,62 @@ public sealed unsafe class WfpFirewall : IDisposable
     public string? EnsurePortScanEvents()
     {
         if (_engine == default) return null;
-        const uint PortScanningDrop = 0x20; // FWPM_NET_EVENT_KEYWORD_PORT_SCANNING_DROP
-        uint current = 0;
-        FWP_VALUE0* value = null;
-        uint get = Win.FwpmEngineGetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value);
-        if (get == 0 && value != null)
+        // Las opciones del motor no se pueden cambiar desde una sesión dinámica (error 0x8032000B):
+        // se abre un momento una conexión normal solo para esto.
+        HANDLE opt;
+        uint open = Win.FwpmEngineOpen0(default, RPC_C_AUTHN_WINNT, null, null, &opt);
+        if (open != 0)
         {
-            if (value->type == FWP_DATA_TYPE.FWP_UINT32) current = value->Anonymous.uint32;
-            Win.FwpmFreeMemory0((void**)&value);
+            if (_portScanFailedLogged) return null;
+            _portScanFailedLogged = true;
+            return $"⚠ No se pudo abrir el motor de filtrado para activar la detección de escaneos (0x{open:X8}).";
         }
-        if ((current & PortScanningDrop) != 0)
+        try
         {
-            if (_portScanOk) return null;
-            _portScanOk = true;
-            return $"Detección de escaneos activa (opción de Windows 0x{current:X}).";
-        }
-        var v = default(FWP_VALUE0);
-        v.type = FWP_DATA_TYPE.FWP_UINT32;
-        v.Anonymous.uint32 = current | PortScanningDrop;
-        uint set = Win.FwpmEngineSetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &v);
+            var on = default(FWP_VALUE0);
+            on.type = FWP_DATA_TYPE.FWP_UINT32;
+            on.Anonymous.uint32 = 1;
+            Win.FwpmEngineSetOption0(opt, FWPM_ENGINE_OPTION.FWPM_ENGINE_COLLECT_NET_EVENTS, &on);
 
-        // Volver a leer para confirmar que Windows lo ha aceptado
-        uint after = 0;
-        value = null;
-        if (Win.FwpmEngineGetOption0(_engine, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value) == 0 && value != null)
-        {
-            if (value->type == FWP_DATA_TYPE.FWP_UINT32) after = value->Anonymous.uint32;
-            Win.FwpmFreeMemory0((void**)&value);
+            const uint PortScanningDrop = 0x20; // FWPM_NET_EVENT_KEYWORD_PORT_SCANNING_DROP
+            uint current = 0;
+            FWP_VALUE0* value = null;
+            uint get = Win.FwpmEngineGetOption0(opt, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value);
+            if (get == 0 && value != null)
+            {
+                if (value->type == FWP_DATA_TYPE.FWP_UINT32) current = value->Anonymous.uint32;
+                Win.FwpmFreeMemory0((void**)&value);
+            }
+            if ((current & PortScanningDrop) != 0)
+            {
+                if (_portScanOk) return null;
+                _portScanOk = true;
+                return $"Detección de escaneos activa (opción de Windows 0x{current:X}).";
+            }
+            var v = default(FWP_VALUE0);
+            v.type = FWP_DATA_TYPE.FWP_UINT32;
+            v.Anonymous.uint32 = current | PortScanningDrop;
+            uint set = Win.FwpmEngineSetOption0(opt, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &v);
+
+            // Volver a leer para confirmar que Windows lo ha aceptado
+            uint after = 0;
+            value = null;
+            if (Win.FwpmEngineGetOption0(opt, FWPM_ENGINE_OPTION.FWPM_ENGINE_NET_EVENT_MATCH_ANY_KEYWORDS, &value) == 0 && value != null)
+            {
+                if (value->type == FWP_DATA_TYPE.FWP_UINT32) after = value->Anonymous.uint32;
+                Win.FwpmFreeMemory0((void**)&value);
+            }
+            bool ok = (after & PortScanningDrop) != 0;
+            string text = ok
+                ? (_portScanOk ? $"Detección de escaneos: Windows había quitado la opción; vuelta a poner (0x{after:X})."
+                               : $"Detección de escaneos activa (opción de Windows 0x{after:X}).")
+                : $"⚠ Windows no deja activar los avisos de puertos cerrados: la detección de escaneos verá solo una parte (leer 0x{get:X8}, poner 0x{set:X8}, antes 0x{current:X}, después 0x{after:X}).";
+            if (!ok && _portScanFailedLogged) return null;
+            _portScanFailedLogged = !ok;
+            _portScanOk = ok;
+            return text;
         }
-        bool ok = (after & PortScanningDrop) != 0;
-        string text = ok
-            ? (_portScanOk ? $"Detección de escaneos: Windows había quitado la opción; vuelta a poner (0x{after:X})."
-                           : $"Detección de escaneos activa (opción de Windows 0x{after:X}).")
-            : $"⚠ Windows no deja activar los avisos de puertos cerrados: la detección de escaneos verá solo una parte (leer 0x{get:X8}, poner 0x{set:X8}, antes 0x{current:X}, después 0x{after:X}).";
-        if (!ok && _portScanFailedLogged) return null;
-        _portScanFailedLogged = !ok;
-        _portScanOk = ok;
-        return text;
+        finally { Win.FwpmEngineClose0(opt); }
     }
 
     private bool _portScanOk, _portScanFailedLogged;
