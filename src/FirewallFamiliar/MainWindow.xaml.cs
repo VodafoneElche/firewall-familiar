@@ -104,6 +104,7 @@ public partial class MainWindow : Window
 
         if (StartHidden) Hide();
         InitTray();
+        InitUpdates();
         LoadPreviousAlerts();
         await RefreshListsAsync();
         InitSecurity();

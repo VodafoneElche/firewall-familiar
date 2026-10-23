@@ -129,6 +129,7 @@ public partial class MainWindow
             case "Rules": _settings.ProtectRules = item.IsChecked; break;
             case "Ask": _settings.ProtectAsk = item.IsChecked; break;
             case "Alerts": _settings.TrayAlerts = item.IsChecked; break;
+            case "Update": _settings.AutoUpdate = item.IsChecked; break;
         }
         SaveSettings();
         UpdateProtectionMenu();
@@ -141,6 +142,7 @@ public partial class MainWindow
         MenuProtectRules.IsChecked = _settings.ProtectRules;
         MenuProtectAsk.IsChecked = _settings.ProtectAsk;
         MenuTrayAlerts.IsChecked = _settings.TrayAlerts;
+        MenuAutoUpdate.IsChecked = _settings.AutoUpdate;
         foreach (var m in new[] { MenuProtectExit, MenuProtectRules, MenuProtectAsk }) m.IsEnabled = _settings.HasPassword;
 
         try { MenuAutostart.IsChecked = Installer.AutostartEnabled; } catch { }

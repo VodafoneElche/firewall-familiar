@@ -22,6 +22,8 @@ public sealed class AppSettings
     public bool ProtectAsk { get; set; } = false;
     /// <summary>Avisos en globo junto al reloj (ataques, programas sospechosos).</summary>
     public bool TrayAlerts { get; set; } = true;
+    /// <summary>Instalar solo las versiones nuevas que se publiquen.</summary>
+    public bool AutoUpdate { get; set; } = true;
 
     public bool HasPassword => PasswordHash.Length > 0;
 

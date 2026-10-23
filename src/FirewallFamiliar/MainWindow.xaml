@@ -36,6 +36,9 @@
                 <MenuItem x:Name="MenuTrayAlerts" Header="Avisos junto al reloj (ataques y sospechosos)" IsCheckable="True" Tag="Alerts" Click="OnToggleProtection"/>
             </MenuItem>
             <MenuItem Header="A_yuda">
+                <MenuItem Header="Buscar _actualizaciones ahora..." Click="OnCheckUpdates"/>
+                <MenuItem x:Name="MenuAutoUpdate" Header="Actualizar automáticamente" IsCheckable="True" Tag="Update" Click="OnToggleProtection"/>
+                <Separator/>
                 <MenuItem Header="_Acerca de Firewall Familiar" Click="OnAbout"/>
             </MenuItem>
         </Menu>
