@@ -469,6 +469,49 @@ public partial class MainWindow : Window
         Log($"Mostrando las conexiones de {app.Name}. Pulsa \"Conexiones\" en la barra para verlas todas.");
     }
 
+    /// <summary>Botón ⓘ de la lista (o clic derecho): abre la ficha del programa.</summary>
+    private void OnAppInfo(object sender, RoutedEventArgs e)
+    {
+        var app = (sender as FrameworkElement)?.DataContext as AppRow ?? SelectedApp;
+        if (app == null) return;
+        if (app.Path.Length == 0)
+        {
+            MessageBox.Show(this, $"Windows no deja ver de dónde sale \"{app.Name}\" (PID {app.Pid}). Suele ser un proceso protegido del sistema.",
+                "Firewall Familiar", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        string text = app.Severity switch
+        {
+            0 => $"{app.Name} parece sospechoso: {(app.Suspicious.Length > 0 ? app.Suspicious : "su firma digital no es válida")}. " +
+                 "Mira abajo quién lo ha hecho y dónde está. Si no lo conoces, búscalo en Internet o bloquéalo.",
+            1 when app.Kind == ProcessKind.Oculto => $"{app.Name} funciona sin ventana y no es un servicio ni parte de Windows. " +
+                 "Muchas veces es un actualizador o un icono junto al reloj, pero conviene saber qué es.",
+            1 => $"{app.Name} no tiene firma digital, así que no se puede saber con seguridad quién lo ha hecho.",
+            _ => $"{app.Name}: {(app.Description.Length > 0 ? app.Description : "programa en ejecución")}."
+        };
+
+        // Si está conectado a algún sitio, se enseña también con quién
+        var conn = _conns.FirstOrDefault(c => c.Pid == app.Pid && !c.IsListening && c.Remote.Length > 0);
+        IPAddress? ip = null;
+        int port = 0;
+        if (conn != null)
+        {
+            int colon = conn.Remote.LastIndexOf(':');
+            if (colon > 0 && IPAddress.TryParse(conn.Remote[..colon].Trim('[', ']'), out ip))
+                int.TryParse(conn.Remote[(colon + 1)..], out port);
+            if (ip != null) text += $" Ahora mismo está conectado con {conn.Remote}.";
+        }
+
+        ShowDetails(new ConsoleEvent
+        {
+            Text = text, AppPath = app.Path, Pid = app.Pid,
+            Outcome = app.Severity == 0 ? "Sospechoso" : app.Kind == ProcessKind.Oculto ? "Oculto" : "",
+            RemoteAddress = ip, RemotePort = port, Protocol = conn?.Protocol.Replace("v6", "") ?? ""
+        });
+        e.Handled = true;
+    }
+
     private void OnOpenLocation(object sender, RoutedEventArgs e)
     {
         if (SelectedApp is not { Path.Length: > 0 } app) return;

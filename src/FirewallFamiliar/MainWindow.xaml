@@ -156,6 +156,7 @@
                                 <MenuItem Header="? Preguntar (quitar regla)" Click="OnSetRule" Tag="Preguntar"/>
                                 <MenuItem Header="✖ Bloquear" Click="OnSetRule" Tag="Bloquear"/>
                                 <Separator/>
+                                <MenuItem Header="ⓘ Ver ficha del programa" Click="OnAppInfo"/>
                                 <MenuItem Header="Ver sus conexiones" Click="OnShowAppConnections"/>
                                 <MenuItem Header="Abrir ubicación del archivo" Click="OnOpenLocation"/>
                                 <MenuItem Header="Copiar ruta" Click="OnCopyPath"/>
@@ -166,10 +167,13 @@
                         </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Programa" Width="190">
+                                <GridViewColumn Header="Programa" Width="210">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal">
+                                                <Button Content="ⓘ" Click="OnAppInfo" Cursor="Hand" Padding="0" Margin="0,0,5,0"
+                                                        Background="Transparent" BorderThickness="0" Foreground="#1E6FD9"
+                                                        FontWeight="Bold" ToolTip="Ver la ficha de este programa"/>
                                                 <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,6,0"/>
                                                 <TextBlock Text="{Binding Name}"/>
                                             </StackPanel>

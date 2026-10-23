@@ -140,6 +140,7 @@ public partial class EventDetailsWindow : Window
             return;
         }
         if (_event.Inbound) RemoteTitle.Text = "Quién intentaba entrar en el ordenador";
+        else if (_event.Outcome is "" or "Sospechoso" or "Oculto") RemoteTitle.Text = "Con quién está conectado ahora";
 
         RemoteIp.Text = ip.ToString();
         string meaning = Ports.Describe(_event.RemotePort, _event.Protocol);
@@ -192,7 +193,7 @@ public partial class EventDetailsWindow : Window
     private void UpdateSentence()
     {
         var ip = _event.RemoteAddress;
-        if (ip == null)
+        if (ip == null || _event.Outcome is "Sospechoso" or "Oculto" || (_event.Outcome == "" && _event.AppPath != null))
         {
             Sentence.Text = _event.Text;
             return;
