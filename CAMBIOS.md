@@ -1,4 +1,8 @@
-Novedades de esta versión (0.7.2):
+Novedades de esta versión (0.7.3):
+
+- Icono nuevo junto al reloj: flechas más gordas en semicírculo alrededor del escudo (verde = entran datos, roja = salen).
+
+De la 0.7.2:
 
 - La ventana completa se abre sin el aviso de Windows ("¿Quieres permitir que esta aplicación...?") en las cuentas de administrador. La abre el servicio, ya con permisos. En las cuentas estándar (los niños) sigue pidiendo la contraseña del administrador.
 

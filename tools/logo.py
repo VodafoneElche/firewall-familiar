@@ -56,18 +56,43 @@ def app_icon():
     logo((S*0.08, S*0.04, S*0.92, S*0.96), img)
     return img
 
+def arc_arrow(d, cx, cy, r, width, start, end, color):
+    """Flecha gorda en semicírculo: arco de 'start' a 'end' (grados, sentido de PIL) con la punta en 'end'."""
+    import math
+    step = -1 if end < start else 1
+    head_len = width * 1.6
+    head_ang = math.degrees(head_len / r)
+    arc_end = end - step * head_ang * 0.55
+    a0, a1 = (arc_end, start) if step < 0 else (start, arc_end)
+    d.arc((cx - r - width/2, cy - r - width/2, cx + r + width/2, cy + r + width/2), a0, a1, fill=color, width=int(width))
+    # redondear el principio del arco
+    t0 = math.radians(start)
+    sx, sy = cx + r*math.cos(t0), cy + r*math.sin(t0)
+    d.ellipse((sx - width/2, sy - width/2, sx + width/2, sy + width/2), fill=color)
+    # punta: triángulo tangente al círculo
+    tb = math.radians(arc_end)
+    bx, by = cx + r*math.cos(tb), cy + r*math.sin(tb)
+    tt = math.radians(arc_end + step * head_ang)
+    tx, ty = cx + r*math.cos(tt), cy + r*math.sin(tt)
+    ox, oy = math.cos(tb), math.sin(tb)     # hacia fuera
+    half = width * 1.3
+    d.polygon([(bx + ox*half, by + oy*half), (tx, ty), (bx - ox*half, by - oy*half)], fill=color)
+
 def tray(inc, outg, blockall):
     img = Image.new("RGBA", (S,S), (0,0,0,0))
     d = ImageDraw.Draw(img)
-    green_on, red_on, off = (40, 230, 40), (240, 40, 40), (120, 120, 120)
-    w = S*0.12
-    # left: green arrow down (entrante); right: red arrow up (saliente)
-    arrow(d, S*0.075, S*0.08, S*0.94, w, False, green_on if inc else off)
-    arrow(d, S*0.925, S*0.06, S*0.92, w, True, red_on if outg else off)
+    green_on, red_on, off = (30, 220, 30), (240, 35, 35), (150, 150, 150)
+    w = S*0.15
+    c = S/2
+    r = S/2 - w/2 - S*0.01
+    # izquierda: verde hacia abajo (entran datos); derecha: roja hacia arriba (salen datos)
+    arc_arrow(d, c, c, r, w, 245, 118, green_on if inc else off)
+    arc_arrow(d, c, c, r, w, 65, -62, red_on if outg else off)
+    box = (S*0.25, S*0.17, S*0.75, S*0.86)
     if blockall:
-        logo((S*0.17, S*0.04, S*0.83, S*0.98), img, color=(200, 30, 30), dark=(110, 10, 10))
+        logo(box, img, color=(200, 30, 30), dark=(110, 10, 10))
     else:
-        logo((S*0.17, S*0.04, S*0.83, S*0.98), img)
+        logo(box, img)
     return img
 
 sizes = [(16,16),(20,20),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)]
