@@ -647,6 +647,7 @@ internal sealed class ServiceCore
                     case "desbloquear": OnModeRequest(client, m); break;
                     case "pausa": await OnPauseAsync(client); break;
                     case "hola": SendStatus(client); break;
+                    case "abrir-ventana": OnOpenWindow(client); break;
                 }
             }
         }
@@ -678,6 +679,17 @@ internal sealed class ServiceCore
                 _ = Task.Delay(2500).ContinueWith(_ => SafeRun(() => SessionLauncher.LaunchInSession(guiSession, _exe, msg => Log(msg))));
             }
         }
+    }
+
+    /// <summary>
+    /// Un usuario pide abrir la ventana completa. Si es administrador se abre ya elevada, sin el aviso
+    /// de Windows; si es una cuenta estándar se le contesta que no y Windows pedirá la contraseña.
+    /// </summary>
+    private void OnOpenWindow(Client client)
+    {
+        string? error = SessionLauncher.LaunchElevated(client.Session, _exe);
+        if (error != null) Log("Ventana completa: se pide permiso a Windows (" + error + ").");
+        _ = client.Channel.SendAsync(new PipeMessage { T = "ventana", Ok = error == null, Error = error ?? "" });
     }
 
     /// <summary>La ventana completa (de un administrador) toma el control hasta que se cierre.</summary>

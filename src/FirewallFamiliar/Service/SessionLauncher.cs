@@ -46,6 +46,73 @@ internal static class SessionLauncher
         }
     }
 
+    /// <summary>
+    /// Abre la ventana completa, ya como administrador, en la sesión de un usuario que ES administrador.
+    /// Así no sale el aviso de Windows (UAC). Si el usuario de esa sesión es una cuenta estándar
+    /// (por ejemplo la de los niños) no se abre y devuelve el motivo: entonces Windows pide la contraseña.
+    /// </summary>
+    public static string? LaunchElevated(int session, string exe)
+    {
+        if (session <= 0) return "Sesión no válida.";
+        IntPtr token = IntPtr.Zero, full = IntPtr.Zero, env = IntPtr.Zero;
+        try
+        {
+            if (!WTSQueryUserToken((uint)session, out token)) return "No hay usuario en esa sesión.";
+            GetTokenInformation(token, TokenElevationType, out int type, 4, out _);
+            if (type == 3) // limitado: es administrador con UAC, se usa su token completo
+            {
+                if (!GetTokenInformation(token, TokenLinkedToken, out full, IntPtr.Size, out _) || full == IntPtr.Zero)
+                    return $"No se pudo obtener el permiso de administrador (error {Marshal.GetLastWin32Error()}).";
+            }
+            else
+            {
+                // Sin UAC: solo vale si de verdad es administrador
+                using var id = new System.Security.Principal.WindowsIdentity(token);
+                if (!new System.Security.Principal.WindowsPrincipal(id).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
+                    return "El usuario no es administrador.";
+                DuplicateHandleToken(token, out full);
+            }
+            CreateEnvironmentBlock(out env, full, false);
+            var si = new STARTUPINFO { cb = Marshal.SizeOf<STARTUPINFO>(), lpDesktop = @"winsta0\default" };
+            string? dir = System.IO.Path.GetDirectoryName(exe);
+            if (!CreateProcessAsUser(full, null, $"\"{exe}\"", IntPtr.Zero, IntPtr.Zero, false,
+                    CREATE_UNICODE_ENVIRONMENT, env, dir, ref si, out var pi))
+                return $"No se pudo abrir la ventana (error {Marshal.GetLastWin32Error()}).";
+            AllowSetForegroundWindow(pi.dwProcessId);
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
+            return null;
+        }
+        catch (Exception ex) { return ex.Message; }
+        finally
+        {
+            if (env != IntPtr.Zero) DestroyEnvironmentBlock(env);
+            if (full != IntPtr.Zero && full != token) CloseHandle(full);
+            if (token != IntPtr.Zero) CloseHandle(token);
+        }
+    }
+
+    private static void DuplicateHandleToken(IntPtr token, out IntPtr copy)
+    {
+        if (!DuplicateTokenEx(token, MAXIMUM_ALLOWED, IntPtr.Zero, 2 /* Impersonation */, 1 /* Primary */, out copy))
+            copy = IntPtr.Zero;
+    }
+
+    private const int TokenElevationType = 18, TokenLinkedToken = 19;
+    private const uint MAXIMUM_ALLOWED = 0x02000000;
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool GetTokenInformation(IntPtr token, int infoClass, out int info, int length, out int returned);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool GetTokenInformation(IntPtr token, int infoClass, out IntPtr info, int length, out int returned);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool DuplicateTokenEx(IntPtr token, uint access, IntPtr attributes, int level, int type, out IntPtr newToken);
+
+    [DllImport("user32.dll")]
+    private static extern bool AllowSetForegroundWindow(int processId);
+
     /// <summary>¿Ya hay un Firewall Familiar (icono o ventana) en esa sesión?</summary>
     private static bool HasOurProcess(int session)
     {

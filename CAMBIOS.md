@@ -1,4 +1,8 @@
-Novedades de esta versión (0.7.1):
+Novedades de esta versión (0.7.2):
+
+- La ventana completa se abre sin el aviso de Windows ("¿Quieres permitir que esta aplicación...?") en las cuentas de administrador. La abre el servicio, ya con permisos. En las cuentas estándar (los niños) sigue pidiendo la contraseña del administrador.
+
+De la 0.7.1:
 
 - Arreglado: falso "POSIBLE ATAQUE" del router justo al abrir la tapa del portátil (respuestas viejas que llegan al despertar).
 - El informe enseña también desde qué puertos y con qué protocolo llegan los intentos de entrada.

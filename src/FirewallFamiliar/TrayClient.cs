@@ -230,14 +230,13 @@ public sealed class TrayClient
         Send(new PipeMessage { T = "desbloquear", Password = password });
     }
 
-    /// <summary>La ventana completa necesita un administrador: Windows pedirá permiso (o la contraseña del administrador).</summary>
+    /// <summary>La ventana completa necesita un administrador: si el usuario lo es se abre sin aviso; si no, Windows pide la contraseña.</summary>
     private void OpenFullWindow()
     {
         try
         {
-            Process.Start(new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas" });
+            FullWindow.Open();
         }
-        catch (Win32Exception) { /* se canceló el permiso */ }
         catch (Exception ex) { _tray.Alert("Firewall Familiar", "No se pudo abrir: " + ex.Message, true); }
     }
 

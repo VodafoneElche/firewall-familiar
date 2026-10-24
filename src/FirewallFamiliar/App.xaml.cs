@@ -76,15 +76,11 @@ public partial class App : Application
             return;
         }
 
-        // La ventana completa necesita ser administrador: si no lo es, se pide permiso a Windows
+        // La ventana completa necesita ser administrador
         if (!IsElevated())
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo(Environment.ProcessPath!, string.Join(" ", args.Select(a => $"\"{a}\"")))
-                { UseShellExecute = true, Verb = "runas" });
-            }
-            catch { /* se canceló */ }
+            // Si es administrador, el servicio la abre sin el aviso de Windows
+            try { Core.FullWindow.Open(); } catch { }
             Shutdown();
             return;
         }
