@@ -78,7 +78,7 @@ public partial class LogViewerWindow : Window
         {
             1 => e.Outcome == "Bloqueado" || e.Outcome == "Escaneo",
             2 => e.Outcome == "Permitido",
-            3 => e.Outcome is "Escaneo" or "Sospechoso" or "Oculto",
+            3 => e.Outcome is "Escaneo" or "Sospechoso" or "Oculto" or "AccesoRemoto" or "Alerta",
             4 => e.Inbound,
             _ => true
         };
@@ -94,7 +94,7 @@ public partial class LogViewerWindow : Window
     {
         int shown = List.Items.Count;
         int blocked = _entries.Count(e => e.Outcome == "Bloqueado");
-        int alerts = _entries.Count(e => e.Outcome is "Escaneo" or "Sospechoso");
+        int alerts = _entries.Count(e => e.Outcome is "Escaneo" or "Sospechoso" or "AccesoRemoto" or "Alerta");
         StatusText.Text = $"{shown} de {_entries.Count} eventos.   Bloqueos: {blocked}   Avisos importantes: {alerts}" +
                           $"      Los registros se guardan {LogStore.KeepDays} días en {LogStore.Folder}";
     }

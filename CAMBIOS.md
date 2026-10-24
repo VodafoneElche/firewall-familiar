@@ -1,4 +1,12 @@
-Novedades de esta versión (0.6.3):
+Novedades de esta versión (0.7.0): SOC familiar
+
+- Nuevo menú Seguridad > "SOC familiar...": cada PC manda al Google Drive del SOC un informe diario, avisos urgentes al momento (con correo) y una señal cada 15 minutos. Si un PC se calla sin avisar de que se apaga o se suspende, llega un correo.
+- Nuevo detector de control remoto: avisa si se abre AnyDesk, TeamViewer, RustDesk, VNC, ScreenConnect y similares, si un programa se conecta a los puertos que usan, si entra una conexión desde Internet o si está activado el Escritorio remoto de Windows.
+- Aviso si alguien prueba 5 contraseñas incorrectas en un minuto en el icono.
+- El servicio avisa al SOC si lo paran o desinstalan.
+- En el informe, las respuestas tardías de servidores (webs, DNS) ya no salen como intentos de entrada.
+
+De la 0.6.3:
 
 - Arreglado: falsos avisos de "POSIBLE ATAQUE" al pulsar Bloquear todo. Eran respuestas de servidores con los que el PC ya estaba hablando (DNS, webs). Ya no cuentan como escaneo.
 

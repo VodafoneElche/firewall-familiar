@@ -28,6 +28,7 @@
                 <MenuItem x:Name="MenuProtectRules" Header="Pedir contraseña para cambiar reglas y modo" IsCheckable="True" Tag="Rules" Click="OnToggleProtection"/>
                 <MenuItem x:Name="MenuProtectAsk" Header="Pedir contraseña para pulsar &quot;Permitir&quot; en las preguntas" IsCheckable="True" Tag="Ask" Click="OnToggleProtection"/>
                 <Separator/>
+                <MenuItem Header="SOC _familiar (informes al Google Drive)..." Click="OnSoc"/>
                 <MenuItem Header="Ver re_gistros..." Click="OnShowLogs"/>
                 <MenuItem Header="Abrir carpeta de registros" Click="OnOpenLogsFolder"/>
             </MenuItem>

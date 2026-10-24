@@ -13,6 +13,7 @@ internal sealed class FirewallService : ServiceBase
         CanStop = true;
         CanShutdown = true;
         CanHandleSessionChangeEvent = true;
+        CanHandlePowerEvent = true;
         AutoLog = false;
     }
 
@@ -20,7 +21,14 @@ internal sealed class FirewallService : ServiceBase
 
     protected override void OnStop() => _core.Stop();
 
-    protected override void OnShutdown() => _core.Stop();
+    protected override void OnShutdown() => _core.Stop(shutdown: true);
+
+    protected override bool OnPowerEvent(PowerBroadcastStatus status)
+    {
+        if (status == PowerBroadcastStatus.Suspend) _core.OnSuspend();
+        else if (status is PowerBroadcastStatus.ResumeSuspend or PowerBroadcastStatus.ResumeAutomatic) _core.OnResume();
+        return true;
+    }
 
     protected override void OnSessionChange(SessionChangeDescription change)
     {

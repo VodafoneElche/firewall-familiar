@@ -61,6 +61,18 @@ Windows quita todos sus filtros y la red vuelve a funcionar normal. El Firewall 
 - **Registros → Preparar para análisis**: crea en `C:\ProgramData\FirewallFamiliar\informes` (y en el Escritorio) un informe `.md` con avisos, resumen por programa y por IP
   (con su dueño), intentos de entrada, horas de uso y reglas, listo para arrastrarlo al chat de Claude.
 
+## SOC familiar (desde la 0.7.0)
+
+- Todos los PCs de casa mandan sus datos a la carpeta **INFORMES FIREWALL** del Drive de `socfamiliar@gmail.com`,
+  a través de un pequeño buzón (Google Apps Script): `tools/soc/Codigo.gs`. Los PCs solo conocen la dirección del buzón y una clave.
+- Cada PC manda: un **informe diario** (`AAAA-MM-DD PC.md`), **avisos urgentes** al momento (escaneos, programas
+  sospechosos, control remoto, contraseñas probadas) y un **latido** cada 15 minutos. Al apagarse, suspenderse o parar
+  el servicio se despide. Si se calla sin despedirse 45 minutos, el buzón manda un correo.
+- **Detector de control remoto** (en el servicio, cada 20 s): AnyDesk, TeamViewer, RustDesk, VNC, ScreenConnect, Splashtop,
+  Atera, LogMeIn, Supremo, UltraViewer, ToDesk, Asistencia rápida, Escritorio remoto de Chrome...; conexiones a sus puertos
+  desde cualquier programa; conexiones que entran desde Internet; Escritorio remoto de Windows activado.
+- Se configura en la ventana completa: **Seguridad → SOC familiar...** (dirección, clave y nombre del PC; botón *Probar*).
+
 ## Cómo probar la versión actual
 
 1. En GitHub, abre la pestaña **Actions**, entra en la última ejecución verde de **Compilar**

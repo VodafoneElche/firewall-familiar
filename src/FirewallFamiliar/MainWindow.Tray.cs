@@ -116,6 +116,17 @@ public partial class MainWindow
         UpdateProtectionMenu();
     }
 
+    private void OnSoc(object sender, RoutedEventArgs e)
+    {
+        if (!PasswordWindow.Ask(this, _settings, "Escribe la contraseña para cambiar el SOC familiar.")) return;
+        bool was = _settings.SocEnabled;
+        if (new Views.SocWindow(this, _settings, () => _rules).ShowDialog() != true) return;
+        SaveSettings();
+        Log(_settings.SocEnabled
+            ? $"SOC familiar {(was ? "cambiado" : "activado")}: este PC aparece como \"{_settings.SocComputer}\"."
+            : "SOC familiar desactivado.");
+    }
+
     private void OnToggleProtection(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: string tag } item) return;

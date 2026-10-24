@@ -42,17 +42,32 @@ public partial class MainWindow
             }
             _serviceLink = ch;
             Log("El servicio de Firewall Familiar sigue instalado: al cerrar esta ventana, él vuelve a proteger.");
-            _ = DrainServiceAsync(ch);
+            _ = ListenToServiceAsync(ch);
             return;
         }
         Log("⚠ El servicio no ha contestado a tiempo. Esta ventana bloquea por su cuenta.");
         ch.Dispose();
     }
 
-    /// <summary>Se leen (y se ignoran) los mensajes del servicio para que la tubería no se llene.</summary>
-    private static async Task DrainServiceAsync(PipeChannel ch)
+    /// <summary>
+    /// Se leen los mensajes del servicio (para que la tubería no se llene). Los avisos de control
+    /// remoto los sigue vigilando el servicio aunque la ventana esté abierta: se enseñan aquí.
+    /// </summary>
+    private async Task ListenToServiceAsync(PipeChannel ch)
     {
-        while (await ch.ReadAsync() != null) { }
+        PipeMessage? m;
+        while ((m = await ch.ReadAsync()) != null)
+        {
+            if (m.T != "aviso" || !m.Warning || m.Title.StartsWith("Contraseña")) continue;
+            var msg = m;
+            _ = Dispatcher.BeginInvoke(() =>
+            {
+                // Solo en la consola: el servicio ya lo ha guardado en el registro
+                ConsoleList.Items.Add(new ConsoleEvent { Time = DateTime.Now, Text = "⚠ " + msg.Text, AppPath = msg.Path.Length > 0 ? msg.Path : null });
+                ConsoleList.ScrollIntoView(ConsoleList.Items[^1]);
+                if (_tray != null && _settings.TrayAlerts) _tray.Alert(msg.Title, msg.Text, true);
+            });
+        }
     }
 
     /// <summary>Al cerrar: se cierra la conexión y el servicio retoma el bloqueo.</summary>

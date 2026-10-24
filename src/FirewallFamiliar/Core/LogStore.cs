@@ -82,7 +82,7 @@ public static class LogStore
         Queue.TryAdd((kind, entry)); // si la cola está llena se pierde la línea, nunca se bloquea la ventana
     }
 
-    private static string FilePath(LogKind kind, DateTime day) =>
+    public static string FilePath(LogKind kind, DateTime day) =>
         Path.Combine(Folder, $"{(kind == LogKind.Seguridad ? "seguridad" : "trafico")}-{day:yyyy-MM-dd}.jsonl");
 
     private static void Start()

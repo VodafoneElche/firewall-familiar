@@ -57,8 +57,10 @@ internal sealed class ServiceCore
     private int _badPasswords;
     private DateTime _badPasswordsSince;
 
-    private Timer? _connTimer, _scanTimer, _updateTimer, _applyTimer;
-    private bool _updating;
+    private Timer? _connTimer, _scanTimer, _updateTimer, _applyTimer, _remoteTimer;
+    private bool _updating, _installingUpdate;
+    private SocReporter? _soc;
+    private RemoteAccessMonitor? _remote;
 
     private sealed class Client
     {
@@ -82,12 +84,32 @@ internal sealed class ServiceCore
         _connTimer = new Timer(_ => SafeRun(PollConnections), null, 2000, 2000);
         _scanTimer = new Timer(_ => SafeRun(() => { lock (_gate) CheckPortScanOption(); }), null, 60000, 60000);
         _updateTimer = new Timer(_ => _ = CheckUpdatesAsync(), null, TimeSpan.FromMinutes(2), TimeSpan.FromHours(6));
+        // SOC familiar y detector de control remoto (siguen funcionando aunque la ventana esté abierta)
+        _soc = new SocReporter(msg => Log(msg), SocStatus);
+        _soc.Start();
+        _remote = new RemoteAccessMonitor(
+            (text, app, pid, remote, rport, lport) => Log(text, "AccesoRemoto", null, app, pid, remote, rport, lport),
+            pid => pid == 4 ? "System" : pid <= 4 ? "" : FileDetails.ProperCase(NativeMethods.GetProcessPath(pid) ?? ""));
+        _remoteTimer = new Timer(_ => SafeRun(() => _remote.Check()), null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(20));
         // Al arrancar (o tras una actualización) el icono de cada usuario conectado
         Task.Delay(3000).ContinueWith(_ => SafeRun(() => SessionLauncher.LaunchInAllSessions(_exe, msg => Log(msg))));
     }
 
-    public void Stop()
+    /// <summary>Se para el servicio. <paramref name="shutdown"/>: porque se apaga o reinicia el PC.</summary>
+    public void Stop(bool shutdown = false)
     {
+        string reason = shutdown ? "apagado" : _installingUpdate || InstallerRunning("Instalar") ? "actualizacion"
+            : InstallerRunning("unins") ? "desinstalacion" : "parada";
+        Log(reason switch
+        {
+            "apagado" => "El PC se apaga o se reinicia.",
+            "actualizacion" => "Se para el servicio para instalar una versión nueva.",
+            "desinstalacion" => "⚠ Se está DESINSTALANDO Firewall Familiar.",
+            _ => "⚠ Alguien ha parado el servicio de Firewall Familiar: el PC se queda sin protección."
+        });
+        _remoteTimer?.Dispose();
+        _soc?.Stop();
+        _soc?.Goodbye(reason, shutdown ? 3 : 5);
         _stop.Cancel();
         _connTimer?.Dispose();
         _scanTimer?.Dispose();
@@ -103,6 +125,49 @@ internal sealed class ServiceCore
             _clients.Clear();
         }
         Log("Servicio de Firewall Familiar detenido.");
+    }
+
+    public void OnSuspend()
+    {
+        Log("El PC entra en suspensión.");
+        _soc?.Goodbye("suspension", 4);
+    }
+
+    public void OnResume()
+    {
+        Log("El PC vuelve de la suspensión.");
+        _soc?.OnResume();
+    }
+
+    private static bool InstallerRunning(string part)
+    {
+        foreach (var p in System.Diagnostics.Process.GetProcesses())
+            using (p)
+            {
+                try
+                {
+                    string n = p.ProcessName;
+                    if (n.Contains(part, StringComparison.OrdinalIgnoreCase) &&
+                        (part != "unins" || File.Exists(Path.Combine(AppContext.BaseDirectory, n + ".exe")))) return true;
+                }
+                catch { }
+            }
+        return false;
+    }
+
+    /// <summary>Lo que se cuenta al buzón del SOC en cada latido.</summary>
+    private object SocStatus()
+    {
+        int trays;
+        lock (_clients) trays = _clients.Count(x => x != _gui);
+        lock (_gate)
+            return new
+            {
+                modo = ModeText(_rules.Mode),
+                protegiendo = _firewall != null || _gui != null,
+                ventanaAbierta = _gui != null,
+                usuariosConIcono = trays
+            };
     }
 
     /// <summary>Un usuario acaba de iniciar sesión: se le pone el icono.</summary>
@@ -319,7 +384,8 @@ internal sealed class ServiceCore
         if (_badPasswords >= 5) return false; // demasiados intentos: esperar un minuto
         _settings = AppSettings.Load();
         if (_settings.CheckPassword(password)) return true;
-        _badPasswords++;
+        if (++_badPasswords == 5)
+            Log("⚠ ALGUIEN ESTÁ PROBANDO CONTRASEÑAS: 5 contraseñas incorrectas en un minuto en el icono de Firewall Familiar.", "Alerta");
         return false;
     }
 
@@ -464,23 +530,30 @@ internal sealed class ServiceCore
     }
 
     /// <summary>Anota en el registro de seguridad y, si es importante, avisa en el icono de cada usuario.</summary>
-    private void Log(string text, string outcome = "", BlockedConnection? c = null, string? app = null, int pid = 0)
+    private void Log(string text, string outcome = "", BlockedConnection? c = null, string? app = null, int pid = 0,
+        string? remote = null, int remotePort = 0, int localPort = 0)
     {
         var entry = new LogEntry
         {
             Time = DateTime.Now, Text = text, Outcome = outcome,
             App = app ?? (c != null && c.AppPath.Length > 0 ? c.AppPath : null), Pid = pid,
-            Remote = c?.RemoteAddress?.ToString(), RemotePort = c?.RemotePort ?? 0, LocalPort = c?.LocalPort ?? 0,
-            Protocol = c?.Protocol ?? "", Inbound = c?.Inbound ?? false
+            Remote = remote ?? c?.RemoteAddress?.ToString(), RemotePort = c?.RemotePort ?? remotePort, LocalPort = c?.LocalPort ?? localPort,
+            Protocol = c?.Protocol ?? (remote != null ? "TCP" : ""), Inbound = c?.Inbound ?? false
         };
         LogStore.Write(LogKind.Seguridad, entry);
 
-        if (outcome is "Escaneo" or "Sospechoso")
+        if (SocReporter.UrgentOutcomes.Contains(outcome))
         {
             var m = new PipeMessage
             {
                 T = "aviso", Warning = true, Text = text.TrimStart('⚠', ' '), Path = entry.App ?? "",
-                Title = outcome == "Escaneo" ? "Posible ataque bloqueado" : "Programa sospechoso"
+                Title = outcome switch
+                {
+                    "Escaneo" => "Posible ataque bloqueado",
+                    "Sospechoso" => "Programa sospechoso",
+                    "AccesoRemoto" => "Control remoto detectado",
+                    _ => "Aviso de seguridad"
+                }
             };
             List<Client> to;
             lock (_clients) to = _clients.ToList();
@@ -505,6 +578,7 @@ internal sealed class ServiceCore
             Log($"Descargando la versión {v}...");
             string file = await Updater.DownloadAsync(info);
             Log($"Instalando la versión {v}. La protección se reinicia en unos segundos.");
+            _installingUpdate = true;
             Updater.RunInstaller(file); // el instalador para este servicio y lo vuelve a arrancar
         }
         catch (Exception ex) { Log("No se pudo buscar o instalar una versión nueva: " + ex.Message); }

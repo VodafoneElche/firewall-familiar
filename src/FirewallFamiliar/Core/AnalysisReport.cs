@@ -25,16 +25,23 @@ public static class AnalysisReport
     private const int MaxSecurityLines = 4000;
     private const int MaxOwnerLookups = 80;
 
-    public static async Task<string> BuildAsync(int days, RuleSet rules, IReadOnlyList<ProcessSummary> processes,
+    public static Task<string> BuildAsync(int days, RuleSet rules, IReadOnlyList<ProcessSummary> processes,
+        IProgress<string>? progress = null, CancellationToken cancel = default) =>
+        BuildAsync(DateTime.Today.AddDays(-(days - 1)), DateTime.Today, rules, processes, progress, cancel);
+
+    /// <summary>Informe de los días entre <paramref name="from"/> y <paramref name="to"/> (los dos incluidos).</summary>
+    public static async Task<string> BuildAsync(DateTime from, DateTime to, RuleSet rules, IReadOnlyList<ProcessSummary> processes,
         IProgress<string>? progress = null, CancellationToken cancel = default)
     {
-        var from = DateTime.Today.AddDays(-(days - 1));
+        from = from.Date;
+        to = to.Date;
+        int days = (int)(to - from).TotalDays + 1;
         progress?.Report("Leyendo registros...");
         var (security, traffic) = await Task.Run(() =>
         {
             var s = new List<LogEntry>();
             var t = new List<LogEntry>();
-            for (var d = from; d <= DateTime.Today; d = d.AddDays(1))
+            for (var d = from; d <= to; d = d.AddDays(1))
             {
                 s.AddRange(LogStore.Read(LogKind.Seguridad, d));
                 t.AddRange(LogStore.Read(LogKind.Trafico, d));
@@ -67,10 +74,10 @@ public static class AnalysisReport
         }
 
         progress?.Report("Escribiendo el informe...");
-        return await Task.Run(() => Write(days, from, rules, processes, security, traffic, owners), cancel);
+        return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners), cancel);
     }
 
-    private static string Write(int days, DateTime from, RuleSet rules, IReadOnlyList<ProcessSummary> procs,
+    private static string Write(int days, DateTime from, DateTime to, RuleSet rules, IReadOnlyList<ProcessSummary> procs,
         List<LogEntry> security, List<LogEntry> traffic, Dictionary<string, IpOwner> owners)
     {
         var sb = new StringBuilder();
@@ -89,17 +96,17 @@ public static class AnalysisReport
         sb.AppendLine("Este archivo lo genera Firewall Familiar para que una persona o una IA (Claude) revise la actividad de red de este ordenador.");
         sb.AppendLine("Busca: programas desconocidos o sospechosos, conexiones a sitios raros, intentos de entrada, uso a horas extrañas y reglas mejorables.");
         sb.AppendLine();
-        sb.AppendLine($"- Equipo: {Environment.MachineName}   Usuario: {Environment.UserName}");
+        sb.AppendLine($"- Equipo: {Environment.MachineName}   Usuario: {(Environment.UserName.EndsWith("$") || Environment.UserName == "SYSTEM" ? "(informe automático del servicio)" : Environment.UserName)}");
         sb.AppendLine($"- Windows: {Environment.OSVersion.VersionString}");
         sb.AppendLine($"- Firewall Familiar: {typeof(AnalysisReport).Assembly.GetName().Version?.ToString(3)}");
-        sb.AppendLine($"- Periodo: {from:dd/MM/yyyy} a {DateTime.Today:dd/MM/yyyy} ({days} día{(days == 1 ? "" : "s")})   Generado: {DateTime.Now:dd/MM/yyyy HH:mm}");
+        sb.AppendLine($"- Periodo: {from:dd/MM/yyyy} a {to:dd/MM/yyyy} ({days} día{(days == 1 ? "" : "s")})   Generado: {DateTime.Now:dd/MM/yyyy HH:mm}");
         sb.AppendLine($"- Modo de seguridad: {rules.Mode}   Permitir componentes de Windows solos: {(rules.AllowWindowsComponents ? "sí" : "no")}");
         sb.AppendLine($"- Eventos de seguridad: {security.Count}   Eventos de tráfico: {traffic.Count}");
         sb.AppendLine("- Nota: el registro de tráfico anota cada conexión TCP nueva y cada intento bloqueado (los repetidos en 10 s se juntan). No guarda el contenido.");
         sb.AppendLine();
 
         // ---------------- Avisos ----------------
-        var alerts = security.Where(e => e.Outcome is "Escaneo" or "Sospechoso" or "Oculto").ToList();
+        var alerts = security.Where(e => e.Outcome is "Escaneo" or "Sospechoso" or "Oculto" or "AccesoRemoto" or "Alerta").ToList();
         sb.AppendLine($"## 1. Avisos importantes ({alerts.Count})");
         sb.AppendLine();
         if (alerts.Count == 0) sb.AppendLine("Ninguno.");
@@ -150,11 +157,20 @@ public static class AnalysisReport
         sb.AppendLine();
 
         // ---------------- Entradas desde fuera ----------------
-        var inbound = traffic.Where(e => e.Inbound && e.Outcome == "Bloqueado" && e.Remote != null)
+        // Respuestas que llegan tarde (de un servidor con el que este PC ya hablaba) no son intentos de entrar
+        var contacted = traffic.Where(e => !e.Inbound && e.Remote != null).Select(e => e.Remote!).ToHashSet();
+        bool IsLateReply(LogEntry e) =>
+            e.LocalPort >= 1024 && (ScanDetector.LooksLikeReply(e.RemotePort, e.LocalPort) || contacted.Contains(e.Remote!));
+        var allInbound = traffic.Where(e => e.Inbound && e.Outcome == "Bloqueado" && e.Remote != null).ToList();
+        var replies = allInbound.Where(IsLateReply).ToList();
+        var inbound = allInbound.Where(e => !IsLateReply(e))
             .GroupBy(e => e.Remote!).OrderByDescending(g => g.Count()).Take(100).ToList();
         sb.AppendLine($"## 5. Intentos de entrada bloqueados, por origen ({inbound.Count})");
         sb.AppendLine();
-        if (inbound.Count == 0) sb.AppendLine("Ninguno registrado.");
+        if (replies.Count > 0)
+            sb.AppendLine($"- Aparte, {replies.Count} respuestas tardías de {replies.Select(e => e.Remote).Distinct().Count()} servidores con los que este PC ya hablaba " +
+                          "(webs, DNS, VPN...). Se bloquean porque llegan cuando la conexión ya se había cerrado; no son ataques y no se listan.");
+        if (inbound.Count == 0) sb.AppendLine("Ningún otro intento registrado.");
         else
         {
             sb.AppendLine("| Origen | Pertenece a | Intentos | Puertos locales probados | Primero | Último |");

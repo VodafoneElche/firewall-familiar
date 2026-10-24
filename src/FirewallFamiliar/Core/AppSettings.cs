@@ -25,6 +25,16 @@ public sealed class AppSettings
     /// <summary>Instalar solo las versiones nuevas que se publiquen.</summary>
     public bool AutoUpdate { get; set; } = true;
 
+    /// <summary>SOC familiar: dirección del buzón (Google Apps Script) al que se mandan informes y avisos.</summary>
+    public string SocUrl { get; set; } = "";
+    /// <summary>SOC familiar: clave del buzón (la misma que la propiedad SECRETO del script).</summary>
+    public string SocKey { get; set; } = "";
+    /// <summary>SOC familiar: nombre con el que aparece este PC (vacío = el nombre de Windows).</summary>
+    public string SocName { get; set; } = "";
+
+    public bool SocEnabled => SocUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) && SocKey.Length > 0;
+    public string SocComputer => SocName.Trim().Length > 0 ? SocName.Trim() : Environment.MachineName;
+
     public bool HasPassword => PasswordHash.Length > 0;
 
     private const int Iterations = 120_000;

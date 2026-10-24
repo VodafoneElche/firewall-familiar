@@ -52,6 +52,8 @@ public partial class EventDetailsWindow : Window
             "Red" => ("ℹ  PROGRAMA USANDO INTERNET", Color.FromRgb(225, 235, 250)),
             "Escaneo" => ("⚠  POSIBLE ATAQUE: ESCANEO DE PUERTOS", Color.FromRgb(255, 200, 200)),
             "Sospechoso" => ("⚠  PROGRAMA SOSPECHOSO", Color.FromRgb(255, 220, 190)),
+            "AccesoRemoto" => ("⚠  CONTROL REMOTO DETECTADO", Color.FromRgb(255, 200, 200)),
+            "Alerta" => ("⚠  AVISO DE SEGURIDAD", Color.FromRgb(255, 210, 190)),
             _ => ("ℹ  INFORMACIÓN", Color.FromRgb(235, 235, 235))
         };
         Outcome.Text = text;
