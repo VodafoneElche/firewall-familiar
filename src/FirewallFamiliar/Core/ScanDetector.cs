@@ -46,7 +46,7 @@ public sealed class ScanDetector
     /// un puerto alto de este PC. Un escaneo es al revés: desde un puerto alto hacia los nuestros.
     /// </summary>
     public static bool LooksLikeReply(int remotePort, int localPort) =>
-        localPort >= 1024 && remotePort is > 0 and (< 1024 or 5228 or 8080 or 8443 or 3478 or 19302);
+        localPort >= 1024 && remotePort is > 0 and (< 1024 or 5228 or 8080 or 8443 or 3478 or 19302 or 1900 or 3702 or 5351 or 5353 or 5355);
 
     /// <summary>
     /// Anota un intento de entrada bloqueado. Devuelve el número de puertos probados si

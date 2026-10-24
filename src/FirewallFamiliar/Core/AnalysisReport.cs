@@ -173,10 +173,10 @@ public static class AnalysisReport
         if (inbound.Count == 0) sb.AppendLine("Ningún otro intento registrado.");
         else
         {
-            sb.AppendLine("| Origen | Pertenece a | Intentos | Puertos locales probados | Primero | Último |");
-            sb.AppendLine("|---|---|---|---|---|---|");
+            sb.AppendLine("| Origen | Pertenece a | Intentos | Puertos locales probados | Desde sus puertos | Protocolo | Primero | Último |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|");
             foreach (var g in inbound)
-                sb.AppendLine($"| {g.Key} | {Cell(Owner(g.Key))} | {g.Count()} | {string.Join(", ", g.Select(e => e.LocalPort).Distinct().OrderBy(p => p).Take(20))} | {g.Min(e => e.Time):dd/MM HH:mm} | {g.Max(e => e.Time):dd/MM HH:mm} |");
+                sb.AppendLine($"| {g.Key} | {Cell(Owner(g.Key))} | {g.Count()} | {string.Join(", ", g.Select(e => e.LocalPort).Distinct().OrderBy(p => p).Take(20))} | {string.Join(", ", g.Select(e => e.RemotePort).Distinct().OrderBy(p => p).Take(10))} | {string.Join("/", g.Select(e => e.Protocol).Where(x => x.Length > 0).Distinct())} | {g.Min(e => e.Time):dd/MM HH:mm} | {g.Max(e => e.Time):dd/MM HH:mm} |");
         }
         sb.AppendLine();
 

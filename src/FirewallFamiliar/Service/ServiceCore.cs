@@ -60,6 +60,8 @@ internal sealed class ServiceCore
     private Timer? _connTimer, _scanTimer, _updateTimer, _applyTimer, _remoteTimer;
     private bool _updating, _installingUpdate;
     private SocReporter? _soc;
+    /// <summary>Al volver de la suspensión llegan respuestas viejas (router, DNS...): no cuentan como escaneo.</summary>
+    private DateTime _quietScanUntil = DateTime.Now.AddSeconds(90);
     private RemoteAccessMonitor? _remote;
 
     private sealed class Client
@@ -135,6 +137,7 @@ internal sealed class ServiceCore
 
     public void OnResume()
     {
+        _quietScanUntil = DateTime.Now.AddSeconds(90);
         Log("El PC vuelve de la suspensión.");
         _soc?.OnResume();
     }
@@ -403,6 +406,7 @@ internal sealed class ServiceCore
     private void CheckScan(BlockedConnection c)
     {
         if (c.RemoteAddress == null || c.LocalPort == 0) return;
+        if (DateTime.Now < _quietScanUntil && c.LocalPort >= 1024) return;
         int ports;
         IReadOnlyList<int> list;
         lock (_scan)
