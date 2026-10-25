@@ -155,7 +155,7 @@ internal sealed class ServiceCore
                 if (!_trendSizes.TryGetValue(path, out var before) || size == before) continue;
                 var lines = TrendLogs.NewLines(path, size < before ? 0 : before);
                 if (lines.Count == 0) continue;
-                Log($"⚠ TREND MICRO: {TrendLogs.WhatIs(path)}: {string.Join(" | ", lines.TakeLast(5))}", "Alerta");
+                Log($"⚠ TREND MICRO: {TrendLogs.WhatIs(path)}: {TrendLogs.Summary(lines)}", "Alerta");
             }
         _trendSizes = sizes;
     }

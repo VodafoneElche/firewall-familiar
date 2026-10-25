@@ -1,4 +1,8 @@
-Novedades de esta versión (0.7.6):
+Novedades de esta versión (0.7.7):
+
+- Los avisos de Trend Micro llegan resumidos: qué amenaza, cuántas veces y con qué usuario, en vez de las líneas en bruto.
+
+De la 0.7.6:
 
 - El informe lee también los registros propios de Trend Micro: virus, spyware, comportamiento sospechoso, webs bloqueadas, análisis y conexión con su consola.
 - Si Trend Micro apunta un virus, spyware o comportamiento sospechoso, llega un aviso urgente al momento.

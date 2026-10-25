@@ -99,6 +99,22 @@ public static class TrendLogs
         catch { return new List<string>(); }
     }
 
+    /// <summary>
+    /// Resume las líneas de detección de Trend ("20261025 · 1137 · PUA.Win32.EicarTest.F · ... · jdomi · ...")
+    /// en algo legible: qué amenaza, cuántas veces y con qué usuario. Si no se entienden, devuelve las líneas tal cual.
+    /// </summary>
+    public static string Summary(List<string> lines)
+    {
+        var hits = lines.Select(l => l.Split(" · "))
+            .Where(f => f.Length >= 3 && f[0].Length == 8 && f[0].All(char.IsDigit) && f[2].Contains('.'))
+            .ToList();
+        if (hits.Count == 0) return string.Join(" | ", lines.TakeLast(5));
+        var names = hits.GroupBy(f => f[2]).Select(g => $"{g.Key} ({g.Count()} {(g.Count() == 1 ? "vez" : "veces")})");
+        var users = hits.SelectMany(f => f.Skip(3)).Where(x => x.Length is > 1 and < 30 && !char.IsDigit(x[0]) && x.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or ' ')).Distinct().Take(3).ToList();
+        return $"{string.Join(", ", names)}" + (users.Count > 0 ? $" · usuario: {string.Join(", ", users)}" : "") +
+               ". Trend Micro lo ha puesto en cuarentena o bloqueado (mira su consola para ver la acción).";
+    }
+
     public static string WhatIs(string path) =>
         Logs.FirstOrDefault(l => path.EndsWith(l.File, StringComparison.OrdinalIgnoreCase)).What ?? Path.GetFileName(path);
 
