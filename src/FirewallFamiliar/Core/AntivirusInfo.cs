@@ -29,7 +29,7 @@ public static class AntivirusInfo
     public static string Section(DateTime from, DateTime to)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("## 8. Antivirus (Trend Micro, Defender...)");
+        sb.AppendLine("## 9. Antivirus (Trend Micro, Defender...)");
         sb.AppendLine();
         try { Products(sb); } catch (Exception ex) { sb.AppendLine("- No se pudo consultar el Centro de seguridad: " + ex.Message); }
         sb.AppendLine();

@@ -14,7 +14,7 @@
     <AssemblyName>FirewallFamiliar</AssemblyName>
     <RootNamespace>FirewallFamiliar</RootNamespace>
     <Product>Firewall Familiar</Product>
-    <Version>0.7.7</Version>
+    <Version>0.8.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <Platforms>x64</Platforms>

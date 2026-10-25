@@ -60,7 +60,9 @@ internal sealed class ServiceCore
     private Timer? _connTimer, _scanTimer, _updateTimer, _applyTimer, _remoteTimer;
     private bool _updating, _installingUpdate;
     private SocReporter? _soc;
-    private Timer? _avTimer;
+    private Timer? _avTimer, _uploadTimer, _beaconTimer;
+    private UploadMonitor? _uploads;
+    private readonly Dictionary<string, DateTime> _beaconAlerts = new(StringComparer.OrdinalIgnoreCase);
     private DateTime _avSince = DateTime.Now;
     /// <summary>Al volver de la suspensión llegan respuestas viejas (router, DNS...): no cuentan como escaneo.</summary>
     private DateTime _quietScanUntil = DateTime.Now.AddSeconds(90);
@@ -96,6 +98,13 @@ internal sealed class ServiceCore
             pid => pid == 4 ? "System" : pid <= 4 ? "" : FileDetails.ProperCase(NativeMethods.GetProcessPath(pid) ?? ""));
         _remoteTimer = new Timer(_ => SafeRun(() => _remote.Check()), null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(20));
         _avTimer = new Timer(_ => SafeRun(CheckAntivirus), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2));
+        // Subidas grandes y programas que "llaman a casa"
+        _uploads = new UploadMonitor(
+            pid => pid <= 4 ? "" : FileDetails.ProperCase(NativeMethods.GetProcessPath(pid) ?? ""),
+            (text, outcome, app, ip) => Log(text, outcome, null, app, 0, ip));
+        if (_uploads.Start() is { } upErr) Log("⚠ No se pudo vigilar las subidas de datos: " + upErr);
+        _uploadTimer = new Timer(_ => SafeRun(() => _uploads.Check()), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+        _beaconTimer = new Timer(_ => SafeRun(CheckBeacons), null, TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(30));
         // Al arrancar (o tras una actualización) el icono de cada usuario conectado
         Task.Delay(3000).ContinueWith(_ => SafeRun(() => SessionLauncher.LaunchInAllSessions(_exe, msg => Log(msg))));
     }
@@ -114,6 +123,9 @@ internal sealed class ServiceCore
         });
         _remoteTimer?.Dispose();
         _avTimer?.Dispose();
+        _uploadTimer?.Dispose();
+        _beaconTimer?.Dispose();
+        _uploads?.Dispose();
         _soc?.Stop();
         _soc?.Goodbye(reason, shutdown ? 3 : 5);
         _stop.Cancel();
@@ -161,6 +173,33 @@ internal sealed class ServiceCore
     }
 
     private Dictionary<string, long>? _trendSizes;
+
+    /// <summary>
+    /// Programas que se conectan al mismo sitio como un reloj (últimas 3 horas). Solo se avisa al momento
+    /// si además el programa no tiene firma o vive en una carpeta rara; el resto sale en el informe diario.
+    /// </summary>
+    private void CheckBeacons()
+    {
+        var since = DateTime.Now.AddHours(-3);
+        var traffic = LogStore.Read(LogKind.Trafico, DateTime.Today).Where(e => e.Time >= since).ToList();
+        if (since.Date < DateTime.Today)
+            traffic.AddRange(LogStore.Read(LogKind.Trafico, since.Date).Where(e => e.Time >= since));
+        foreach (var b in Beacons.Find(traffic))
+        {
+            if (IsWindowsComponent(b.App)) continue;
+            var sig = Signature.Get(b.App);
+            bool suspicious = sig.Status == SignatureStatus.NoValida ||
+                              (sig.Status == SignatureStatus.SinFirma && Suspicion.OddFolder(b.App) != null) ||
+                              (sig.Status == SignatureStatus.SinFirma && !b.App.Contains(@"\Program Files", StringComparison.OrdinalIgnoreCase));
+            if (!suspicious) continue;
+            string key = b.App + "|" + b.Remote;
+            if (_beaconAlerts.TryGetValue(key, out var last) && DateTime.Now - last < TimeSpan.FromDays(1)) continue;
+            _beaconAlerts[key] = DateTime.Now;
+            Log($"⚠ POSIBLE ESPÍA: {ProcessMonitor.FileName(b.App)} se conecta a {b.Remote} cada {Beacons.IntervalText(b.Interval)} " +
+                $"como un reloj ({b.Count} veces desde las {b.First:HH:mm}) y no tiene firma digital. Así suelen \"llamar a casa\" los programas espía.",
+                "Sospechoso", null, b.App, 0, b.Remote);
+        }
+    }
 
     /// <summary>Se ha encendido o apagado la pantalla, o se ha abierto o cerrado la tapa.</summary>
     public void OnScreenOrLid() => _soc?.OnScreenOrLid();

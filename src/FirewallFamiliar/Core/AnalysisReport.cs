@@ -78,7 +78,7 @@ public static class AnalysisReport
         string antivirus = await Task.Run(() =>
         {
             try { return AntivirusInfo.Section(from, to); }
-            catch (Exception ex) { return "## 8. Antivirus\n\nNo se pudo leer: " + ex.Message + "\n\n"; }
+            catch (Exception ex) { return "## 9. Antivirus\n\nNo se pudo leer: " + ex.Message + "\n\n"; }
         }, cancel);
         return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners, antivirus), cancel);
     }
@@ -215,8 +215,31 @@ public static class AnalysisReport
 
         // ---------------- Registro de seguridad ----------------
         var sec = security.Count > MaxSecurityLines ? security.Skip(security.Count - MaxSecurityLines).ToList() : security;
+        // ---------------- Llamar a casa y subidas ----------------
+        var beacons = Beacons.Find(traffic);
+        var uploads = security.Where(e => e.Outcome == "Subida" || (e.Outcome == "Alerta" && e.Text.Contains("SUBIDA GRANDE"))).ToList();
+        sb.AppendLine($"## 8. Conexiones periódicas (\"llamar a casa\") y subidas grandes");
+        sb.AppendLine();
+        sb.AppendLine("Programas que abren conexiones con la misma IP a intervalos casi exactos. Lo hacen los programas espía para recibir órdenes, " +
+                      "pero también muchos programas normales (actualizadores, sincronización, mensajería). Lo raro es un programa desconocido o sin firma.");
+        sb.AppendLine();
+        if (beacons.Count == 0) sb.AppendLine("Ninguno.");
+        else
+        {
+            sb.AppendLine("| Programa | Destino | Pertenece a | Cada | Veces | Desde | Hasta | Regularidad | Firma |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|");
+            foreach (var b in beacons.Take(60))
+                sb.AppendLine($"| {Cell(Path.GetFileName(b.App))} | {b.Remote} | {Cell(Owner(b.Remote))} | {Beacons.IntervalText(b.Interval)} | {b.Count} | " +
+                              $"{b.First:dd/MM HH:mm} | {b.Last:dd/MM HH:mm} | {b.Regularity:P0} | {Cell(Signature.CheckNow(b.App).Short)} |");
+        }
+        sb.AppendLine();
+        sb.AppendLine($"Subidas grandes (más de 200 MB en una hora de un mismo programa): {uploads.Count}");
+        foreach (var u in uploads.Take(100))
+            sb.AppendLine($"- {u.Time:dd/MM HH:mm} {Cell(u.Text.TrimStart('⚠', ' '))}");
+        sb.AppendLine();
+
         sb.Append(antivirus);
-        sb.AppendLine($"## 9. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
+        sb.AppendLine($"## 10. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
         sb.AppendLine();
         sb.AppendLine("```");
         foreach (var e in sec)

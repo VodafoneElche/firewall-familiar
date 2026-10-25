@@ -1,4 +1,10 @@
-Novedades de esta versión (0.7.7):
+Novedades de esta versión (0.8.0):
+
+- Nuevo: vigilancia de SUBIDAS GRANDES. El servicio cuenta lo que cada programa envía a Internet. Si uno sube más de 1 GB en una hora (o más de 50 MB siendo un programa sin firma o en una carpeta rara), llega un aviso urgente. Las nubes y copias de seguridad (OneDrive, Google Drive, Dropbox...) solo se anotan.
+- Nuevo: detección de programas que "llaman a casa": conexiones al mismo sitio a intervalos casi exactos, como hacen los programas espía. Aviso urgente si el programa no tiene firma; todos salen en el informe diario.
+- El informe tiene una sección nueva "8. Conexiones periódicas y subidas grandes".
+
+De la 0.7.7:
 
 - Los avisos de Trend Micro llegan resumidos: qué amenaza, cuántas veces y con qué usuario, en vez de las líneas en bruto.
 
