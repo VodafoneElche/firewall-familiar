@@ -135,6 +135,9 @@ internal sealed class ServiceCore
         _soc?.Goodbye("suspension", 4);
     }
 
+    /// <summary>Se ha encendido o apagado la pantalla, o se ha abierto o cerrado la tapa.</summary>
+    public void OnScreenOrLid() => _soc?.OnScreenOrLid();
+
     public void OnResume()
     {
         _quietScanUntil = DateTime.Now.AddSeconds(90);

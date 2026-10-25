@@ -1,4 +1,8 @@
-Novedades de esta versión (0.7.3):
+Novedades de esta versión (0.7.4):
+
+- Arreglado: correo falso de "lleva un rato sin dar señales" al cerrar la tapa del portátil. En los portátiles modernos Windows no avisa de que se suspende; ahora el servicio vigila la pantalla y la tapa, y se despide antes de que se corte la red.
+
+De la 0.7.3:
 
 - Icono nuevo junto al reloj: flechas más gordas en semicírculo alrededor del escudo (verde = entran datos, roja = salen).
 

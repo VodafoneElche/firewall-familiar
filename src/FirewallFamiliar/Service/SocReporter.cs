@@ -33,6 +33,8 @@ internal sealed class SocReporter
     private readonly SemaphoreSlim _busy = new(1, 1);
     private State _state;
     private DateTime _lastBeat = DateTime.MinValue;
+    private DateTime _beatNotBefore = DateTime.MinValue;
+    private DateTime _lastScreenEvent = DateTime.MinValue;
     private DateTime _lastAlertFileWrite = DateTime.MinValue;
     private string? _lastError;
     private Timer? _timer;
@@ -55,7 +57,22 @@ internal sealed class SocReporter
     public void Stop() => _timer?.Dispose();
 
     /// <summary>El PC vuelve de la suspensión: latido en cuanto haya red.</summary>
-    public void OnResume() => _lastBeat = DateTime.MinValue;
+    public void OnResume() { _lastBeat = DateTime.MinValue; _beatNotBefore = DateTime.MinValue; }
+
+    /// <summary>
+    /// Pantalla o tapa: Windows no dice si se enciende o se apaga. Por si es que se va a dormir
+    /// (tapa cerrada en un portátil moderno, que no avisa de suspensión), se despide ya; y al
+    /// minuto y medio manda un latido. Si el PC sigue despierto el latido llega y vuelve a "activo";
+    /// si se ha dormido, no llega y el buzón no da la alarma de silencio.
+    /// </summary>
+    public void OnScreenOrLid()
+    {
+        if (DateTime.Now - _lastScreenEvent < TimeSpan.FromMinutes(2)) return;
+        _lastScreenEvent = DateTime.Now;
+        _beatNotBefore = DateTime.Now.AddSeconds(90);
+        _lastBeat = DateTime.MinValue;
+        System.Threading.ThreadPool.QueueUserWorkItem(_ => Goodbye("suspension", 5));
+    }
 
     /// <summary>Despedida rápida (apagado, suspensión, parada, actualización). No espera más de unos segundos.</summary>
     public void Goodbye(string reason, int seconds)
@@ -78,7 +95,7 @@ internal sealed class SocReporter
             var s = AppSettings.Load();
             if (!s.SocEnabled) return;
             bool sentSomething = await SendAlertsAsync(s);
-            if (!sentSomething && DateTime.Now - _lastBeat >= BeatEvery)
+            if (!sentSomething && DateTime.Now - _lastBeat >= BeatEvery && DateTime.Now >= _beatNotBefore)
                 if (await TrySendAsync(s, "latido", _status(), 30)) _lastBeat = DateTime.Now;
             await SendReportsAsync(s);
         }
