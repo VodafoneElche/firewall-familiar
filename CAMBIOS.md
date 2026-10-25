@@ -1,4 +1,10 @@
-Novedades de esta versión (0.8.1):
+Novedades de esta versión (0.8.2):
+
+- SOC familiar: si el servicio no consigue conectar con el buzón (pasaba en algún PC con la conexión segura de Google), los avisos, latidos e informes se mandan a través del icono del reloj, que usa la conexión del usuario. Así los avisos urgentes llegan igual.
+- Si el antivirus detecta algo justo antes de apagar el PC, el aviso se manda al volver a encenderlo (antes se perdía).
+- Cuando falla la conexión con el buzón, el registro apunta el motivo exacto que da Windows.
+
+De la 0.8.1:
 
 - El detector de control remoto reconoce también Zoho Assist (ZA_Connect, agent.exe de ZohoMeeting...) y cualquier programa que viva en la carpeta de una herramienta de control remoto conocida, aunque tenga un nombre genérico.
 - En el informe, el resumen por programa enseña también la carpeta de cada programa.

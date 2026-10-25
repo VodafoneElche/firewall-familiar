@@ -63,7 +63,29 @@ internal sealed class ServiceCore
     private Timer? _avTimer, _uploadTimer, _beaconTimer;
     private UploadMonitor? _uploads;
     private readonly Dictionary<string, DateTime> _beaconAlerts = new(StringComparer.OrdinalIgnoreCase);
-    private DateTime _avSince = DateTime.Now;
+    /// <summary>
+    /// Hasta dónde se han revisado las detecciones del antivirus. Se guarda en disco para que una detección
+    /// justo antes de apagar el PC se avise al encenderlo.
+    /// </summary>
+    private DateTime _avSince = LoadAvSince();
+    private static readonly string AvSinceFile = Path.Combine(RuleStore.Folder, "antivirus-revisado.txt");
+
+    private static DateTime LoadAvSince()
+    {
+        try
+        {
+            if (File.Exists(AvSinceFile) && DateTime.TryParse(File.ReadAllText(AvSinceFile).Trim(), System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var t))
+                return t < DateTime.Now.AddDays(-2) ? DateTime.Now.AddDays(-2) : t;
+        }
+        catch { }
+        return DateTime.Now;
+    }
+
+    private void SaveAvSince()
+    {
+        try { File.WriteAllText(AvSinceFile, _avSince.ToString("o")); } catch { }
+    }
     /// <summary>Al volver de la suspensión llegan respuestas viejas (router, DNS...): no cuentan como escaneo.</summary>
     private DateTime _quietScanUntil = DateTime.Now.AddSeconds(90);
     private RemoteAccessMonitor? _remote;
@@ -73,7 +95,39 @@ internal sealed class ServiceCore
         public required PipeChannel Channel { get; init; }
         public required NamedPipeServerStream Server { get; init; }
         public int Session { get; init; }
+        /// <summary>Es el icono de un usuario (los iconos saludan con "hola"; la ventana completa no).</summary>
+        public bool IsTray { get; set; }
     }
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, TaskCompletionSource<string?>> _relayWaits = new();
+    private int _relayId;
+
+    /// <summary>
+    /// Plan B del SOC: pide a un icono (que funciona con la cuenta del usuario) que mande el mensaje al buzón.
+    /// Devuelve null si ha llegado bien.
+    /// </summary>
+    private async Task<string?> RelayToTrayAsync(string url, string json, int timeoutSeconds)
+    {
+        Client? tray;
+        lock (_clients) tray = _clients.Where(c => c.IsTray && c != _gui).OrderBy(c => c.Session == ActiveConsoleSession() ? 0 : 1).FirstOrDefault();
+        if (tray == null) return "No hay ningún icono conectado.";
+        int id = Interlocked.Increment(ref _relayId);
+        var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _relayWaits[id] = tcs;
+        try
+        {
+            if (!await tray.Channel.SendAsync(new PipeMessage { T = "soc-enviar", Id = id, Path = url, Text = json, RemotePort = timeoutSeconds }))
+                return "No se pudo hablar con el icono.";
+            var done = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(timeoutSeconds + 5)));
+            return done == tcs.Task ? tcs.Task.Result : "El icono no contestó.";
+        }
+        finally { _relayWaits.TryRemove(id, out _); }
+    }
+
+    private static int ActiveConsoleSession() => (int)WTSGetActiveConsoleSessionId();
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern uint WTSGetActiveConsoleSessionId();
 
     // =====================================================================
     // Arranque y parada
@@ -91,7 +145,7 @@ internal sealed class ServiceCore
         _scanTimer = new Timer(_ => SafeRun(() => { lock (_gate) CheckPortScanOption(); }), null, 60000, 60000);
         _updateTimer = new Timer(_ => _ = CheckUpdatesAsync(), null, TimeSpan.FromMinutes(2), TimeSpan.FromHours(6));
         // SOC familiar y detector de control remoto (siguen funcionando aunque la ventana esté abierta)
-        _soc = new SocReporter(msg => Log(msg), SocStatus);
+        _soc = new SocReporter(msg => Log(msg), SocStatus, RelayToTrayAsync);
         _soc.Start();
         _remote = new RemoteAccessMonitor(
             (text, app, pid, remote, rport, lport) => Log(text, "AccesoRemoto", null, app, pid, remote, rport, lport),
@@ -154,10 +208,13 @@ internal sealed class ServiceCore
     /// <summary>Si el antivirus (Trend Micro, Defender) ha detectado algo, se avisa como alerta.</summary>
     private void CheckAntivirus()
     {
+        var checkedAt = DateTime.Now;
         var found = AntivirusInfo.DetectionsSince(_avSince);
         foreach (var (time, source, text) in found.Take(10))
-            Log($"⚠ ANTIVIRUS ({source}) a las {time:HH:mm:ss}: {text}", "Alerta");
+            Log($"⚠ ANTIVIRUS ({source}) {(time.Date == DateTime.Today ? "" : $"el {time:dd/MM} ")}a las {time:HH:mm:ss}: {text}", "Alerta");
         if (found.Count > 0) _avSince = found[^1].Time;
+        else if (checkedAt.AddMinutes(-1) > _avSince) _avSince = checkedAt.AddMinutes(-1); // margen por si Windows apunta el evento con retraso
+        SaveAvSince();
 
         // Registros propios de Trend Micro: si crecen, hay una detección nueva
         var sizes = TrendLogs.UrgentSizes();
@@ -715,7 +772,10 @@ internal sealed class ServiceCore
                     case "modo":
                     case "desbloquear": OnModeRequest(client, m); break;
                     case "pausa": await OnPauseAsync(client); break;
-                    case "hola": SendStatus(client); break;
+                    case "hola": client.IsTray = true; SendStatus(client); break;
+                    case "soc-resultado":
+                        if (_relayWaits.TryGetValue(m.Id, out var wait)) wait.TrySetResult(m.Ok ? null : (m.Error.Length > 0 ? m.Error : "Error en el icono."));
+                        break;
                     case "abrir-ventana": OnOpenWindow(client); break;
                 }
             }

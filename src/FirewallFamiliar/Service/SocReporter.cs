@@ -30,6 +30,12 @@ internal sealed class SocReporter
 
     private readonly Action<string> _log;
     private readonly Func<object> _status;
+    /// <summary>
+    /// Plan B: mandar el mensaje a través del icono del usuario. En algún PC el servicio (cuenta SYSTEM)
+    /// no consigue la conexión segura con Google y el usuario sí; así los avisos llegan igual.
+    /// </summary>
+    private readonly Func<string, string, int, Task<string?>>? _relay;
+    private bool _usingRelay;
     private readonly SemaphoreSlim _busy = new(1, 1);
     private State _state;
     private DateTime _lastBeat = DateTime.MinValue;
@@ -45,10 +51,11 @@ internal sealed class SocReporter
         public DateTime LastReportDay { get; set; }
     }
 
-    public SocReporter(Action<string> log, Func<object> status)
+    public SocReporter(Action<string> log, Func<object> status, Func<string, string, int, Task<string?>>? relay = null)
     {
         _log = log;
         _status = status;
+        _relay = relay;
         _state = LoadState();
     }
 
@@ -81,7 +88,8 @@ internal sealed class SocReporter
         if (!s.SocEnabled) return;
         try
         {
-            var t = SocClient.SendAsync(s, "adios", new { motivo = reason }, seconds);
+            var (url, json) = SocClient.Build(s, "adios", new { motivo = reason });
+            var t = _usingRelay && _relay != null ? _relay(url, json, seconds) : SocClient.PostAsync(url, json, seconds);
             t.Wait(TimeSpan.FromSeconds(seconds + 1));
         }
         catch { }
@@ -157,15 +165,29 @@ internal sealed class SocReporter
 
     private async Task<bool> TrySendAsync(AppSettings s, string type, object data, int timeout)
     {
-        string? error = await SocClient.SendAsync(s, type, data, timeout);
+        var (url, json) = SocClient.Build(s, type, data);
+        string? error = await SocClient.PostAsync(url, json, timeout);
         if (error == null)
         {
-            if (_lastError != null) _log("SOC familiar: vuelve a haber conexión con el buzón.");
+            if (_lastError != null || _usingRelay) _log("SOC familiar: vuelve a haber conexión con el buzón.");
             _lastError = null;
+            _usingRelay = false;
             return true;
         }
         if (error != _lastError) _log("⚠ SOC familiar: " + error + " Se reintentará.");
         _lastError = error;
+
+        // Plan B: a través del icono del usuario
+        if (_relay != null)
+        {
+            string? relayError = await _relay(url, json, timeout);
+            if (relayError == null)
+            {
+                if (!_usingRelay) _log("SOC familiar: el servicio no llega al buzón, pero el icono sí: los envíos van a través del icono.");
+                _usingRelay = true;
+                return true;
+            }
+        }
         return false;
     }
 

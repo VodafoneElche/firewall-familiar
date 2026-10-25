@@ -29,9 +29,16 @@ public static class SocClient
     /// Envía un mensaje al buzón. <paramref name="type"/>: "latido", "adios", "aviso" o "informe".
     /// Devuelve null si ha llegado bien, o el motivo del fallo.
     /// </summary>
-    public static async Task<string?> SendAsync(AppSettings s, string type, object data, int timeoutSeconds = 60)
+    public static Task<string?> SendAsync(AppSettings s, string type, object data, int timeoutSeconds = 60)
     {
-        if (!s.SocEnabled) return "El SOC familiar no está configurado.";
+        if (!s.SocEnabled) return Task.FromResult<string?>("El SOC familiar no está configurado.");
+        var (url, json) = Build(s, type, data);
+        return PostAsync(url, json, timeoutSeconds);
+    }
+
+    /// <summary>Dirección (con la clave) y contenido del mensaje, para mandarlo aquí o a través del icono.</summary>
+    public static (string Url, string Json) Build(AppSettings s, string type, object data)
+    {
         var body = new System.Collections.Generic.Dictionary<string, object?>
         {
             ["tipo"] = type,
@@ -42,10 +49,16 @@ public static class SocClient
         };
         string url = s.SocUrl.Trim();
         url += (url.Contains('?') ? "&" : "?") + "k=" + Uri.EscapeDataString(s.SocKey.Trim());
+        return (url, JsonSerializer.Serialize(body));
+    }
+
+    /// <summary>Envía un mensaje ya preparado. Devuelve null si ha llegado bien, o el motivo del fallo.</summary>
+    public static async Task<string?> PostAsync(string url, string json, int timeoutSeconds = 60)
+    {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
         try
         {
-            using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "text/plain");
+            using var content = new StringContent(json, Encoding.UTF8, "text/plain");
             using var resp = await Http.PostAsync(url, content, cts.Token);
             string text = (await resp.Content.ReadAsStringAsync(cts.Token)).Trim();
             if (text == "ok") return null;
@@ -56,7 +69,16 @@ public static class SocClient
                 : "El buzón no contestó lo esperado. ¿La dirección es la de la aplicación web publicada (termina en /exec)?";
         }
         catch (OperationCanceledException) { return "El buzón no contesta (tiempo agotado)."; }
-        catch (HttpRequestException ex) { return "No se puede llegar al buzón: " + ex.Message; }
-        catch (Exception ex) { return ex.Message; }
+        catch (HttpRequestException ex) { return "No se puede llegar al buzón: " + Detail(ex); }
+        catch (Exception ex) { return Detail(ex); }
+    }
+
+    /// <summary>El mensaje del error con sus causas ("inner exception"), que es donde Windows dice el motivo real.</summary>
+    public static string Detail(Exception ex)
+    {
+        var parts = new System.Collections.Generic.List<string>();
+        for (Exception? e = ex; e != null && parts.Count < 4; e = e.InnerException)
+            if (!parts.Contains(e.Message)) parts.Add(e.Message.Replace("See inner exception", "").Replace("see inner exception", "").Trim(' ', ',', '.'));
+        return string.Join(" → ", parts) + ".";
     }
 }

@@ -17,7 +17,7 @@ public sealed class PipeMessage
 {
     /// <summary>
     /// Tipo. Del servicio: "estado", "pregunta", "cerrar-pregunta", "aviso", "respuesta-modo", "pausado".
-    /// Del usuario: "hola", "respuesta", "modo", "desbloquear", "pausa".
+    /// Del usuario: "hola", "respuesta", "modo", "desbloquear", "pausa". SOC (plan B): "soc-enviar" (servicio → icono) y "soc-resultado".
     /// </summary>
     public string T { get; set; } = "";
 

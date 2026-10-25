@@ -109,6 +109,15 @@ public sealed class TrayClient
             case "aviso":
                 if (_status.TrayAlerts || m.Title.StartsWith("Contraseña")) _tray.Alert(m.Title, m.Text, m.Warning);
                 break;
+            case "soc-enviar":
+                // El servicio no llega al buzón del SOC: lo mandamos nosotros, con la conexión del usuario
+                var ch = _channel;
+                _ = Task.Run(async () =>
+                {
+                    string? error = await SocClient.PostAsync(m.Path, m.Text, m.RemotePort > 0 ? m.RemotePort : 60);
+                    if (ch != null) await ch.SendAsync(new PipeMessage { T = "soc-resultado", Id = m.Id, Ok = error == null, Error = error ?? "" });
+                });
+                break;
             case "pregunta":
                 _questions.Enqueue(m);
                 ShowNextQuestion();
