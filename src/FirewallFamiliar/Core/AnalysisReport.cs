@@ -74,11 +74,17 @@ public static class AnalysisReport
         }
 
         progress?.Report("Escribiendo el informe...");
-        return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners), cancel);
+        progress?.Report("Leyendo los registros del antivirus...");
+        string antivirus = await Task.Run(() =>
+        {
+            try { return AntivirusInfo.Section(from, to); }
+            catch (Exception ex) { return "## 8. Antivirus\n\nNo se pudo leer: " + ex.Message + "\n\n"; }
+        }, cancel);
+        return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners, antivirus), cancel);
     }
 
     private static string Write(int days, DateTime from, DateTime to, RuleSet rules, IReadOnlyList<ProcessSummary> procs,
-        List<LogEntry> security, List<LogEntry> traffic, Dictionary<string, IpOwner> owners)
+        List<LogEntry> security, List<LogEntry> traffic, Dictionary<string, IpOwner> owners, string antivirus)
     {
         var sb = new StringBuilder();
         string Owner(string? ip)
@@ -209,7 +215,8 @@ public static class AnalysisReport
 
         // ---------------- Registro de seguridad ----------------
         var sec = security.Count > MaxSecurityLines ? security.Skip(security.Count - MaxSecurityLines).ToList() : security;
-        sb.AppendLine($"## 8. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
+        sb.Append(antivirus);
+        sb.AppendLine($"## 9. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
         sb.AppendLine();
         sb.AppendLine("```");
         foreach (var e in sec)

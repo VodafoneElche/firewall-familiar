@@ -60,6 +60,8 @@ internal sealed class ServiceCore
     private Timer? _connTimer, _scanTimer, _updateTimer, _applyTimer, _remoteTimer;
     private bool _updating, _installingUpdate;
     private SocReporter? _soc;
+    private Timer? _avTimer;
+    private DateTime _avSince = DateTime.Now;
     /// <summary>Al volver de la suspensión llegan respuestas viejas (router, DNS...): no cuentan como escaneo.</summary>
     private DateTime _quietScanUntil = DateTime.Now.AddSeconds(90);
     private RemoteAccessMonitor? _remote;
@@ -93,6 +95,7 @@ internal sealed class ServiceCore
             (text, app, pid, remote, rport, lport) => Log(text, "AccesoRemoto", null, app, pid, remote, rport, lport),
             pid => pid == 4 ? "System" : pid <= 4 ? "" : FileDetails.ProperCase(NativeMethods.GetProcessPath(pid) ?? ""));
         _remoteTimer = new Timer(_ => SafeRun(() => _remote.Check()), null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(20));
+        _avTimer = new Timer(_ => SafeRun(CheckAntivirus), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2));
         // Al arrancar (o tras una actualización) el icono de cada usuario conectado
         Task.Delay(3000).ContinueWith(_ => SafeRun(() => SessionLauncher.LaunchInAllSessions(_exe, msg => Log(msg))));
     }
@@ -110,6 +113,7 @@ internal sealed class ServiceCore
             _ => "⚠ Alguien ha parado el servicio de Firewall Familiar: el PC se queda sin protección."
         });
         _remoteTimer?.Dispose();
+        _avTimer?.Dispose();
         _soc?.Stop();
         _soc?.Goodbye(reason, shutdown ? 3 : 5);
         _stop.Cancel();
@@ -133,6 +137,15 @@ internal sealed class ServiceCore
     {
         Log("El PC entra en suspensión.");
         _soc?.Goodbye("suspension", 4);
+    }
+
+    /// <summary>Si el antivirus (Trend Micro, Defender) ha detectado algo, se avisa como alerta.</summary>
+    private void CheckAntivirus()
+    {
+        var found = AntivirusInfo.DetectionsSince(_avSince);
+        foreach (var (time, source, text) in found.Take(10))
+            Log($"⚠ ANTIVIRUS ({source}) a las {time:HH:mm:ss}: {text}", "Alerta");
+        if (found.Count > 0) _avSince = found[^1].Time;
     }
 
     /// <summary>Se ha encendido o apagado la pantalla, o se ha abierto o cerrado la tapa.</summary>

@@ -1,4 +1,9 @@
-Novedades de esta versión (0.7.4):
+Novedades de esta versión (0.7.5):
+
+- El informe trae una sección nueva "Antivirus": qué antivirus tiene el PC (Trend Micro, Defender...), si están activos y al día, y sus eventos en los registros de Windows (detecciones, análisis, errores).
+- Si el antivirus detecta un virus, llega un aviso urgente al momento (y correo del SOC).
+
+De la 0.7.4:
 
 - Arreglado: correo falso de "lleva un rato sin dar señales" al cerrar la tapa del portátil. En los portátiles modernos Windows no avisa de que se suspende; ahora el servicio vigila la pantalla y la tapa, y se despide antes de que se corte la red.
 
