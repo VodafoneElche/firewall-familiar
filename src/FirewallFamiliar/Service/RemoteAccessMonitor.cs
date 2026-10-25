@@ -43,6 +43,8 @@ internal sealed class RemoteAccessMonitor
         ["client32"] = "NetSupport", ["meshagent"] = "MeshCentral",
         ["parsecd"] = "Parsec", ["action1_agent"] = "Action1",
         ["simplehelp"] = "SimpleHelp", ["remotepcservice"] = "RemotePC", ["zohoassist"] = "Zoho Assist",
+        ["za_connect"] = "Zoho Assist", ["zaservice"] = "Zoho Assist", ["zohomeeting"] = "Zoho Assist", ["zaupdater"] = "Zoho Assist",
+        ["zohourls"] = "Zoho Assist", ["za_session"] = "Zoho Assist",
         ["getscreen"] = "Getscreen", ["dwservice"] = "DWService", ["iperius"] = "Iperius Remote"
     };
 
@@ -101,16 +103,39 @@ internal sealed class RemoteAccessMonitor
         catch { }
     }
 
+    /// <summary>Carpetas típicas de programas de control remoto (por si el .exe tiene un nombre genérico, como "agent.exe").</summary>
+    private static readonly (string Folder, string Tool)[] ToolFolders =
+    {
+        (@"\anydesk", "AnyDesk"), (@"\teamviewer", "TeamViewer"), (@"\rustdesk", "RustDesk"), (@"\zohomeeting", "Zoho Assist"),
+        (@"\zoho assist", "Zoho Assist"), (@"\zoho\assist", "Zoho Assist"), (@"\screenconnect", "ScreenConnect"),
+        (@"\connectwise", "ScreenConnect"), (@"\splashtop", "Splashtop"), (@"\ultraviewer", "UltraViewer"), (@"\supremo", "Supremo"),
+        (@"\todesk", "ToDesk"), (@"\atera", "Atera"), (@"\logmein", "LogMeIn"), (@"\realvnc", "RealVNC"), (@"\tightvnc", "TightVNC"),
+        (@"\ultravnc", "UltraVNC"), (@"\remote utilities", "Remote Utilities"), (@"\netsupport", "NetSupport"), (@"\getscreen", "Getscreen"),
+        (@"\meshagent", "MeshCentral"), (@"\simplehelp", "SimpleHelp"), (@"\remotepc", "RemotePC"), (@"\dwagent", "DWService")
+    };
+
+    private readonly Dictionary<int, string> _paths = new();
+
+    private static string? ToolByFolder(string path)
+    {
+        foreach (var (folder, tool) in ToolFolders)
+            if (path.Contains(folder, StringComparison.OrdinalIgnoreCase)) return tool;
+        return null;
+    }
+
     private void CheckProcesses()
     {
         var alive = new HashSet<int>();
+        var all = new HashSet<int>();
         foreach (var p in Process.GetProcesses())
             using (p)
             {
                 string name;
                 int pid;
                 try { name = p.ProcessName; pid = p.Id; } catch { continue; }
-                if (!Tools.TryGetValue(name, out var tool)) continue;
+                all.Add(pid);
+                if (!_paths.TryGetValue(pid, out var procPath)) _paths[pid] = procPath = pid <= 4 ? "" : _pathOf(pid);
+                if (!Tools.TryGetValue(name, out var tool) && (tool = ToolByFolder(procPath)) == null) continue;
                 alive.Add(pid);
                 if (!_seenToolPids.Add(pid)) continue;
                 string path = _pathOf(pid);
@@ -120,6 +145,7 @@ internal sealed class RemoteAccessMonitor
                        "desconecta Internet y revisa el PC.", path.Length > 0 ? path : null, pid, null, 0, 0);
             }
         _seenToolPids.IntersectWith(alive);
+        foreach (var dead in _paths.Keys.Where(k => !all.Contains(k)).ToList()) _paths.Remove(dead);
     }
 
     private void CheckConnections()
@@ -147,7 +173,7 @@ internal sealed class RemoteAccessMonitor
                 continue;
             }
 
-            if (ToolPorts.TryGetValue(c.RemotePort, out var tool) && !Tools.ContainsKey(Path.GetFileNameWithoutExtension(path)) &&
+            if (ToolPorts.TryGetValue(c.RemotePort, out var tool) && !Tools.ContainsKey(Path.GetFileNameWithoutExtension(path)) && ToolByFolder(path) == null &&
                 Due("port:" + (path.Length > 0 ? path : prog) + "|" + c.RemotePort, TimeSpan.FromHours(6)))
                 _alert($"⚠ POSIBLE CONTROL REMOTO: {prog} está conectado a {ipText}:{c.RemotePort}, el puerto que usa {tool}. " +
                        "Puede ser un programa de control remoto con otro nombre.",

@@ -142,7 +142,7 @@ public static class AnalysisReport
             var top = g.Where(e => e.Remote != null).GroupBy(e => (e.Remote, Port: e.Inbound ? e.LocalPort : e.RemotePort))
                 .OrderByDescending(x => x.Count()).Take(6)
                 .Select(x => $"{x.Key.Remote}:{x.Key.Port} {Owner(x.Key.Remote)} ×{x.Count()}");
-            sb.AppendLine($"| {(g.Key.Length == 0 ? "(sin programa: Windows o servicio del sistema)" : Cell(Path.GetFileName(g.Key)))} | {g.Count(e => e.Outcome == "Permitido")} | {g.Count(e => e.Outcome == "Bloqueado")} | " +
+            sb.AppendLine($"| {(g.Key.Length == 0 ? "(sin programa: Windows o servicio del sistema)" : $"{Cell(Path.GetFileName(g.Key))} ({Cell(Path.GetDirectoryName(g.Key))})")} | {g.Count(e => e.Outcome == "Permitido")} | {g.Count(e => e.Outcome == "Bloqueado")} | " +
                           $"{g.Select(e => e.Remote).Distinct().Count()} | {g.Min(e => e.Time):dd/MM HH:mm} | {g.Max(e => e.Time):dd/MM HH:mm} | {Cell(string.Join("; ", top))} |");
         }
         sb.AppendLine();
