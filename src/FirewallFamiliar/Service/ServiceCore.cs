@@ -146,7 +146,21 @@ internal sealed class ServiceCore
         foreach (var (time, source, text) in found.Take(10))
             Log($"⚠ ANTIVIRUS ({source}) a las {time:HH:mm:ss}: {text}", "Alerta");
         if (found.Count > 0) _avSince = found[^1].Time;
+
+        // Registros propios de Trend Micro: si crecen, hay una detección nueva
+        var sizes = TrendLogs.UrgentSizes();
+        if (_trendSizes != null)
+            foreach (var (path, size) in sizes)
+            {
+                if (!_trendSizes.TryGetValue(path, out var before) || size == before) continue;
+                var lines = TrendLogs.NewLines(path, size < before ? 0 : before);
+                if (lines.Count == 0) continue;
+                Log($"⚠ TREND MICRO: {TrendLogs.WhatIs(path)}: {string.Join(" | ", lines.TakeLast(5))}", "Alerta");
+            }
+        _trendSizes = sizes;
     }
+
+    private Dictionary<string, long>? _trendSizes;
 
     /// <summary>Se ha encendido o apagado la pantalla, o se ha abierto o cerrado la tapa.</summary>
     public void OnScreenOrLid() => _soc?.OnScreenOrLid();

@@ -1,4 +1,9 @@
-Novedades de esta versión (0.7.5):
+Novedades de esta versión (0.7.6):
+
+- El informe lee también los registros propios de Trend Micro: virus, spyware, comportamiento sospechoso, webs bloqueadas, análisis y conexión con su consola.
+- Si Trend Micro apunta un virus, spyware o comportamiento sospechoso, llega un aviso urgente al momento.
+
+De la 0.7.5:
 
 - El informe trae una sección nueva "Antivirus": qué antivirus tiene el PC (Trend Micro, Defender...), si están activos y al día, y sus eventos en los registros de Windows (detecciones, análisis, errores).
 - Si el antivirus detecta un virus, llega un aviso urgente al momento (y correo del SOC).

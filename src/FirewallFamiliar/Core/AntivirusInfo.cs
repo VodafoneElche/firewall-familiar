@@ -58,6 +58,8 @@ public static class AntivirusInfo
             if (events.Count > shown.Count) sb.AppendLine($"\n({events.Count - shown.Count} eventos informativos más no se muestran.)");
         }
         sb.AppendLine();
+        try { sb.Append(TrendLogs.Section(from, to)); }
+        catch (Exception ex) { sb.AppendLine("Registros de Trend Micro: no se pudieron leer (" + ex.Message + ")."); sb.AppendLine(); }
         return sb.ToString();
     }
 
