@@ -68,7 +68,7 @@ public static class Signature
         if (string.IsNullOrEmpty(path)) return new SignatureInfo(SignatureStatus.Desconocida, "", "sin ruta");
         if (string.Equals(path, "System", StringComparison.OrdinalIgnoreCase))
             return new SignatureInfo(SignatureStatus.Valida, "Microsoft Windows", "");
-        if (string.Equals(path, Environment.ProcessPath, StringComparison.OrdinalIgnoreCase))
+        if (IsOwn(path))
             return new SignatureInfo(SignatureStatus.Valida, "Firewall Familiar (este programa)", "");
         if (Cache.TryGetValue(path, out var hit)) return hit.Info;
         if (Queued.TryAdd(path, 0))
@@ -77,6 +77,19 @@ public static class Signature
             Work.Add(path);
         }
         return SignatureInfo.Pending;
+    }
+
+    /// <summary>
+    /// Firewall Familiar no tiene firma de pago: su propio programa y los instaladores de sus
+    /// actualizaciones (que el programa descarga y comprueba) se dan por buenos.
+    /// </summary>
+    public static bool IsOwn(string path)
+    {
+        if (string.Equals(path, Environment.ProcessPath, StringComparison.OrdinalIgnoreCase)) return true;
+        if (string.Equals(path, Installer.InstalledExe, StringComparison.OrdinalIgnoreCase)) return true;
+        string updates = System.IO.Path.Combine(RuleStore.Folder, "actualizacion") + "\\";
+        return path.StartsWith(updates, StringComparison.OrdinalIgnoreCase) &&
+               System.IO.Path.GetFileName(path).StartsWith("FirewallFamiliar-Instalar", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Comprobación inmediata (para las fichas de detalles).</summary>
