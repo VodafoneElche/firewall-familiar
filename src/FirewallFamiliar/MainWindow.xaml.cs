@@ -316,7 +316,7 @@ public partial class MainWindow : Window
         {
             string key = $"{c.Pid}|{c.Protocol}|{c.Local}|{c.Remote}";
             if (!seen.Add(key)) continue;
-            if (!c.IsListening && IPAddress.TryParse(c.RemoteAddress, out var seenIp)) _scan.NoteOutbound(seenIp, DateTime.Now);
+            if (!c.IsListening && IPAddress.TryParse(c.RemoteAddress, out var seenIp)) _scan.NoteOutbound(seenIp, DateTime.Now, c.RemotePort);
             string program = _appsByPid.TryGetValue(c.Pid, out var app) ? app.Name : (c.Pid == 0 ? "Sistema" : "?");
 
             if (_connsByKey.TryGetValue(key, out var row))

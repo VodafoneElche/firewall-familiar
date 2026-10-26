@@ -309,7 +309,7 @@ public partial class MainWindow
         if (c.Inbound) _blockedInThisSecond++; else _blockedOutThisSecond++;
         _blockedTotal++;
         LogTrafficBlock(c);
-        if (!c.Inbound && c.RemoteAddress != null) _scan.NoteOutbound(c.RemoteAddress, DateTime.Now);
+        if (!c.Inbound && c.RemoteAddress != null) _scan.NoteOutbound(c.RemoteAddress, DateTime.Now, c.RemotePort);
         if (c.Inbound && c.RemoteAddress != null)
         {
             _attemptsThisSecond++;

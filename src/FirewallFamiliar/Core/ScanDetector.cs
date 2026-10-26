@@ -28,8 +28,17 @@ public sealed class ScanDetector
     /// respuestas, no un escaneo: por ejemplo al pulsar "Bloquear todo" con conexiones abiertas,
     /// las respuestas del DNS o de las webs llegan a muchos puertos distintos y se bloquean.
     /// </summary>
-    public void NoteOutbound(IPAddress remote, DateTime now)
+    public void NoteOutbound(IPAddress remote, DateTime now, int remotePort = 0)
     {
+        // El puerto concreto se recuerda siempre, también en casa: lo que vuelva de ese mismo
+        // puerto (p. ej. el router contestando a Tailscale en su puerto 52869) es una respuesta.
+        if (remotePort > 0)
+        {
+            _contactedPorts[(remote, remotePort)] = now;
+            if (_contactedPorts.Count > 5000)
+                foreach (var k in _contactedPorts.Where(kv => now - kv.Value > ContactMemory).Select(kv => kv.Key).ToList())
+                    _contactedPorts.Remove(k);
+        }
         // En la red de casa los aparatos se hablan entre ellos a menudo: ahí no se aplica,
         // para no esconder un escaneo de verdad desde otro ordenador de casa.
         if (IpInfo.Special(remote) != null) return;
@@ -38,6 +47,8 @@ public sealed class ScanDetector
             foreach (var k in _contacted.Where(kv => now - kv.Value > ContactMemory).Select(kv => kv.Key).ToList())
                 _contacted.Remove(k);
     }
+
+    private readonly Dictionary<(IPAddress, int), DateTime> _contactedPorts = new();
 
     private static readonly TimeSpan ContactMemory = TimeSpan.FromMinutes(15);
 
@@ -56,6 +67,11 @@ public sealed class ScanDetector
     {
         if (LooksLikeReply(remotePort, localPort)) return 0;
         if (_contacted.TryGetValue(remote, out var contacted) && now - contacted < ContactMemory) return 0;
+        if (_contactedPorts.TryGetValue((remote, remotePort), out var contactedPort) && now - contactedPort < ContactMemory) return 0;
+        // Desde casa, hacia los puertos temporales de este PC (49152 en adelante) y desde un puerto alto:
+        // son respuestas tardías a conexiones que abrió este PC (al reiniciarse el servicio o al despertar).
+        // Un escaneo de verdad prueba los puertos de servicios (por debajo de 49152).
+        if (localPort >= 49152 && remotePort >= 1024 && IpInfo.Special(remote) != null) return 0;
         if (!_hits.TryGetValue(remote, out var list)) _hits[remote] = list = new();
         list.Add((now, localPort));
         list.RemoveAll(h => now - h.Time > Window);

@@ -396,7 +396,7 @@ internal sealed class ServiceCore
     {
         LogTrafficBlock(c);
         if (c.Inbound && c.RemoteAddress != null) CheckScan(c);
-        else if (c.RemoteAddress != null) lock (_scan) _scan.NoteOutbound(c.RemoteAddress, DateTime.Now);
+        else if (c.RemoteAddress != null) lock (_scan) _scan.NoteOutbound(c.RemoteAddress, DateTime.Now, c.RemotePort);
 
         lock (_gate)
         {
@@ -601,7 +601,7 @@ internal sealed class ServiceCore
         {
             alive.Add(c.Pid);
             if (c.IsListening || c.RemoteAddress.Length == 0) continue;
-            if (IPAddress.TryParse(c.RemoteAddress, out var seenIp)) lock (_scan) _scan.NoteOutbound(seenIp, DateTime.Now);
+            if (IPAddress.TryParse(c.RemoteAddress, out var seenIp)) lock (_scan) _scan.NoteOutbound(seenIp, DateTime.Now, c.RemotePort);
             string key = $"{c.Pid}|{c.Protocol}|{c.Local}|{c.Remote}";
             now.Add(key);
             if (_knownConnections.Contains(key)) continue;

@@ -1,4 +1,8 @@
-Novedades de esta versión (0.8.2):
+Novedades de esta versión (0.8.3):
+
+- Arreglado un falso "POSIBLE ATAQUE" del router: si un programa de este PC (por ejemplo Tailscale, que pide puertos al router) habla con el router, lo que el router contesta llega a muchos puertos temporales del PC y se tomaba por un escaneo. Ahora las respuestas del router y de los aparatos de casa a los puertos temporales (49152 en adelante) no cuentan como escaneo.
+
+De la 0.8.2:
 
 - SOC familiar: si el servicio no consigue conectar con el buzón (pasaba en algún PC con la conexión segura de Google), los avisos, latidos e informes se mandan a través del icono del reloj, que usa la conexión del usuario. Así los avisos urgentes llegan igual.
 - Si el antivirus detecta algo justo antes de apagar el PC, el aviso se manda al volver a encenderlo (antes se perdía).
