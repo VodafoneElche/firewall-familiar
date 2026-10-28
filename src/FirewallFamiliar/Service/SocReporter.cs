@@ -72,13 +72,13 @@ internal sealed class SocReporter
     /// minuto y medio manda un latido. Si el PC sigue despierto el latido llega y vuelve a "activo";
     /// si se ha dormido, no llega y el buzón no da la alarma de silencio.
     /// </summary>
-    public void OnScreenOrLid()
+    public void OnScreenOrLid(string reason = "suspension")
     {
         if (DateTime.Now - _lastScreenEvent < TimeSpan.FromMinutes(2)) return;
         _lastScreenEvent = DateTime.Now;
         _beatNotBefore = DateTime.Now.AddSeconds(90);
         _lastBeat = DateTime.MinValue;
-        System.Threading.ThreadPool.QueueUserWorkItem(_ => Goodbye("suspension", 5));
+        System.Threading.ThreadPool.QueueUserWorkItem(_ => Goodbye(reason, 8));
     }
 
     /// <summary>Despedida rápida (apagado, suspensión, parada, actualización). No espera más de unos segundos.</summary>

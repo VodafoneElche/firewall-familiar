@@ -1,4 +1,8 @@
-Novedades de esta versión (0.9.0):
+Novedades de esta versión (0.9.1):
+
+- SOC familiar: menos avisos falsos de "SIN SEÑAL" en los sobremesa. Al apagar, Windows corta la red antes de que el firewall pueda despedirse. Ahora la despedida se manda al cerrar la sesión, que es antes, y se le da más tiempo. Si el PC no se apaga, a los 90 segundos vuelve a salir como activo.
+
+De la 0.9.0:
 
 - Nuevo: listas públicas de PROGRAMAS ESPÍA, las mismas que usan Amnesty International (MVT), Citizen Lab y ECHAP: Pegasus, Predator, Candiru, FinFisher, stalkerware (apps para espiar a otra persona) y otras. En total, 6.344 dominios, 686 direcciones IP y 3.461 huellas de archivos.
   - Las IPs de la lista quedan BLOQUEADAS siempre, por encima de cualquier regla.

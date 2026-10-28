@@ -55,5 +55,7 @@ internal sealed class FirewallService : ServiceBase
     {
         if (change.Reason is SessionChangeReason.SessionLogon or SessionChangeReason.SessionUnlock or SessionChangeReason.ConsoleConnect)
             _core.OnLogon(change.SessionId);
+        else if (change.Reason == SessionChangeReason.SessionLogoff)
+            _core.OnLogoff();
     }
 }

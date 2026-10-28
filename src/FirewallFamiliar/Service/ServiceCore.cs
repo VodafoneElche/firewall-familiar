@@ -191,7 +191,7 @@ internal sealed class ServiceCore
         _uploads?.Dispose();
         _dns?.Dispose();
         _soc?.Stop();
-        _soc?.Goodbye(reason, shutdown ? 3 : 5);
+        _soc?.Goodbye(reason, shutdown ? 8 : 5);
         _stop.Cancel();
         _connTimer?.Dispose();
         _scanTimer?.Dispose();
@@ -270,6 +270,13 @@ internal sealed class ServiceCore
 
     /// <summary>Se ha encendido o apagado la pantalla, o se ha abierto o cerrado la tapa.</summary>
     public void OnScreenOrLid() => _soc?.OnScreenOrLid();
+
+    /// <summary>
+    /// Un usuario cierra sesión: casi siempre es porque se apaga el PC. Al apagar ya no suele haber red
+    /// para despedirse, así que la despedida se manda ahora; si el PC sigue encendido, el latido de
+    /// minuto y medio después lo vuelve a poner como activo.
+    /// </summary>
+    public void OnLogoff() => _soc?.OnScreenOrLid("apagado");
 
     public void OnResume()
     {
