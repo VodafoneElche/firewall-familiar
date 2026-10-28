@@ -14,9 +14,9 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9  # v4
         with:
           dotnet-version: '8.0.x'
 
@@ -43,13 +43,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Subir el instalador como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: FirewallFamiliar-Instalar
           path: publish/FirewallFamiliar-Instalar.exe
 
       - name: Subir el programa como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: FirewallFamiliar-win-x64
           path: publish/FirewallFamiliar/
@@ -77,7 +77,7 @@ jobs:
 
       - name: Publicar versión en firewall-familiar-versiones
         if: steps.check.outputs.publish == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
           repository: VodafoneElche/firewall-familiar-versiones
           token: ${{ secrets.VERSIONES_TOKEN }}
