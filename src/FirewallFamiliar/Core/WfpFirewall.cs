@@ -76,6 +76,9 @@ public sealed unsafe class WfpFirewall : IDisposable
     // Pesos dentro de nuestra subcapa (gana el mayor)
     private const ulong WeightLoopback = 10_000_000;
     private const ulong WeightBlockAll = 9_000_000;
+    /// <summary>Servidores de programas espía conocidos: por encima de cualquier regla del usuario.</summary>
+    private const ulong WeightSpy = 9_500_000;
+    public const string SpyFilterName = "Servidor de programa espía conocido";
     private const ulong WeightAdvanced = 8_000_000;
     private const ulong WeightAppBlock = 5_000;
     private const ulong WeightAppPermit = 4_000;
@@ -148,7 +151,8 @@ public sealed unsafe class WfpFirewall : IDisposable
     /// Se hace en una transacción: o se aplica todo o no se cambia nada.
     /// Devuelve avisos (por ejemplo, programas que ya no existen).
     /// </summary>
-    public List<string> Apply(RuleSet rules, IEnumerable<string> autoPermits, IEnumerable<string> tempBlocks)
+    public List<string> Apply(RuleSet rules, IEnumerable<string> autoPermits, IEnumerable<string> tempBlocks,
+        IReadOnlyCollection<IPAddress>? spyBlocks = null)
     {
         var warnings = new List<string>();
         var info = new Dictionary<ulong, FilterInfo>();
@@ -165,6 +169,22 @@ public sealed unsafe class WfpFirewall : IDisposable
             var loopback = new[] { CondLoopback() };
             foreach (var layer in AllLayers)
                 Add(layer, FWP_ACTION_TYPE.FWP_ACTION_PERMIT, WeightLoopback, "Permitir tráfico interno", loopback, info, false, mem);
+
+            // 1b. Servidores de programas espía conocidos (listas de Amnesty, Citizen Lab, ECHAP)
+            if (spyBlocks != null && spyBlocks.Count > 0)
+            {
+                foreach (var layer in AllLayers)
+                {
+                    bool v6 = layer == Win.FWPM_LAYER_ALE_AUTH_CONNECT_V6 || layer == Win.FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6;
+                    var mine = spyBlocks.Where(ip => (ip.AddressFamily == AddressFamily.InterNetworkV6) == v6).ToList();
+                    // Varias direcciones en un mismo filtro cuentan como "cualquiera de ellas"; en grupos para no hacer filtros enormes
+                    for (int i = 0; i < mine.Count; i += 200)
+                    {
+                        var conds = mine.Skip(i).Take(200).Select(ip => CondRemoteAddress(ip, v6 ? 128 : 32, mem)).ToArray();
+                        Add(layer, FWP_ACTION_TYPE.FWP_ACTION_BLOCK, WeightSpy, SpyFilterName, conds, info, IsInbound(layer), mem);
+                    }
+                }
+            }
 
             // 2. Bloquear todo
             if (rules.Mode == FirewallMode.BloquearTodo)

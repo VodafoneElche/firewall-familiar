@@ -108,7 +108,7 @@ public partial class MainWindow
             if (_rules.AllowWindowsComponents) autoPermits.AddRange(_windowsPaths);
             autoPermits.AddRange(_sessionAllows);
 
-            var warnings = _firewall.Apply(_rules, autoPermits, Array.Empty<string>());
+            var warnings = _firewall.Apply(_rules, autoPermits, Array.Empty<string>(), SpyIndicators.BlockList());
             _appliedPermits = new HashSet<string>(autoPermits, StringComparer.OrdinalIgnoreCase);
             foreach (var w in warnings) Log("⚠ " + w);
         }

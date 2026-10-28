@@ -1,4 +1,13 @@
-Novedades de esta versión (0.8.4):
+Novedades de esta versión (0.9.0):
+
+- Nuevo: listas públicas de PROGRAMAS ESPÍA, las mismas que usan Amnesty International (MVT), Citizen Lab y ECHAP: Pegasus, Predator, Candiru, FinFisher, stalkerware (apps para espiar a otra persona) y otras. En total, 6.344 dominios, 686 direcciones IP y 3.461 huellas de archivos.
+  - Las IPs de la lista quedan BLOQUEADAS siempre, por encima de cualquier regla.
+  - Si el PC busca en Internet el nombre de uno de esos servidores, llega un aviso urgente y sus direcciones se bloquean.
+  - Si un programa que se conecta a Internet es un archivo espía conocido (por su huella SHA-256), llega un aviso urgente.
+  - Las apps de control parental (Microsoft Family, Life360, Qustodio, Kaspersky Safe Kids...) no cuentan: se pueden usar en casa a propósito.
+  - Las listas van dentro del programa y se renuevan con cada versión. Se descargan de versiones fijas y comprobadas (tools/indicadores.py).
+
+De la 0.8.4:
 
 - El instalador de las actualizaciones de Firewall Familiar ya no sale como "programa sospechoso" mientras se instala.
 

@@ -62,6 +62,10 @@ internal sealed class ServiceCore
     private SocReporter? _soc;
     private Timer? _avTimer, _uploadTimer, _beaconTimer;
     private UploadMonitor? _uploads;
+    private DnsWatcher? _dns;
+    /// <summary>Último aviso de programa espía por indicador (para no repetir correos).</summary>
+    private readonly Dictionary<string, DateTime> _spyAlerts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _hashChecked = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _beaconAlerts = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>
     /// Hasta dónde se han revisado las detecciones del antivirus. Se guarda en disco para que una detección
@@ -159,6 +163,11 @@ internal sealed class ServiceCore
         if (_uploads.Start() is { } upErr) Log("⚠ No se pudo vigilar las subidas de datos: " + upErr);
         _uploadTimer = new Timer(_ => SafeRun(() => _uploads.Check()), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
         _beaconTimer = new Timer(_ => SafeRun(CheckBeacons), null, TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(30));
+        // Programas espía conocidos: nombres que se preguntan al DNS
+        Log($"Listas de programas espía (Amnesty, Citizen Lab, ECHAP): {SpyIndicators.DomainCount} dominios, " +
+            $"{SpyIndicators.IpCount} IPs bloqueadas y {SpyIndicators.HashCount} huellas de archivos.");
+        _dns = new DnsWatcher((name, ips, pid) => SafeRun(() => OnDnsQuery(name, ips, pid)));
+        if (_dns.Start() is { } dnsErr) Log("⚠ No se pudo vigilar las consultas DNS: " + dnsErr);
         // Al arrancar (o tras una actualización) el icono de cada usuario conectado
         Task.Delay(3000).ContinueWith(_ => SafeRun(() => SessionLauncher.LaunchInAllSessions(_exe, msg => Log(msg))));
     }
@@ -180,6 +189,7 @@ internal sealed class ServiceCore
         _uploadTimer?.Dispose();
         _beaconTimer?.Dispose();
         _uploads?.Dispose();
+        _dns?.Dispose();
         _soc?.Stop();
         _soc?.Goodbye(reason, shutdown ? 3 : 5);
         _stop.Cancel();
@@ -359,7 +369,7 @@ internal sealed class ServiceCore
             if (_exe.Length > 0) permits.Add(_exe);
             if (_rules.AllowWindowsComponents) permits.AddRange(_windowsPaths);
             permits.AddRange(_sessionAllows);
-            foreach (var w in _firewall.Apply(_rules, permits, Array.Empty<string>())) Log("⚠ " + w);
+            foreach (var w in _firewall.Apply(_rules, permits, Array.Empty<string>(), SpyIndicators.BlockList())) Log("⚠ " + w);
             _appliedPermits = new HashSet<string>(permits, StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception ex) { Log("⚠ Error al aplicar las reglas: " + ex.Message); }
@@ -395,6 +405,17 @@ internal sealed class ServiceCore
     private void OnBlocked(BlockedConnection c)
     {
         LogTrafficBlock(c);
+        if (c.Reason == WfpFirewall.SpyFilterName && c.RemoteAddress != null)
+        {
+            string family = SpyIndicators.MatchIp(c.RemoteAddress) ?? "programa espía";
+            string who = c.AppPath.Length > 0 ? ProcessMonitor.FileName(c.AppPath) : "Un programa";
+            if (SpyDue("ip|" + c.RemoteAddress))
+                Log(c.Inbound
+                    ? $"⚠ PROGRAMA ESPÍA: {c.RemoteAddress} intentó conectarse a este PC. Esa dirección aparece en las listas públicas de {family}. Bloqueado."
+                    : $"⚠ PROGRAMA ESPÍA: {who} intentó conectarse a {c.RemoteAddress}, una dirección que aparece en las listas públicas de {family}. Bloqueado.",
+                    "Alerta", c);
+            return;
+        }
         if (c.Inbound && c.RemoteAddress != null) CheckScan(c);
         else if (c.RemoteAddress != null) lock (_scan) _scan.NoteOutbound(c.RemoteAddress, DateTime.Now, c.RemotePort);
 
@@ -619,6 +640,13 @@ internal sealed class ServiceCore
                 Protocol = c.Protocol.Replace("v6", ""), Inbound = inbound, Outcome = "Permitido"
             });
             if (path.Length > 0 && !IsWindowsComponent(path)) CheckSuspicious(path, c.Pid);
+            if (SpyIndicators.MatchIp(ip) is { } spyFamily && SpyDue("ip|" + ip))
+            {
+                Log($"⚠ PROGRAMA ESPÍA: {name} está conectado a {ip}, una dirección que aparece en las listas públicas de {spyFamily}. " +
+                    "Se bloquea desde ahora.", "Alerta", null, path.Length > 0 ? path : null, c.Pid, ip.ToString(), c.RemotePort, c.LocalPort);
+                ApplyRulesSoon();
+            }
+            if (path.Length > 0 && !IsWindowsComponent(path)) CheckFileHash(path, c.Pid);
         }
         _knownConnections = now;
         foreach (var p in _signaturePending.ToList()) CheckSuspicious(p, 0);
@@ -657,6 +685,53 @@ internal sealed class ServiceCore
             Remote = c.RemoteAddress?.ToString(), RemotePort = c.RemotePort, LocalPort = c.LocalPort,
             Protocol = c.Protocol, Inbound = c.Inbound, Outcome = "Bloqueado"
         });
+    }
+
+    // =====================================================================
+    // Programas espía conocidos (listas públicas)
+    // =====================================================================
+
+    private bool SpyDue(string key)
+    {
+        lock (_spyAlerts)
+        {
+            if (_spyAlerts.TryGetValue(key, out var last) && DateTime.Now - last < TimeSpan.FromHours(6)) return false;
+            _spyAlerts[key] = DateTime.Now;
+            return true;
+        }
+    }
+
+    /// <summary>El PC ha preguntado por un nombre: si es de un servidor espía, aviso y bloqueo de sus IPs.</summary>
+    private void OnDnsQuery(string name, List<IPAddress> ips, int pid)
+    {
+        if (SpyIndicators.MatchDomain(name) is not { } hit) return;
+        bool added = false;
+        foreach (var ip in ips) added |= SpyIndicators.Learn(ip, hit.Family);
+        if (added) lock (_gate) ApplyRules();
+        if (!SpyDue("dns|" + hit.Domain)) return;
+        string path = pid > 4 ? FileDetails.ProperCase(NativeMethods.GetProcessPath(pid) ?? "") : "";
+        // Las consultas suele hacerlas el servicio DNS de Windows en nombre del programa
+        bool dnsService = path.EndsWith(@"\svchost.exe", StringComparison.OrdinalIgnoreCase);
+        string who = path.Length > 0 && !dnsService ? ProcessMonitor.FileName(path) : "Un programa de este PC";
+        Log($"⚠ PROGRAMA ESPÍA: {who} ha buscado \"{name}\", un servidor que aparece en las listas públicas de {hit.Family}. " +
+            (ips.Count > 0 ? $"Sus direcciones ({string.Join(", ", ips.Take(4))}) quedan bloqueadas. " : "") +
+            "Puede ser una web o un enlace engañoso, o un programa espía instalado: revisa el PC.",
+            "Alerta", null, path.Length > 0 && !dnsService ? path : null, pid, ips.Count > 0 ? ips[0].ToString() : null);
+    }
+
+    /// <summary>Una vez por programa: su huella SHA-256 contra la lista de programas espía (en segundo plano).</summary>
+    private void CheckFileHash(string path, int pid)
+    {
+        lock (_hashChecked)
+        {
+            if (!_hashChecked.Add(path) || SpyIndicators.HashCount == 0) return;
+        }
+        Task.Run(() => SafeRun(() =>
+        {
+            if (SpyIndicators.MatchFile(path) is { } family)
+                Log($"⚠ PROGRAMA ESPÍA: {ProcessMonitor.FileName(path)} (PID {pid}) es un archivo conocido de {family} " +
+                    "según las listas públicas. Desconecta Internet y revisa el PC.", "Alerta", null, path, pid);
+        }));
     }
 
     /// <summary>Anota en el registro de seguridad y, si es importante, avisa en el icono de cada usuario.</summary>

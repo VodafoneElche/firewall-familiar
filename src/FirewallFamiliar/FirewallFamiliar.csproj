@@ -14,7 +14,7 @@
     <AssemblyName>FirewallFamiliar</AssemblyName>
     <RootNamespace>FirewallFamiliar</RootNamespace>
     <Product>Firewall Familiar</Product>
-    <Version>0.8.4</Version>
+    <Version>0.9.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <Platforms>x64</Platforms>
@@ -25,6 +25,7 @@
   <ItemGroup>
     <Resource Include="Assets\*.ico" />
     <Resource Include="Assets\logo.png" />
+    <EmbeddedResource Include="Assets\indicadores.txt" LogicalName="FirewallFamiliar.indicadores.txt" />
   </ItemGroup>
 
   <ItemGroup>
