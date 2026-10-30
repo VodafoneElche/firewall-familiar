@@ -110,7 +110,7 @@ internal sealed class SystemWatch
             return;
         }
         if (item.Path.Length > 0 && File.Exists(item.Path)) item.Signature = Signature.CheckNow(item.Path);
-        if (item.IsMicrosoft && item.Risk == null) return; // cosas de Windows (actualizaciones): no se apuntan
+        if (item.IsWindows && (item.Risk == null || item.FileMissing)) return; // cosas de Windows (actualizaciones): no se apuntan
         string verb = before == null ? "se ha añadido" : "ha cambiado";
         bool urgent = item.Level >= 3 ||
                       (item.Level == 1 && !item.Path.Contains(@"\Program Files", StringComparison.OrdinalIgnoreCase));

@@ -46,9 +46,9 @@ public static class CleanupReport
         sb.AppendLine();
 
         var items = StartupItems.Collect();
-        var shown = items.Where(i => !i.IsMicrosoft || i.Risk != null)
+        var shown = items.Where(i => !i.IsWindows || (i.Risk != null && !i.FileMissing))
             .OrderByDescending(i => i.Level).ThenBy(i => i.Kind).ThenBy(i => i.Name).ToList();
-        sb.AppendLine($"### Lo que arranca solo ({shown.Count} que no son de Microsoft, de {items.Count} en total)");
+        sb.AppendLine($"### Lo que arranca solo ({shown.Count} que no son de Windows, de {items.Count} en total)");
         sb.AppendLine();
         sb.AppendLine("Inicio de Windows, carpetas de Inicio, tareas programadas, servicios automáticos, menú contextual, " +
                       "protocolos de red, secuestros de programas y ajustes del navegador. \"Activo = no\" es que se ha desactivado.");

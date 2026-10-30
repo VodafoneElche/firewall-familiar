@@ -34,6 +34,9 @@ public sealed class StartupItem
     /// <summary>Motivo fijo de sospecha (secuestro de programa, directiva impuesta...).</summary>
     public string? FixedRisk { get; init; }
     internal StartupToggle? Toggle { get; init; }
+    internal StartupRemover? Remover { get; init; }
+    /// <summary>Clave del registro donde está apuntado (para abrirla en el Editor del registro), si la hay.</summary>
+    public string? RegKey { get; init; }
     public SignatureInfo Signature { get; set; } = SignatureInfo.Pending;
 
     /// <summary>Identifica la entrada (para saber si es nueva).</summary>
@@ -42,6 +45,14 @@ public sealed class StartupItem
     public bool FileMissing => Path.Length > 0 && !IsSetting && !File.Exists(Path);
     public bool IsMicrosoft => Signature.Status == SignatureStatus.Valida &&
                                Signature.Signer.Contains("Microsoft", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Es de Windows: firmado por Microsoft, o una tarea de Windows (\Microsoft\...) que apunta a un archivo
+    /// de C:\Windows que ya no está (Windows deja muchas así tras actualizarse; no hay que tocarlas).
+    /// </summary>
+    public bool IsWindows => IsMicrosoft ||
+        (Kind == "Tarea programada" && Name.StartsWith("Microsoft\\", StringComparison.OrdinalIgnoreCase) &&
+         Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.OrdinalIgnoreCase));
+    public bool CanRemove => Remover != null && !IsWindows;
 
     /// <summary>Por qué hay que mirarlo, o null si parece normal.</summary>
     public string? Risk
@@ -72,6 +83,28 @@ public sealed class StartupItem
     public string EnabledText => Enabled ? "Sí" : "Desactivado";
     public string SignatureText => IsSetting ? "" : FileMissing ? "(no existe)" : Signature.Short;
     public string RiskText => Risk ?? "";
+
+    /// <summary>Qué conviene hacer con esta línea, en palabras sencillas.</summary>
+    public string Advice
+    {
+        get
+        {
+            if (IsWindows) return "Es de Windows. No hace falta tocarlo.";
+            if (Kind == "Navegador" && FixedRisk != null)
+                return "Mira en el navegador chrome://policy (o edge://policy) y chrome://extensions qué es. Si no la reconoces " +
+                       "y no la ha puesto tu antivirus o tu empresa, pulsa \"Eliminar entrada\" y reinicia el navegador.";
+            if (Kind == "Navegador") return "Solo informa. Si cambia sin que lo hayas hecho tú, avisa.";
+            if (Kind == "Secuestro de programa") return "Si no lo has puesto tú (por ejemplo Process Explorer en lugar del Administrador de tareas), pásale el antivirus y avísame.";
+            if (FileMissing) return CanRemove ? "Es un resto de un programa que ya no está. Puedes pulsar \"Eliminar entrada\" sin miedo (se guarda una copia)."
+                                              : "Es un resto de un programa que ya no está. No molesta.";
+            return Level switch
+            {
+                3 => "Si no sabes qué es, pulsa \"Desactivar\" (se puede deshacer) y avísame para mirarlo.",
+                1 => "Muchos programas pequeños no tienen firma. Si lo reconoces, déjalo; si no, desactívalo.",
+                _ => Enabled ? "Normal. Si no quieres que arranque solo (para que el PC encienda antes), pulsa \"Desactivar\"." : "Desactivado. Pulsa \"Volver a activar\" si lo echas de menos."
+            };
+        }
+    }
     /// <summary>Lo que se enseña en la columna "Archivo": el archivo, o el valor si es un ajuste.</summary>
     public string Shown => IsSetting || Path.Length == 0 ? Command : Path;
 }
@@ -134,6 +167,90 @@ internal sealed class ShellExtToggle : StartupToggle
 }
 
 /// <summary>
+/// Cómo se elimina una entrada para siempre. Antes se guarda una copia en
+/// C:\ProgramData\FirewallFamiliar\copias-limpieza (un .reg o .xml que se puede volver a cargar).
+/// </summary>
+internal abstract class StartupRemover
+{
+    public static string BackupFolder => System.IO.Path.Combine(RuleStore.Folder, "copias-limpieza");
+
+    protected static string BackupFile(string name, string ext)
+    {
+        Directory.CreateDirectory(BackupFolder);
+        string safe = string.Concat(name.Select(c => System.IO.Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        if (safe.Length > 60) safe = safe[..60];
+        return System.IO.Path.Combine(BackupFolder, $"{DateTime.Now:yyyyMMdd-HHmmss} {safe}{ext}");
+    }
+
+    /// <summary>Elimina y devuelve dónde ha quedado la copia.</summary>
+    public abstract string Remove();
+}
+
+/// <summary>Un valor del registro (inicio de Windows, directiva del navegador).</summary>
+internal sealed class RegValueRemover : StartupRemover
+{
+    public required string Hive { get; init; } // "HKLM64", "HKLM32" o el SID del usuario
+    public required string Key { get; init; }
+    public required string ValueName { get; init; }
+
+    public override string Remove()
+    {
+        string regPath = Hive switch
+        {
+            "HKLM64" => @"HKLM\" + Key,
+            "HKLM32" => @"HKLM\" + Key,
+            _ => $@"HKU\{Hive}\{Key}"
+        };
+        string backup = BackupFile(ValueName, ".reg");
+        StartupItems.Run("reg.exe", $"export \"{regPath}\" \"{backup}\" /y{(Hive == "HKLM32" ? " /reg:32" : Hive == "HKLM64" ? " /reg:64" : "")}");
+        using var root = Hive.StartsWith("HKLM")
+            ? RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, Hive == "HKLM32" ? RegistryView.Registry32 : RegistryView.Registry64)
+            : RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64);
+        using var key = root.OpenSubKey(Hive.StartsWith("HKLM") ? Key : Hive + "\\" + Key, true)
+                        ?? throw new InvalidOperationException("La entrada ya no está.");
+        key.DeleteValue(ValueName, false);
+        return backup;
+    }
+}
+
+internal sealed class FileRemover : StartupRemover
+{
+    public required string File { get; init; }
+    public override string Remove()
+    {
+        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(File, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+        return "la Papelera";
+    }
+}
+
+internal sealed class TaskRemover : StartupRemover
+{
+    public required string TaskPath { get; init; }
+    public override string Remove()
+    {
+        string backup = BackupFile(TaskPath.Trim('\\').Replace('\\', '-'), ".xml");
+        string xml = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "Tasks" + TaskPath);
+        if (System.IO.File.Exists(xml)) System.IO.File.Copy(xml, backup, true);
+        StartupItems.Run("schtasks.exe", $"/Delete /TN \"{TaskPath}\" /F");
+        return backup;
+    }
+}
+
+/// <summary>Solo para servicios cuyo programa ya no existe (restos).</summary>
+internal sealed class ServiceRemover : StartupRemover
+{
+    public required string ServiceName { get; init; }
+    public override string Remove()
+    {
+        string backup = BackupFile("servicio " + ServiceName, ".reg");
+        StartupItems.Run("reg.exe", $"export \"HKLM\\SYSTEM\\CurrentControlSet\\Services\\{ServiceName}\" \"{backup}\" /y");
+        StartupItems.Run("sc.exe", $"delete \"{ServiceName}\"");
+        return backup;
+    }
+}
+
+/// <summary>
 /// Lista todo lo que arranca solo en el PC, para todas las cuentas (las que tienen la sesión
 /// abierta, en lo que va en el registro del usuario). No se conecta a Internet: solo lee el
 /// registro, las carpetas de Inicio y las tareas programadas.
@@ -170,6 +287,7 @@ public static class StartupItems
         if (signatures)
             foreach (var i in list)
                 i.Signature = i.IsSetting || i.Path.Length == 0 ? SignatureInfo.Pending
+                    : IsStoreAlias(i.Path) ? new SignatureInfo(SignatureStatus.Valida, "App de la Microsoft Store", "")
                     : !File.Exists(i.Path) ? new SignatureInfo(SignatureStatus.Desconocida, "", "no existe")
                     : Core.Signature.CheckNow(i.Path);
         return list;
@@ -200,22 +318,22 @@ public static class StartupItems
     {
         using var hklm64 = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
         using var hklm32 = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32);
-        ReadRun(list, hklm64, RunPath, "HKLM", "Run", "Todos", @"HKLM\" + RunPath);
-        ReadRun(list, hklm32, RunPath, "HKLM", "Run32", "Todos", @"HKLM\" + RunPath + " (32 bits)");
-        ReadRun(list, hklm64, RunOncePath, null, null, "Todos", @"HKLM\" + RunOncePath);
-        ReadRun(list, hklm64, PolicyRunPath, null, null, "Todos", @"HKLM\" + PolicyRunPath);
+        ReadRun(list, hklm64, RunPath, "HKLM", "Run", "Todos", @"HKLM\" + RunPath, "HKLM64");
+        ReadRun(list, hklm32, RunPath, "HKLM", "Run32", "Todos", @"HKLM\" + RunPath + " (32 bits)", "HKLM32");
+        ReadRun(list, hklm64, RunOncePath, null, null, "Todos", @"HKLM\" + RunOncePath, "HKLM64");
+        ReadRun(list, hklm64, PolicyRunPath, null, null, "Todos", @"HKLM\" + PolicyRunPath, "HKLM64");
         using var hku = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64);
         foreach (var u in users.Where(u => u.Loaded))
         {
             using var root = hku.OpenSubKey(u.Sid);
             if (root == null) continue;
-            ReadRun(list, root, RunPath, u.Sid, "Run", u.Name, @"HKCU\" + RunPath);
-            ReadRun(list, root, RunOncePath, null, null, u.Name, @"HKCU\" + RunOncePath);
-            ReadRun(list, root, PolicyRunPath, null, null, u.Name, @"HKCU\" + PolicyRunPath);
+            ReadRun(list, root, RunPath, u.Sid, "Run", u.Name, @"HKCU\" + RunPath, u.Sid);
+            ReadRun(list, root, RunOncePath, null, null, u.Name, @"HKCU\" + RunOncePath, u.Sid);
+            ReadRun(list, root, PolicyRunPath, null, null, u.Name, @"HKCU\" + PolicyRunPath, u.Sid);
         }
     }
 
-    private static void ReadRun(List<StartupItem> list, RegistryKey root, string path, string? hive, string? approved, string user, string where)
+    private static void ReadRun(List<StartupItem> list, RegistryKey root, string path, string? hive, string? approved, string user, string where, string regHive)
     {
         using var key = root.OpenSubKey(path);
         if (key == null) return;
@@ -228,7 +346,9 @@ public static class StartupItems
             {
                 Kind = "Inicio de Windows", Name = name.Length > 0 ? name : "(predeterminado)", User = user, Where = where,
                 Command = cmd, Path = exe, IsScript = script, Enabled = IsApproved(appr, name),
-                Toggle = hive != null && approved != null ? new ApprovedToggle { Hive = hive, Subkey = approved, ValueName = name } : null
+                Toggle = hive != null && approved != null ? new ApprovedToggle { Hive = hive, Subkey = approved, ValueName = name } : null,
+                Remover = new RegValueRemover { Hive = regHive, Key = RegKeyPath(regHive, path), ValueName = name },
+                RegKey = RegEditPath(regHive, path)
             });
         }
     }
@@ -267,7 +387,8 @@ public static class StartupItems
             {
                 Kind = "Carpeta Inicio", Name = System.IO.Path.GetFileNameWithoutExtension(file), User = user, Where = dir,
                 Command = cmd, Path = exe, IsScript = script || IsScriptFile(file), Enabled = IsApproved(appr, name),
-                Toggle = hive != null ? new ApprovedToggle { Hive = hive, Subkey = "StartupFolder", ValueName = name } : null
+                Toggle = hive != null ? new ApprovedToggle { Hive = hive, Subkey = "StartupFolder", ValueName = name } : null,
+                Remover = new FileRemover { File = file }
             });
         }
     }
@@ -321,7 +442,7 @@ public static class StartupItems
                 list.Add(new StartupItem
                 {
                     Kind = "Tarea programada", Name = taskPath.TrimStart('\\'), Where = "Programador de tareas" + (author.Length > 0 && !author.StartsWith('$') ? $" (autor: {author})" : ""),
-                    Command = full, Path = exe, IsScript = script, Enabled = enabled, Toggle = new TaskToggle { TaskPath = taskPath }
+                    Command = full, Path = exe, IsScript = script, Enabled = enabled, Toggle = new TaskToggle { TaskPath = taskPath }, Remover = new TaskRemover { TaskPath = taskPath }
                 });
             }
             catch { }
@@ -361,7 +482,9 @@ public static class StartupItems
                 list.Add(new StartupItem
                 {
                     Kind = "Servicio", Name = display == name ? name : $"{display} ({name})", Where = @"HKLM\SYSTEM\CurrentControlSet\Services\" + name,
-                    Command = cmd, Path = exe, IsScript = script, Enabled = start == 2, Toggle = new ServiceToggle { ServiceName = name }
+                    Command = cmd, Path = exe, IsScript = script, Enabled = start == 2, Toggle = new ServiceToggle { ServiceName = name },
+                    Remover = exe.Length > 0 && !File.Exists(exe) ? new ServiceRemover { ServiceName = name } : null,
+                    RegKey = @"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\" + name
                 });
             }
             catch { }
@@ -478,13 +601,13 @@ public static class StartupItems
     private static void Browsers(List<StartupItem> list, List<(string Sid, string Name, string Profile, bool Loaded)> users)
     {
         using var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-        Policies(list, hklm, "Todos", @"HKLM\");
+        Policies(list, hklm, "Todos", @"HKLM\", "HKLM64");
         using var hku = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64);
         foreach (var u in users.Where(u => u.Loaded))
         {
             using var root = hku.OpenSubKey(u.Sid);
             if (root == null) continue;
-            Policies(list, root, u.Name, @"HKCU\");
+            Policies(list, root, u.Name, @"HKCU\", u.Sid);
             using var choice = root.OpenSubKey(@"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice");
             if (choice?.GetValue("ProgId") is string prog)
                 list.Add(new StartupItem
@@ -495,7 +618,7 @@ public static class StartupItems
         }
     }
 
-    private static void Policies(List<StartupItem> list, RegistryKey root, string user, string prefix)
+    private static void Policies(List<StartupItem> list, RegistryKey root, string user, string prefix, string regHive)
     {
         foreach (var (browser, path) in new[] { ("Chrome", @"SOFTWARE\Policies\Google\Chrome"), ("Edge", @"SOFTWARE\Policies\Microsoft\Edge") })
         {
@@ -504,20 +627,23 @@ public static class StartupItems
             foreach (var (value, what) in new[] { ("HomepageLocation", "página de inicio"), ("NewTabPageLocation", "página de nueva pestaña"),
                                                   ("DefaultSearchProviderSearchURL", "buscador") })
                 if (k.GetValue(value) is string v && v.Length > 0)
-                    list.Add(Imposed(browser, what, v, user, prefix + path));
+                    list.Add(Imposed(browser, what, v, user, prefix + path, regHive, path, value));
             foreach (var (sub, what) in new[] { ("RestoreOnStartupURLs", "página al abrir"), ("ExtensionInstallForcelist", "extensión instalada a la fuerza") })
             {
                 using var s = k.OpenSubKey(sub);
                 if (s == null) continue;
                 foreach (var n in s.GetValueNames())
                     if (s.GetValue(n) is string v && v.Length > 0)
-                        list.Add(Imposed(browser, what, v, user, prefix + path + "\\" + sub));
+                        list.Add(Imposed(browser, what, v, user, prefix + path + "\\" + sub, regHive, path + "\\" + sub, n));
             }
         }
     }
 
-    private static StartupItem Imposed(string browser, string what, string value, string user, string where) => new()
+    private static StartupItem Imposed(string browser, string what, string value, string user, string where,
+        string regHive, string key, string valueName) => new()
     {
+        Remover = new RegValueRemover { Hive = regHive, Key = key, ValueName = valueName },
+        RegKey = RegEditPath(regHive, key),
         Kind = "Navegador", Name = $"{browser}: {what}", User = user, Where = where, Command = value, IsSetting = true,
         FixedRisk = "impuesto por una directiva: lo hacen algunos programas basura para cambiar el navegador sin que se pueda quitar"
     };
@@ -534,6 +660,33 @@ public static class StartupItems
     }
 
     // ---------------------------------------------------------------- Utilidades
+
+    /// <summary>Ruta de la clave dentro de su colmena (la vista de 32 bits de HKLM va en WOW6432Node).</summary>
+    private static string RegKeyPath(string regHive, string path) => path;
+
+    /// <summary>Ruta completa para el Editor del registro.</summary>
+    private static string RegEditPath(string regHive, string path) => regHive switch
+    {
+        "HKLM64" => @"HKEY_LOCAL_MACHINE\" + path,
+        "HKLM32" => @"HKEY_LOCAL_MACHINE\" + path.Replace(@"Software\", @"SOFTWARE\WOW6432Node\", StringComparison.OrdinalIgnoreCase),
+        _ => $@"HKEY_USERS\{regHive}\{path}"
+    };
+
+    /// <summary>Abre el Editor del registro en esa clave.</summary>
+    public static void OpenInRegedit(string regKey)
+    {
+        using (var k = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Applets\Regedit"))
+            k.SetValue("LastKey", (System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "es" ? "Equipo\\" : "Computer\\") + regKey);
+        foreach (var p in Process.GetProcessesByName("regedit")) using (p) try { p.CloseMainWindow(); p.WaitForExit(2000); } catch { }
+        Process.Start(new ProcessStartInfo(System.IO.Path.Combine(WinDir, "regedit.exe"), "/m") { UseShellExecute = true });
+    }
+
+    /// <summary>Palabras típicas de comandos maliciosos (descargar y ejecutar, esconder la ventana...).</summary>
+    private static readonly string[] BadTokens =
+    {
+        "http:", "https:", "-enc", "encodedcommand", "frombase64", "iex", "invoke-expression", "downloadstring", "downloadfile",
+        "bypass", "hidden", "bitsadmin", "certutil", "vbscript:", "javascript:"
+    };
 
     /// <summary>
     /// El archivo que ejecuta una línea de comandos. Si es un lanzador de Windows (rundll32, PowerShell,
@@ -565,10 +718,24 @@ public static class StartupItems
         if (ScriptHosts.Contains(file))
         {
             var m = Regex.Match(rest, @"""?([A-Za-z]:\\[^""]+?\.(vbs|vbe|js|jse|wsf|ps1|bat|cmd|hta))", RegexOptions.IgnoreCase);
-            return (m.Success ? m.Groups[1].Value : exe, true);
+            if (m.Success) return (m.Groups[1].Value, true);
+            bool bad = file.Equals("mshta.exe", StringComparison.OrdinalIgnoreCase) ||
+                       BadTokens.Any(t => rest.Contains(t, StringComparison.OrdinalIgnoreCase));
+            // "cmd /c start C:\...\programa.exe": lo que cuenta es el programa que arranca
+            var e = Regex.Match(rest, @"""?([A-Za-z]:\\[^""]+?\.exe)", RegexOptions.IgnoreCase);
+            if (e.Success && !bad) return (e.Groups[1].Value, false);
+            // Un comando sencillo de Windows (borrar una carpeta al reiniciar...) no es sospechoso por sí solo
+            return (exe, bad);
         }
         return (exe, IsScriptFile(exe));
     }
+
+    /// <summary>
+    /// Los "alias" de las apps de la Tienda (AppData\Local\Microsoft\WindowsApps\teams.exe...) son archivos vacíos
+    /// que Windows redirige a la app; no se pueden comprobar como un .exe normal.
+    /// </summary>
+    internal static bool IsStoreAlias(string path) =>
+        path.Contains(@"\AppData\Local\Microsoft\WindowsApps\", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsScriptFile(string path) =>
         System.IO.Path.GetExtension(path).ToLowerInvariant() is ".vbs" or ".vbe" or ".js" or ".jse" or ".wsf" or ".ps1" or ".bat" or ".cmd" or ".hta";
@@ -582,7 +749,7 @@ public static class StartupItems
         else if (p.StartsWith(@"system32\", StringComparison.OrdinalIgnoreCase)) p = System.IO.Path.Combine(WinDir, p);
         if (p.Length > 0 && !System.IO.Path.IsPathRooted(p))
         {
-            foreach (var dir in new[] { Sys32, WinDir })
+            foreach (var dir in new[] { Sys32, WinDir, System.IO.Path.Combine(Sys32, @"WindowsPowerShell\v1.0") })
             {
                 string c = System.IO.Path.Combine(dir, p);
                 if (File.Exists(c)) return c;
@@ -603,6 +770,13 @@ public static class StartupItems
         string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
         p.WaitForExit(15000);
         if (p.ExitCode != 0) throw new InvalidOperationException(output.Trim().Length > 0 ? output.Trim() : $"{exe} terminó con el código {p.ExitCode}");
+    }
+
+    /// <summary>Elimina la entrada para siempre (guardando antes una copia). Devuelve dónde está la copia.</summary>
+    public static string Remove(StartupItem item)
+    {
+        if (!item.CanRemove || item.Remover == null) throw new InvalidOperationException("Esta entrada no se puede eliminar desde aquí.");
+        return item.Remover.Remove();
     }
 
     /// <summary>Desactiva o vuelve a activar una entrada.</summary>

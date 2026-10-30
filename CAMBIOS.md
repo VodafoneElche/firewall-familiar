@@ -1,4 +1,13 @@
-Novedades de esta versión (0.10.1):
+Novedades de esta versión (0.10.2):
+
+- Limpieza > Programas que arrancan solos:
+  - Al pinchar una línea, abajo sale qué es, por qué está marcada y QUÉ CONVIENE HACER.
+  - Botón nuevo "Eliminar entrada" para quitar para siempre restos (como la tarea de CCleaner que ya no existe), directivas impuestas al navegador o entradas que no quieras. Antes se guarda una copia en C:\ProgramData\FirewallFamiliar\copias-limpieza (los .reg se vuelven a poner con doble clic).
+  - "Abrir ubicación" también funciona cuando el archivo ya no existe: abre el Programador de tareas, el Editor del registro en la clave exacta o la carpeta de Inicio.
+  - Menos avisos falsos: los comandos sencillos de Windows (borrar archivos al reiniciar), las apps de la Tienda como Teams y las tareas de Windows sin archivo ya no salen en naranja (las de Windows solo con "Mostrar también lo de Microsoft").
+- Limpieza > Restos de programas: casilla "Marcar todos".
+
+De la 0.10.1:
 
 - Aviso de la puerta trasera de la extensión Claude Code 2.1.313 (troyanizada en Open VSX y en la tienda de Cursor el 29/10/2026). Va con las listas de programas espía, en Assets/indicadores-extra.txt:
   - La IP de los atacantes (134.209.82.225) queda BLOQUEADA siempre.

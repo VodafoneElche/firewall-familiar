@@ -12,17 +12,26 @@
                 <DockPanel Margin="6">
                     <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#333">
                         Todo lo que se pone en marcha sin que nadie lo abra: inicio de Windows, tareas programadas, servicios,
-                        extensiones del menú contextual y ajustes del navegador. Desactivar no borra nada: se puede volver a activar.
-                        Las filas en naranja conviene mirarlas.
+                        extensiones del menú contextual y ajustes del navegador. Pincha una línea y abajo verás qué es y qué conviene hacer.
+                        Naranja = conviene mirarlo. Gris = resto de un programa que ya no está. "Desactivar" se puede deshacer;
+                        "Eliminar entrada" la quita para siempre (antes guarda una copia).
                     </TextBlock>
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                         <Button x:Name="BtnDisable" Content="Desactivar" Padding="12,3" Margin="0,0,8,0" Click="OnDisable"/>
                         <Button x:Name="BtnEnable" Content="Volver a activar" Padding="12,3" Margin="0,0,8,0" Click="OnEnable"/>
+                        <Button x:Name="BtnRemove" Content="Eliminar entrada" Padding="12,3" Margin="0,0,8,0" Click="OnRemove"
+                                ToolTip="Quita la entrada para siempre. Antes guarda una copia en C:\ProgramData\FirewallFamiliar\copias-limpieza"/>
                         <Button Content="Abrir ubicación del archivo" Padding="12,3" Margin="0,0,8,0" Click="OnOpenStartupFile"/>
                         <Button Content="Actualizar" Padding="12,3" Margin="0,0,16,0" Click="OnRefreshStartup"/>
                         <CheckBox x:Name="ChkMicrosoft" Content="Mostrar también lo de Microsoft (Windows)" VerticalAlignment="Center" Click="OnFilterStartup"/>
                     </WrapPanel>
-                    <ListView x:Name="StartupList" SelectionMode="Single">
+                    <Border DockPanel.Dock="Bottom" Background="#F4F7FC" BorderBrush="#C8D4E8" BorderThickness="1" Padding="8" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock x:Name="DetailAdvice" TextWrapping="Wrap" FontWeight="SemiBold" Text="Pincha una línea para ver qué es y qué conviene hacer."/>
+                            <TextBlock x:Name="DetailInfo" TextWrapping="Wrap" Foreground="#444" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <ListView x:Name="StartupList" SelectionMode="Single" SelectionChanged="OnStartupSelected">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <Setter Property="ToolTip" Value="{Binding Command}"/>
@@ -66,6 +75,7 @@
                     </TextBlock>
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                         <Button x:Name="BtnRecycle" Content="Mandar las marcadas a la Papelera" Padding="12,3" Margin="0,0,8,0" Click="OnRecycle"/>
+                        <CheckBox x:Name="ChkAll" Content="Marcar todos" VerticalAlignment="Center" Margin="0,0,14,0" Click="OnSelectAll"/>
                         <Button Content="Abrir carpeta" Padding="12,3" Margin="0,0,8,0" Click="OnOpenLeftover"/>
                         <Button Content="Buscar otra vez" Padding="12,3" Click="OnRefreshLeftovers"/>
                     </WrapPanel>
