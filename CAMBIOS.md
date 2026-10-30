@@ -1,4 +1,15 @@
-Novedades de esta versión (0.9.1):
+Novedades de esta versión (0.10.0):
+
+- Nuevo botón LIMPIEZA (también en Seguridad > Limpieza y revisión del PC). Ideas sacadas de Glary Utilities y Wise Care 365, hechas desde cero y sin nada que se conecte a Internet:
+  - Programas que arrancan solos: inicio de Windows, carpetas de Inicio, tareas programadas, servicios, extensiones del menú contextual, protocolos de red, "secuestros" de programas y ajustes impuestos al navegador. Cada uno con su firma digital; en naranja lo que conviene mirar (sin firma en carpeta rara, firma no válida, scripts, directivas del navegador). Se puede desactivar y volver a activar (no se borra nada).
+  - Restos de programas desinstalados: carpetas que no son de ningún programa instalado y llevan 60 días sin cambiar, y carpetas de programas basura conocidos (SweetLabs, OneLaunch, WaveBrowser...). Se marcan a mano y van a la Papelera.
+  - Salud de los discos (SMART): estado, temperatura, desgaste del SSD, errores y espacio libre.
+  - Chequeo de seguridad: Firewall de Windows, antivirus, Windows Update, Escritorio remoto, control de cuentas y herramientas bloqueadas (Administrador de tareas, Editor del registro).
+- Nuevo VIGILANTE DEL SISTEMA en el servicio: cada 2 minutos mira si algo nuevo se ha puesto a arrancar solo. Aviso urgente al SOC si no tiene firma, está en una carpeta rara o es un script; también si se impone una página o extensión al navegador. Además avisa si un disco puede fallar o si algo del chequeo de seguridad pasa de bien a mal.
+- El informe diario tiene una sección nueva "10. Arranque, restos de programas, discos y chequeo de seguridad".
+- Las gráficas de velocidad van ahora en bits por segundo (Kbps, Mbps, Gbps), como la velocidad de la fibra, con escala fija hasta 1 Gbps. Cada raya es ×10, así se ve igual una web que una descarga grande. El título enseña la velocidad del momento.
+
+De la 0.9.1:
 
 - SOC familiar: menos avisos falsos de "SIN SEÑAL" en los sobremesa. Al apagar, Windows corta la red antes de que el firewall pueda despedirse. Ahora la despedida se manda al cerrar la sesión, que es antes, y se le da más tiempo. Si el PC no se apaga, a los 90 segundos vuelve a salir como activo.
 

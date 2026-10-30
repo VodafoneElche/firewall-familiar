@@ -30,6 +30,7 @@
                 <Separator/>
                 <MenuItem Header="SOC _familiar (informes al Google Drive)..." Click="OnSoc"/>
                 <MenuItem Header="Ver re_gistros..." Click="OnShowLogs"/>
+                <MenuItem Header="_Limpieza y revisión del PC..." Click="OnCleanup"/>
                 <MenuItem Header="Abrir carpeta de registros" Click="OnOpenLogsFolder"/>
             </MenuItem>
             <MenuItem Header="_Ver">
@@ -75,6 +76,12 @@
                     <StackPanel>
                         <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
                         <TextBlock Text="Registros" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolButton}" Click="OnCleanup" ToolTip="Lo que arranca solo, restos de programas, salud de los discos y chequeo de seguridad">
+                    <StackPanel>
+                        <TextBlock Text="&#xE90F;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Limpieza" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Button>
                 <Button Style="{StaticResource ToolButton}" Click="OnAbout" ToolTip="Ayuda">

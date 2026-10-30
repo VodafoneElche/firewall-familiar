@@ -127,5 +127,19 @@ public static class AntivirusInfo
         if (n == 0) sb.AppendLine("- Windows no tiene ningún antivirus registrado.");
     }
 
+    /// <summary>Antivirus registrados en Windows y si están activos y al día.</summary>
+    public static List<(string Name, bool On, bool UpToDate)> ProductList()
+    {
+        var list = new List<(string, bool, bool)>();
+        using var searcher = new ManagementObjectSearcher(@"root\SecurityCenter2", "SELECT displayName, productState FROM AntiVirusProduct");
+        foreach (ManagementObject mo in searcher.Get())
+            using (mo)
+            {
+                uint state = Convert.ToUInt32(mo["productState"] ?? 0u);
+                list.Add((mo["displayName"]?.ToString() ?? "", ((state >> 8) & 0xFF) is 0x10 or 0x11, (state & 0xFF) == 0x00));
+            }
+        return list;
+    }
+
     private static string Cell(string s) => s.Replace("|", "/").Replace("\r", " ").Replace("\n", " ").Trim();
 }

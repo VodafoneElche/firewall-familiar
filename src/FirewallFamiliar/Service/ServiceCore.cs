@@ -60,7 +60,8 @@ internal sealed class ServiceCore
     private Timer? _connTimer, _scanTimer, _updateTimer, _applyTimer, _remoteTimer;
     private bool _updating, _installingUpdate;
     private SocReporter? _soc;
-    private Timer? _avTimer, _uploadTimer, _beaconTimer;
+    private Timer? _avTimer, _uploadTimer, _beaconTimer, _watchTimer;
+    private SystemWatch? _watch;
     private UploadMonitor? _uploads;
     private DnsWatcher? _dns;
     /// <summary>Último aviso de programa espía por indicador (para no repetir correos).</summary>
@@ -163,6 +164,9 @@ internal sealed class ServiceCore
         if (_uploads.Start() is { } upErr) Log("⚠ No se pudo vigilar las subidas de datos: " + upErr);
         _uploadTimer = new Timer(_ => SafeRun(() => _uploads.Check()), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
         _beaconTimer = new Timer(_ => SafeRun(CheckBeacons), null, TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(30));
+        // Vigilante del sistema: lo nuevo que arranca solo, chequeo de seguridad y salud de los discos
+        _watch = new SystemWatch((text, outcome, app) => Log(text, outcome, null, app));
+        _watchTimer = new Timer(_ => SafeRun(() => _watch.Tick()), null, TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(2));
         // Programas espía conocidos: nombres que se preguntan al DNS
         Log($"Listas de programas espía (Amnesty, Citizen Lab, ECHAP): {SpyIndicators.DomainCount} dominios, " +
             $"{SpyIndicators.IpCount} IPs bloqueadas y {SpyIndicators.HashCount} huellas de archivos.");
@@ -188,6 +192,7 @@ internal sealed class ServiceCore
         _avTimer?.Dispose();
         _uploadTimer?.Dispose();
         _beaconTimer?.Dispose();
+        _watchTimer?.Dispose();
         _uploads?.Dispose();
         _dns?.Dispose();
         _soc?.Stop();

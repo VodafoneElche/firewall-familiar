@@ -80,7 +80,13 @@ public static class AnalysisReport
             try { return AntivirusInfo.Section(from, to); }
             catch (Exception ex) { return "## 9. Antivirus\n\nNo se pudo leer: " + ex.Message + "\n\n"; }
         }, cancel);
-        return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners, antivirus), cancel);
+        progress?.Report("Revisando el arranque, los restos de programas y los discos...");
+        string system = await Task.Run(() =>
+        {
+            try { return CleanupReport.Section(); }
+            catch (Exception ex) { return "## 10. Arranque, restos de programas, discos y chequeo de seguridad\n\nNo se pudo revisar: " + ex.Message + "\n\n"; }
+        }, cancel);
+        return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners, antivirus + system), cancel);
     }
 
     private static string Write(int days, DateTime from, DateTime to, RuleSet rules, IReadOnlyList<ProcessSummary> procs,
@@ -112,7 +118,7 @@ public static class AnalysisReport
         sb.AppendLine();
 
         // ---------------- Avisos ----------------
-        var alerts = security.Where(e => e.Outcome is "Escaneo" or "Sospechoso" or "Oculto" or "AccesoRemoto" or "Alerta").ToList();
+        var alerts = security.Where(e => e.Outcome is "Escaneo" or "Sospechoso" or "Oculto" or "AccesoRemoto" or "Alerta" or "Arranque").ToList();
         sb.AppendLine($"## 1. Avisos importantes ({alerts.Count})");
         sb.AppendLine();
         if (alerts.Count == 0) sb.AppendLine("Ninguno.");
@@ -239,7 +245,7 @@ public static class AnalysisReport
         sb.AppendLine();
 
         sb.Append(antivirus);
-        sb.AppendLine($"## 10. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
+        sb.AppendLine($"## 11. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
         sb.AppendLine();
         sb.AppendLine("```");
         foreach (var e in sec)

@@ -185,6 +185,23 @@ public partial class MainWindow
         return (System.Text.Json.JsonSerializer.Deserialize<RuleSet>(json)!, procs);
     }
 
+    private CleanupWindow? _cleanup;
+
+    /// <summary>Limpieza y revisión del PC (arranque, restos, discos, chequeo de seguridad).</summary>
+    private void OnCleanup(object sender, RoutedEventArgs e)
+    {
+        if (_cleanup != null)
+        {
+            if (_cleanup.WindowState == WindowState.Minimized) _cleanup.WindowState = WindowState.Normal;
+            _cleanup.Activate();
+            return;
+        }
+        if (!Authorize("Escribe la contraseña para abrir la limpieza del PC.")) return;
+        _cleanup = new CleanupWindow(Log) { Owner = this };
+        _cleanup.Closed += (_, _) => _cleanup = null;
+        _cleanup.Show();
+    }
+
     private void OnOpenLogsFolder(object sender, RoutedEventArgs e)
     {
         Directory.CreateDirectory(LogStore.Folder);

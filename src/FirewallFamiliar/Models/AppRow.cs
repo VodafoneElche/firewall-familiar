@@ -177,4 +177,14 @@ public static class Format
         if (b < 1024L * 1024 * 1024) return $"{b / 1024.0 / 1024:0.#} MB";
         return $"{b / 1024.0 / 1024 / 1024:0.##} GB";
     }
+
+    /// <summary>Velocidad en bits por segundo (como la dan las compañías: Mbps, Gbps) a partir de bytes/s.</summary>
+    public static string Speed(double bytesPerSecond)
+    {
+        double b = bytesPerSecond * 8;
+        if (b < 1000) return $"{b:0} bps";
+        if (b < 1e6) return $"{b / 1e3:0.#} Kbps";
+        if (b < 1e9) return $"{b / 1e6:0.#} Mbps";
+        return $"{b / 1e9:0.##} Gbps";
+    }
 }

@@ -73,6 +73,13 @@ Windows quita todos sus filtros y la red vuelve a funcionar normal. El Firewall 
   desde cualquier programa; conexiones que entran desde Internet; Escritorio remoto de Windows activado.
 - Se configura en la ventana completa: **Seguridad → SOC familiar...** (dirección, clave y nombre del PC; botón *Probar*).
 
+## Limpieza y vigilante del sistema (desde la 0.10.0)
+
+- Botón **Limpieza**: lo que arranca solo (con firma, se puede desactivar y volver a activar), restos de programas
+  desinstalados (a la Papelera, marcados a mano), salud de los discos (SMART) y chequeo de seguridad de Windows.
+- El servicio vigila cada 2 minutos lo nuevo que se pone a arrancar solo y avisa al SOC si es sospechoso; también
+  si un disco puede fallar o si el chequeo de seguridad empeora. Nada de esto usa Internet.
+
 ## Cómo probar la versión actual
 
 1. En GitHub, abre la pestaña **Actions**, entra en la última ejecución verde de **Compilar**

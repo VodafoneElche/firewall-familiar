@@ -24,7 +24,10 @@ public sealed class TrafficGraph : FrameworkElement
 
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
 
-    /// <summary>Si es true, los valores son bytes/s y la escala se muestra como B, KB, MB.</summary>
+    /// <summary>
+    /// Si es true, los valores son bytes/s y la escala es fija de 0 a 1 Gbps (en bits, como la velocidad de la fibra),
+    /// con un escalón por cada ×10 para que se vea igual de bien una web (Kbps) que una descarga grande (cientos de Mbps).
+    /// </summary>
     public bool IsBytes { get; set; } = true;
 
     /// <summary>Valor mínimo de la escala vertical, para que el ruido pequeño no llene la gráfica.</summary>
@@ -69,20 +72,32 @@ public sealed class TrafficGraph : FrameworkElement
             double x = plot.Left + i * step - (_scroll * step / 10);
             if (x >= plot.Left) dc.DrawLine(GridPen, new Point(x, plot.Top), new Point(x, plot.Bottom));
         }
-        for (int i = 0; i <= 4; i++)
+        int rows = IsBytes ? SpeedSteps.Length : 4;
+        for (int i = 0; i <= rows; i++)
         {
-            double y = plot.Top + i * plot.Height / 4;
+            double y = plot.Top + i * plot.Height / rows;
             dc.DrawLine(GridPen, new Point(plot.Left, y), new Point(plot.Right, y));
         }
 
         // Escala (la línea roja de bloqueos usa su propia escala: son conexiones, no bytes)
-        double max = NiceCeiling(Math.Max(MinScale, _total.DefaultIfEmpty(0).Max()));
+        double max = IsBytes ? 0 : NiceCeiling(Math.Max(MinScale, _total.DefaultIfEmpty(0).Max()));
         double blockedMax = Math.Max(5, _blocked.DefaultIfEmpty(0).Max());
-        DrawText(dc, Label(max), new Point(4, plot.Top - 2), TitleBrush, 10);
-        DrawText(dc, Label(0), new Point(4, plot.Bottom - 13), TitleBrush, 10);
+        if (IsBytes)
+        {
+            // De arriba abajo: 1G, 100M, 10M, 1M, 100K, 10K y 0 (1 Kbps o menos)
+            for (int i = 0; i < SpeedSteps.Length; i++)
+                DrawText(dc, SpeedSteps[i], new Point(4, plot.Top + i * plot.Height / rows - (i == 0 ? 2 : 7)), TitleBrush, 10);
+            DrawText(dc, "0", new Point(4, plot.Bottom - 13), TitleBrush, 10);
+        }
+        else
+        {
+            DrawText(dc, Label(max), new Point(4, plot.Top - 2), TitleBrush, 10);
+            DrawText(dc, Label(0), new Point(4, plot.Bottom - 13), TitleBrush, 10);
+        }
 
-        // Título y leyenda
-        DrawText(dc, Title, new Point(left + 4, 3), TitleBrush, 12, bold: true);
+        // Título (con la velocidad de ahora) y leyenda
+        string title = IsBytes && _total.Count > 0 ? $"{Title}  ·  {Format.Speed(_total[^1])}" : Title;
+        DrawText(dc, title, new Point(left + 4, 3), TitleBrush, 12, bold: true);
         double dip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         var legend = new FormattedText("— " + TotalLabel, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
             Font, 11, TitleBrush, dip);
@@ -93,11 +108,25 @@ public sealed class TrafficGraph : FrameworkElement
         dc.DrawText(legendRed, new Point(w - right - legend.Width - legendRed.Width - 14, legendY));
 
         // Líneas
-        DrawSeries(dc, _blocked, BlockedPen, plot, blockedMax);
-        DrawSeries(dc, _total, TotalPen, plot, max);
+        DrawSeries(dc, _blocked, BlockedPen, plot, v => v / blockedMax);
+        DrawSeries(dc, _total, TotalPen, plot, IsBytes ? SpeedFraction : v => v / max);
     }
 
-    private void DrawSeries(DrawingContext dc, List<double> data, Pen pen, Rect plot, double max)
+    /// <summary>Marcas de la escala de velocidad, de arriba abajo (cada una es ×10 la de debajo).</summary>
+    private static readonly string[] SpeedSteps = { "1 Gbps", "100 M", "10 M", "1 M", "100 K", "10 K" };
+
+    /// <summary>
+    /// Altura (0 a 1) de una velocidad en bytes/s en la escala de 1 Kbps a 1 Gbps: un escalón por cada ×10.
+    /// También la usa el medidor de barras.
+    /// </summary>
+    public static double SpeedFraction(double bytesPerSecond)
+    {
+        double bits = bytesPerSecond * 8;
+        if (bits <= 1000) return 0;
+        return Math.Min(1, Math.Log10(bits / 1000) / 6);
+    }
+
+    private void DrawSeries(DrawingContext dc, List<double> data, Pen pen, Rect plot, Func<double, double> height)
     {
         if (data.Count < 2) return;
         double dx = plot.Width / (MaxSamples - 1);
@@ -107,7 +136,7 @@ public sealed class TrafficGraph : FrameworkElement
         {
             for (int i = 0; i < data.Count; i++)
             {
-                var pt = new Point(startX + i * dx, plot.Bottom - Math.Min(1, data[i] / max) * plot.Height);
+                var pt = new Point(startX + i * dx, plot.Bottom - Math.Min(1, height(data[i])) * plot.Height);
                 if (i == 0) ctx.BeginFigure(pt, false, false); else ctx.LineTo(pt, true, false);
             }
         }
@@ -145,7 +174,6 @@ public sealed class TrafficMeter : FrameworkElement
 {
     private double _value;
     private double _blocked;
-    private double _peak = 1024;
 
     public static readonly DependencyProperty TitleProperty =
         DependencyProperty.Register(nameof(Title), typeof(string), typeof(TrafficMeter),
@@ -162,8 +190,6 @@ public sealed class TrafficMeter : FrameworkElement
     {
         _value = bytesPerSecond;
         _blocked = blockedPerSecond;
-        // El pico decae poco a poco para que la escala se adapte
-        _peak = Math.Max(1024, Math.Max(_peak * 0.97, bytesPerSecond));
         InvalidateVisual();
     }
 
@@ -181,14 +207,15 @@ public sealed class TrafficMeter : FrameworkElement
         double top = 22, bottom = h - 34;
         const int bars = 12;
         double barH = (bottom - top) / bars;
-        int lit = (int)Math.Ceiling(Math.Min(1, _value / _peak) * bars);
+        // Misma escala que la gráfica: de 1 Kbps a 1 Gbps, dos barras por cada ×10
+        int lit = (int)Math.Ceiling(TrafficGraph.SpeedFraction(_value) * bars);
         for (int i = 0; i < bars; i++)
         {
             double y = bottom - (i + 1) * barH;
             dc.DrawRectangle(i < lit ? On : Off, null, new Rect(w * 0.25, y + 1, w * 0.5, barH - 2));
         }
 
-        var val = new FormattedText(Format.Bytes((long)_value) + "/s", CultureInfo.CurrentCulture,
+        var val = new FormattedText(Format.Speed(_value), CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight, Font, 10, On, dip);
         dc.DrawText(val, new Point((w - val.Width) / 2, h - 32));
         var blk = new FormattedText(_blocked == 0 ? "0 bloq." : $"{_blocked:0} bloq.", CultureInfo.CurrentCulture,
