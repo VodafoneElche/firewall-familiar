@@ -22,12 +22,20 @@ public static class SpyIndicators
     /// <summary>IPs que han resuelto dominios de la lista en este PC (también se bloquean).</summary>
     private static readonly Dictionary<IPAddress, string> Learned = new();
     private static readonly object Gate = new();
+    /// <summary>Huellas en el disco: archivos (con texto opcional dentro) y tareas programadas.</summary>
+    private static readonly List<(string Kind, string Pattern, string Contains, string Family)> Artifacts = new();
 
     static SpyIndicators()
     {
+        Load("FirewallFamiliar.indicadores.txt");
+        Load("FirewallFamiliar.indicadores-extra.txt");
+    }
+
+    private static void Load(string resource)
+    {
         try
         {
-            using var s = typeof(SpyIndicators).Assembly.GetManifestResourceStream("FirewallFamiliar.indicadores.txt");
+            using var s = typeof(SpyIndicators).Assembly.GetManifestResourceStream(resource);
             if (s == null) return;
             using var r = new StreamReader(s);
             for (string? line = r.ReadLine(); line != null; line = r.ReadLine())
@@ -40,6 +48,11 @@ public static class SpyIndicators
                     case "domain": Domains[p[1]] = p[2]; break;
                     case "ip": if (IPAddress.TryParse(p[1], out var ip)) Ips[Normal(ip)] = p[2]; break;
                     case "sha256": Hashes[p[1]] = p[2]; break;
+                    case "archivo":
+                    case "tarea":
+                        int bar = p[1].IndexOf('|');
+                        Artifacts.Add((p[0], bar < 0 ? p[1] : p[1][..bar], bar < 0 ? "" : p[1][(bar + 1)..], p[2]));
+                        break;
                 }
             }
         }
@@ -49,6 +62,54 @@ public static class SpyIndicators
     public static int DomainCount => Domains.Count;
     public static int IpCount => Ips.Count;
     public static int HashCount => Hashes.Count;
+    public static int ArtifactCount => Artifacts.Count;
+
+    /// <summary>
+    /// Busca en el disco las huellas que dejan algunos programas espía y puertas traseras
+    /// (archivos, claves SSH añadidas, tareas programadas). Devuelve (qué se ha encontrado, familia).
+    /// </summary>
+    public static List<(string Found, string Family)> CheckArtifacts()
+    {
+        var found = new List<(string, string)>();
+        if (Artifacts.Count == 0) return found;
+        var users = StartupItems.Users();
+        var startups = users.Select(u => Path.Combine(u.Profile, @"AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"))
+            .Append(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup)).ToList();
+        string tasks = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"System32\Tasks");
+        foreach (var a in Artifacts)
+        {
+            try
+            {
+                if (a.Kind == "tarea")
+                {
+                    string file = Path.Combine(tasks, a.Pattern);
+                    if (!File.Exists(file)) continue;
+                    if (a.Contains.Length == 0 || File.ReadAllText(file).Contains(a.Contains, StringComparison.OrdinalIgnoreCase))
+                        found.Add(($"tarea programada \"{a.Pattern}\"", a.Family));
+                    continue;
+                }
+                IEnumerable<string> bases = a.Pattern.StartsWith("%PERFIL%") ? users.Select(u => a.Pattern.Replace("%PERFIL%", u.Profile))
+                    : a.Pattern.StartsWith("%INICIO%") ? startups.Select(d => a.Pattern.Replace("%INICIO%", d))
+                    : new[] { Environment.ExpandEnvironmentVariables(a.Pattern) };
+                foreach (var path in bases)
+                {
+                    string dir = Path.GetDirectoryName(path) ?? "";
+                    string name = Path.GetFileName(path);
+                    if (!Directory.Exists(dir)) continue;
+                    var hits = name.Contains('*') ? Directory.GetFileSystemEntries(dir, name)
+                        : File.Exists(path) || Directory.Exists(path) ? new[] { path } : Array.Empty<string>();
+                    foreach (var hit in hits)
+                    {
+                        if (a.Contains.Length > 0 && (!File.Exists(hit) || new FileInfo(hit).Length > 5_000_000 ||
+                            !File.ReadAllText(hit).Contains(a.Contains, StringComparison.OrdinalIgnoreCase))) continue;
+                        found.Add((a.Contains.Length > 0 ? $"{hit} (contiene \"{a.Contains}\")" : hit, a.Family));
+                    }
+                }
+            }
+            catch { }
+        }
+        return found;
+    }
 
     private static IPAddress Normal(IPAddress ip) => ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip;
 

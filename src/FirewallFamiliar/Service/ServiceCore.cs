@@ -169,7 +169,7 @@ internal sealed class ServiceCore
         _watchTimer = new Timer(_ => SafeRun(() => _watch.Tick()), null, TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(2));
         // Programas espía conocidos: nombres que se preguntan al DNS
         Log($"Listas de programas espía (Amnesty, Citizen Lab, ECHAP): {SpyIndicators.DomainCount} dominios, " +
-            $"{SpyIndicators.IpCount} IPs bloqueadas y {SpyIndicators.HashCount} huellas de archivos.");
+            $"{SpyIndicators.IpCount} IPs bloqueadas, {SpyIndicators.HashCount} huellas de archivos y {SpyIndicators.ArtifactCount} rastros en el disco.");
         _dns = new DnsWatcher((name, ips, pid) => SafeRun(() => OnDnsQuery(name, ips, pid)));
         if (_dns.Start() is { } dnsErr) Log("⚠ No se pudo vigilar las consultas DNS: " + dnsErr);
         // Al arrancar (o tras una actualización) el icono de cada usuario conectado

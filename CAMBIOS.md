@@ -1,4 +1,12 @@
-Novedades de esta versión (0.10.0):
+Novedades de esta versión (0.10.1):
+
+- Aviso de la puerta trasera de la extensión Claude Code 2.1.313 (troyanizada en Open VSX y en la tienda de Cursor el 29/10/2026). Va con las listas de programas espía, en Assets/indicadores-extra.txt:
+  - La IP de los atacantes (134.209.82.225) queda BLOQUEADA siempre.
+  - Cada 2 minutos se buscan sus rastros: la clave "svc-telemetry" en .ssh\authorized_keys de cada usuario, la tarea programada SysMon, sysmon.cmd en la carpeta Inicio, los archivos .smt, .smtk y smt.cmd, y la carpeta de la extensión 2.1.313 en VS Code, Cursor, VSCodium o Windsurf. Si aparece algo, aviso urgente al SOC.
+  - El informe diario tiene un apartado nuevo: "Huellas de puertas traseras y programas espía en el disco".
+- Arreglado: en las gráficas de velocidad los números de la escala (1 Gbps, 100 M...) se montaban unos encima de otros. Si la gráfica es baja, ahora se pone uno de cada dos.
+
+De la 0.10.0:
 
 - Nuevo botón LIMPIEZA (también en Seguridad > Limpieza y revisión del PC). Ideas sacadas de Glary Utilities y Wise Care 365, hechas desde cero y sin nada que se conecte a Internet:
   - Programas que arrancan solos: inicio de Windows, carpetas de Inicio, tareas programadas, servicios, extensiones del menú contextual, protocolos de red, "secuestros" de programas y ajustes impuestos al navegador. Cada uno con su firma digital; en naranja lo que conviene mirar (sin firma en carpeta rara, firma no válida, scripts, directivas del navegador). Se puede desactivar y volver a activar (no se borra nada).

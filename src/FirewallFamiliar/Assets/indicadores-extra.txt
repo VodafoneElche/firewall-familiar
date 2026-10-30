@@ -1,0 +1,22 @@
+# Indicadores añadidos a mano (casos concretos publicados por empresas de seguridad).
+# No lo genera tools/indicadores.py: se mantiene a mano y se renueva con cada versión.
+# Formato: tipo <TAB> valor <TAB> familia
+#   ip / domain / sha256: igual que en indicadores.txt (las IPs se bloquean siempre).
+#   archivo: ruta (con %PERFIL% = carpeta de cada usuario, %INICIO% = carpetas de Inicio, * al final del nombre)
+#            y, opcional tras "|", un texto que tiene que contener el archivo.
+#   tarea: nombre de una tarea programada y, opcional tras "|", algo que tiene que contener su comando.
+#
+# Extensión Claude Code 2.1.313 troyanizada (Open VSX y tienda de Cursor, 29/10/2026).
+# Fuentes: StepSecurity, OX Security y aviso de Cursor (30/10/2026).
+ip	134.209.82.225	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.ssh\authorized_keys|svc-telemetry	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%INICIO%\sysmon.cmd	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.config\.smt	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.config\.smtk	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.config\smt.cmd	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.ssh\.stk_*	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.vscode\extensions\anthropic.claude-code-2.1.313*	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.cursor\extensions\anthropic.claude-code-2.1.313*	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.vscode-oss\extensions\anthropic.claude-code-2.1.313*	Puerta trasera de la extensión Claude Code 2.1.313
+archivo	%PERFIL%\.windsurf\extensions\anthropic.claude-code-2.1.313*	Puerta trasera de la extensión Claude Code 2.1.313
+tarea	SysMon|.cmd	Puerta trasera de la extensión Claude Code 2.1.313

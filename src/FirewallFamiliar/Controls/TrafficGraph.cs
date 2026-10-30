@@ -84,9 +84,16 @@ public sealed class TrafficGraph : FrameworkElement
         double blockedMax = Math.Max(5, _blocked.DefaultIfEmpty(0).Max());
         if (IsBytes)
         {
-            // De arriba abajo: 1G, 100M, 10M, 1M, 100K, 10K y 0 (1 Kbps o menos)
-            for (int i = 0; i < SpeedSteps.Length; i++)
-                DrawText(dc, SpeedSteps[i], new Point(4, plot.Top + i * plot.Height / rows - (i == 0 ? 2 : 7)), TitleBrush, 10);
+            // De arriba abajo: 1G, 100M, 10M, 1M, 100K, 10K y 0 (1 Kbps o menos).
+            // Si la gráfica es baja no caben todas: se pone una de cada dos (o de cada tres) para que no se monten.
+            double rowH = plot.Height / rows;
+            int every = rowH >= 16 ? 1 : rowH >= 8 ? 2 : 3;
+            for (int i = 0; i < SpeedSteps.Length; i += every)
+            {
+                double y = Math.Max(plot.Top - 2, plot.Top + i * rowH - 7);
+                if (y > plot.Bottom - 26) break; // dejaría sin sitio al 0 de abajo
+                DrawText(dc, SpeedSteps[i], new Point(4, y), TitleBrush, 10);
+            }
             DrawText(dc, "0", new Point(4, plot.Bottom - 13), TitleBrush, 10);
         }
         else

@@ -40,6 +40,8 @@ internal sealed class SystemWatch
         public Dictionary<string, DateTime> DiskAlerted { get; set; } = new();
         public DateTime LowSpaceWarned { get; set; }
         public bool Initialized { get; set; }
+        /// <summary>Huellas de programas espía ya avisadas (se vuelven a avisar si desaparecen y vuelven).</summary>
+        public HashSet<string> Artifacts { get; set; } = new();
     }
 
     public SystemWatch(Action<string, string, string?> log)
@@ -53,6 +55,7 @@ internal sealed class SystemWatch
         if (Interlocked.Exchange(ref _busy, 1) == 1) return;
         try
         {
+            CheckArtifacts();
             CheckStartup();
             if (_ticks++ % 15 == 0) CheckSecurity();
             if (DateTime.Now - _lastDisks > TimeSpan.FromHours(6))
@@ -117,6 +120,18 @@ internal sealed class SystemWatch
         else
             _log($"Arranque: {what} {verb}: {item.Path} ({(item.FileMissing ? "el archivo no existe" : item.Signature.Short)}).",
                  "Arranque", item.Path.Length > 0 ? item.Path : null);
+    }
+
+    // ------------------------------------------------------------------ Huellas de programas espía
+    private void CheckArtifacts()
+    {
+        var found = SpyIndicators.CheckArtifacts();
+        var now = found.Select(f => f.Found).ToHashSet();
+        foreach (var (what, family) in found)
+            if (_state.Artifacts.Add(what))
+                _log($"⚠ {family.ToUpperInvariant()}: encontrado {what}. Desconecta este PC de Internet y revísalo " +
+                     "(no lo borres aún: sirve para saber qué ha pasado).", "Alerta", null);
+        _state.Artifacts.RemoveWhere(a => !now.Contains(a));
     }
 
     // ------------------------------------------------------------------ Chequeo de seguridad

@@ -32,6 +32,13 @@ public static class CleanupReport
         try { foreach (var v in DiskHealth.Volumes()) sb.AppendLine("- " + v.Text); } catch { }
         sb.AppendLine();
 
+        var artifacts = SpyIndicators.CheckArtifacts();
+        sb.AppendLine($"### Huellas de puertas traseras y programas espía en el disco ({SpyIndicators.ArtifactCount} comprobadas)");
+        sb.AppendLine();
+        if (artifacts.Count == 0) sb.AppendLine("Ninguna encontrada.");
+        foreach (var (what, family) in artifacts) sb.AppendLine($"- ⚠ {family}: {what}");
+        sb.AppendLine();
+
         sb.AppendLine("### Chequeo de seguridad de Windows");
         sb.AppendLine();
         foreach (var f in SecurityCheck.Run())
