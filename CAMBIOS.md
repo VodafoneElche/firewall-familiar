@@ -1,4 +1,8 @@
-Novedades de esta versión (0.10.2):
+Novedades de esta versión (0.10.3):
+
+- Chequeo de seguridad: nueva comprobación "DNS del PC". Avisa si un PC tiene las DNS puestas a mano (por ejemplo, las de AdGuard sin filtro), porque así se salta el filtro familiar del router (OpenDNS FamilyShield). Explica cómo dejarlas en Automático. Las VPN y las máquinas virtuales no cuentan. Si un PC que estaba bien pasa a tener DNS a mano, llega un aviso al SOC.
+
+De la 0.10.2:
 
 - Limpieza > Programas que arrancan solos:
   - Al pinchar una línea, abajo sale qué es, por qué está marcada y QUÉ CONVIENE HACER.

@@ -109,6 +109,34 @@ public static class SecurityCheck
                 : "BLOQUEADO: " + string.Join(", ", blocked) + ". Algunos virus lo hacen para que no se les pueda quitar (si no lo has puesto tú a propósito)."));
         });
 
+        // DNS puestas a mano: se saltan el filtro familiar del router (OpenDNS FamilyShield)
+        Try(() =>
+        {
+            var manual = new List<string>();
+            foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                if (nic.NetworkInterfaceType is System.Net.NetworkInformation.NetworkInterfaceType.Loopback
+                    or System.Net.NetworkInformation.NetworkInterfaceType.Tunnel or System.Net.NetworkInformation.NetworkInterfaceType.Ppp) continue;
+                string desc = (nic.Description + " " + nic.Name).ToLowerInvariant();
+                // Las VPN ponen sus propias DNS en su adaptador: eso ya sale en "VPN" del informe
+                if (new[] { "vpn", "wireguard", "tap-", "tailscale", "proton", "wintun", "openvpn", "virtual", "hyper-v", "vmware", "virtualbox" }
+                    .Any(k => desc.Contains(k))) continue;
+                var servers = new List<string>();
+                foreach (var (tcpip, name) in new[] { ("Tcpip", "IPv4"), ("Tcpip6", "IPv6") })
+                {
+                    using var k = hklm.OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{tcpip}\Parameters\Interfaces\{nic.Id}");
+                    if (k?.GetValue("NameServer") is string ns && ns.Trim().Length > 0)
+                        servers.AddRange(ns.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries));
+                }
+                if (servers.Count > 0) manual.Add($"{nic.Name}: {string.Join(", ", servers)}");
+            }
+            list.Add(new SecurityFinding("dns", "DNS del PC", manual.Count == 0,
+                manual.Count == 0 ? "Automáticas: usa las del router (el filtro familiar)."
+                : "PUESTAS A MANO (" + string.Join("; ", manual) + "). Así el PC se salta el filtro familiar del router. " +
+                  "Para arreglarlo: Configuración > Red e Internet > el adaptador > Asignación de servidor DNS > Editar > Automático (DHCP)."));
+        });
+
         return list;
     }
 }
