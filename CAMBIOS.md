@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.2):
+Novedades de esta versión (0.11.3):
+
+- Medir velocidad: la latencia ya no incluye el tiempo que tarda el servidor de pruebas en contestar (Cloudflare lo indica en cada respuesta), solo el viaje por la red, como fast.com. En la 0.11.2 salía 40 ms en el portátil de Jose cuando fast.com daba 6 ms; las velocidades sí coincidían (471/514 frente a 490/560 Mbps).
+
+De la 0.11.2:
 
 - Ventana Router: botón "Medir velocidad". Mide bajada, subida, latencia a Internet (y su variación), latencia con la línea llena (bajando y subiendo: si sube mucho, las videollamadas y juegos van a tirones) y latencia al router. Solo cuando se pulsa. Usa el servidor de pruebas de Cloudflare (speed.cloudflare.com): solo viajan datos de relleno, nada del PC.
 

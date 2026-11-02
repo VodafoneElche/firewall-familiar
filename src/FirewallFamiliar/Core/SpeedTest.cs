@@ -90,7 +90,7 @@ public static class SpeedTest
             var sw = Stopwatch.StartNew();
             using var res = await Http.GetAsync($"{Base}/__down?bytes=0", HttpCompletionOption.ResponseHeadersRead, cancel);
             sw.Stop();
-            if (i > 0 && res.IsSuccessStatusCode) list.Add(sw.Elapsed.TotalMilliseconds); // la primera incluye abrir la conexión
+            if (i > 0 && res.IsSuccessStatusCode) list.Add(NetMs(sw.Elapsed.TotalMilliseconds, res)); // la primera incluye abrir la conexión
         }
         return list;
     }
@@ -147,7 +147,7 @@ public static class SpeedTest
                 {
                     var t = Stopwatch.StartNew();
                     using var res = await Http.GetAsync($"{Base}/__down?bytes=0", HttpCompletionOption.ResponseHeadersRead, stop.Token);
-                    list.Add(t.Elapsed.TotalMilliseconds);
+                    list.Add(NetMs(t.Elapsed.TotalMilliseconds, res));
                 }
                 catch { }
                 await Task.Delay(400);
@@ -162,6 +162,24 @@ public static class SpeedTest
         try { lp = await loaded; } catch { }
         double seconds = Math.Max(0.5, Math.Min(sw.Elapsed.TotalSeconds, total.TotalSeconds) - warm.TotalSeconds);
         return (bytes > 0 ? bytes * 8 / seconds / 1_000_000 : null, lp);
+    }
+
+    /// <summary>
+    /// Quita el tiempo que el servidor tarda en preparar la respuesta (cabecera Server-Timing, p. ej.
+    /// "cfSpeedEdge;dur=7, cfSpeedWorker;dur=47"): así queda solo el viaje por la red, como en fast.com.
+    /// </summary>
+    private static double NetMs(double total, HttpResponseMessage res)
+    {
+        double server = 0;
+        if (res.Headers.TryGetValues("Server-Timing", out var values))
+            foreach (var entry in values.SelectMany(v => v.Split(',')))
+            {
+                if (entry.TrimStart().StartsWith("cfL4", StringComparison.OrdinalIgnoreCase)) continue;
+                var m = System.Text.RegularExpressions.Regex.Match(entry, @"(?:^|;)\s*dur=([\d.]+)");
+                if (m.Success && double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out double d)) server += d;
+            }
+        return Math.Max(0.1, total - server);
     }
 
     private static double Median(List<double> v)
