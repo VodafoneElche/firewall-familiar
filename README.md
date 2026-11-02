@@ -80,6 +80,14 @@ Windows quita todos sus filtros y la red vuelve a funcionar normal. El Firewall 
 - El servicio vigila cada 2 minutos lo nuevo que se pone a arrancar solo y avisa al SOC si es sospechoso; también
   si un disco puede fallar o si el chequeo de seguridad empeora. Nada de esto usa Internet.
 
+## Router y red de casa (desde la 0.11.0)
+
+- Botón **Router**: puertas del router que contestan (Telnet, SSH, FTP, TR-069 del operador...), puertos abiertos por
+  UPnP hacia los aparatos de casa, aparatos que el PC ve en la red (fabricante según la lista del IEEE que va dentro del
+  programa) y cifrado del Wi-Fi. Solo habla con el router; nunca prueba contraseñas ni cambia nada.
+- El servicio lo revisa cada 15 minutos y avisa al SOC de aparatos nuevos, puertos UPnP sospechosos y puertas
+  peligrosas nuevas en el router.
+
 ## Cómo probar la versión actual
 
 1. En GitHub, abre la pestaña **Actions**, entra en la última ejecución verde de **Compilar**

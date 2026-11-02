@@ -1,0 +1,84 @@
+<Window x:Class="FirewallFamiliar.Views.RouterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Router y red de casa - Firewall Familiar" Width="980" Height="680" MinWidth="700" MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="8">
+        <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Button x:Name="BtnRefresh" Content="Revisar ahora" Padding="12,3" Margin="0,0,8,0" Click="OnRefresh"/>
+            <Button x:Name="BtnAdmin" Content="Abrir la configuración del router" Padding="12,3" Margin="0,0,16,0" Click="OnOpenAdmin"/>
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#555" TextWrapping="Wrap"/>
+        </WrapPanel>
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#333">
+            Revisión del router desde dentro de casa. No sale nada a Internet: solo se pregunta al router qué contesta.
+            No se prueba ninguna contraseña ni se cambia nada. Naranja = conviene mirarlo.
+        </TextBlock>
+        <Border DockPanel.Dock="Top" Background="#F4F7FC" BorderBrush="#C8D4E8" BorderThickness="1" Padding="8" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock x:Name="RouterText" TextWrapping="Wrap" FontWeight="SemiBold" Text="Revisando..."/>
+                <TextBlock x:Name="WifiText" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock x:Name="UpnpText" TextWrapping="Wrap" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="0.6*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="Puertas del router que contestan" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <ListView Grid.Row="1" x:Name="PortList">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="ToolTip" Value="{Binding Advice}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Level}" Value="3">
+                                <Setter Property="Background" Value="#FFDCB4"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Level}" Value="2">
+                                <Setter Property="Background" Value="#FFF0DC"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Nivel" Width="80" DisplayMemberBinding="{Binding LevelText}"/>
+                        <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding Port}"/>
+                        <GridViewColumn Header="Qué es" Width="250" DisplayMemberBinding="{Binding Service}"/>
+                        <GridViewColumn Header="Qué hacer" Width="540" DisplayMemberBinding="{Binding Advice}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+            <TextBlock Grid.Row="2" Text="Puertos abiertos en el router por UPnP (entran desde Internet hasta un aparato de casa)" FontWeight="SemiBold" Margin="0,8,0,4"/>
+            <ListView Grid.Row="3" x:Name="UpnpList">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Tipo" Width="50" DisplayMemberBinding="{Binding Protocol}"/>
+                        <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding ExternalPort}"/>
+                        <GridViewColumn Header="Hacia" Width="120" DisplayMemberBinding="{Binding InternalClient}"/>
+                        <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding InternalPort}"/>
+                        <GridViewColumn Header="Aparato" Width="130" DisplayMemberBinding="{Binding Device}"/>
+                        <GridViewColumn Header="Descripción" Width="200" DisplayMemberBinding="{Binding Description}"/>
+                        <GridViewColumn Header="Programa" Width="300" DisplayMemberBinding="{Binding Program}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+            <TextBlock Grid.Row="4" x:Name="DevicesTitle" Text="Aparatos que este PC ve en la red" FontWeight="SemiBold" Margin="0,8,0,4"/>
+            <ListView Grid.Row="5" x:Name="DeviceList">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="IP" Width="120" DisplayMemberBinding="{Binding Ip}"/>
+                        <GridViewColumn Header="MAC" Width="150" DisplayMemberBinding="{Binding Mac}"/>
+                        <GridViewColumn Header="Fabricante" Width="300" DisplayMemberBinding="{Binding VendorText}"/>
+                        <GridViewColumn Header="Qué es" Width="300" DisplayMemberBinding="{Binding Kind}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,4 +1,14 @@
-Novedades de esta versión (0.10.5):
+Novedades de esta versión (0.11.0):
+
+- Botón nuevo "Router" (y menú "Router y red de casa..."): revisa el router desde dentro de casa, sin salir a Internet y sin probar ninguna contraseña. Idea sacada del programa Bastion (github.com/0xCodez/bastion), hecha desde cero en Firewall Familiar:
+  - Puertas del router que contestan: Telnet, SSH, FTP, disco compartido, página de configuración sin cifrar, gestión remota del operador (TR-069, normal en routers del operador)... con lo que conviene hacer en cada caso.
+  - Puertos abiertos en el router por UPnP: qué aparato y qué programa (si es este PC) tiene una puerta abierta desde Internet.
+  - Aparatos que este PC ve en la red, con el fabricante (lista oficial del IEEE dentro del programa, Assets/fabricantes.txt, generada por tools/fabricantes.py). Las direcciones privadas de móviles y tablets se marcan como tales.
+  - Cifrado del Wi-Fi: avisa si va abierto, con WEP, WPA antiguo o TKIP.
+- Vigilante del router en el servicio, cada 15 minutos (puertas del router cada 6 horas). Avisos urgentes al SOC: aparato nuevo en la red de casa; puerto abierto por UPnP hacia este PC por un programa sin firma o desconocido, o hacia cualquier aparato en un puerto de control remoto; puerta peligrosa nueva en el router. Cada red se recuerda por su router, así que un portátil fuera de casa aprende la red nueva sin avisar de todo.
+- Informe: apartado nuevo "11. Router y red de casa"; el registro completo pasa a ser el 12.
+
+De la 0.10.5:
 
 - PDF Familiar (PDF Casero), el editor de PDF de casa, ya no sale como riesgo: ni el programa, ni su instalador, ni el archivo temporal del instalador. Se reconoce por su nombre y por los datos que lleva dentro (fabricante "PDF Familiar"). En la columna Firma sale "✔ PDF Familiar (de casa)".
 - Firewall Familiar tampoco se marca a sí mismo como "sin firma" en la lista de arranque ni en las "conexiones periódicas" (su latido al SOC).

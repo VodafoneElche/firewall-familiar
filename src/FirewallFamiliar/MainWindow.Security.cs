@@ -204,6 +204,22 @@ public partial class MainWindow
         _cleanup.Show();
     }
 
+    private RouterWindow? _routerWindow;
+
+    /// <summary>Router y red de casa (puertas del router, UPnP, aparatos, Wi-Fi).</summary>
+    private void OnRouter(object sender, RoutedEventArgs e)
+    {
+        if (_routerWindow != null)
+        {
+            if (_routerWindow.WindowState == WindowState.Minimized) _routerWindow.WindowState = WindowState.Normal;
+            _routerWindow.Activate();
+            return;
+        }
+        _routerWindow = new RouterWindow { Owner = this };
+        _routerWindow.Closed += (_, _) => _routerWindow = null;
+        _routerWindow.Show();
+    }
+
     private void OnOpenLogsFolder(object sender, RoutedEventArgs e)
     {
         Directory.CreateDirectory(LogStore.Folder);

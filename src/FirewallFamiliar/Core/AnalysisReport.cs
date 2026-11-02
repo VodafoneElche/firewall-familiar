@@ -86,7 +86,13 @@ public static class AnalysisReport
             try { return CleanupReport.Section(); }
             catch (Exception ex) { return "## 10. Arranque, restos de programas, discos y chequeo de seguridad\n\nNo se pudo revisar: " + ex.Message + "\n\n"; }
         }, cancel);
-        return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners, antivirus + system), cancel);
+        progress?.Report("Revisando el router y la red de casa...");
+        string router = await Task.Run(() =>
+        {
+            try { return RouterCheck.Section(RouterCheck.Run(true, cancel)); }
+            catch (Exception ex) { return "## 11. Router y red de casa\n\nNo se pudo revisar: " + ex.Message + "\n\n"; }
+        }, cancel);
+        return await Task.Run(() => Write(days, from, to, rules, processes, security, traffic, owners, antivirus + system + router), cancel);
     }
 
     private static string Write(int days, DateTime from, DateTime to, RuleSet rules, IReadOnlyList<ProcessSummary> procs,
@@ -245,7 +251,7 @@ public static class AnalysisReport
         sb.AppendLine();
 
         sb.Append(antivirus);
-        sb.AppendLine($"## 11. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
+        sb.AppendLine($"## 12. Registro de seguridad completo{(security.Count > MaxSecurityLines ? $" (últimas {MaxSecurityLines} líneas de {security.Count})" : "")}");
         sb.AppendLine();
         sb.AppendLine("```");
         foreach (var e in sec)

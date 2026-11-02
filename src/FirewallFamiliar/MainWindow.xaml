@@ -31,6 +31,7 @@
                 <MenuItem Header="SOC _familiar (informes al Google Drive)..." Click="OnSoc"/>
                 <MenuItem Header="Ver re_gistros..." Click="OnShowLogs"/>
                 <MenuItem Header="_Limpieza y revisión del PC..." Click="OnCleanup"/>
+                <MenuItem Header="_Router y red de casa..." Click="OnRouter"/>
                 <MenuItem Header="Abrir carpeta de registros" Click="OnOpenLogsFolder"/>
             </MenuItem>
             <MenuItem Header="_Ver">
@@ -82,6 +83,12 @@
                     <StackPanel>
                         <TextBlock Text="&#xE90F;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
                         <TextBlock Text="Limpieza" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolButton}" Click="OnRouter" ToolTip="Puertas del router, puertos abiertos por UPnP, aparatos de casa y cifrado del Wi-Fi">
+                    <StackPanel>
+                        <TextBlock Text="&#xE701;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Router" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Button>
                 <Button Style="{StaticResource ToolButton}" Click="OnAbout" ToolTip="Ayuda">
