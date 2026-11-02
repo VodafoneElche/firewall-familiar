@@ -58,6 +58,8 @@ public partial class MainWindow
         if (row.Path.Length == 0 || row.Path == "System") { row.Suspicious = ""; return; }
         var sig = row.Signature;
         if (sig.Status == SignatureStatus.Pendiente) return; // se decidirá cuando termine la comprobación
+        // Programas de casa (PDF Familiar) y el propio firewall: no son un riesgo aunque funcionen desde Descargas o Temp
+        if (sig.Status == SignatureStatus.Valida && (sig.Signer == Signature.HomeSigner || Signature.IsOwn(row.Path))) { row.Suspicious = ""; return; }
 
         var reasons = new List<string>();
         if (sig.Status == SignatureStatus.NoValida) reasons.Add("su firma digital NO es válida (" + sig.Detail + ")");

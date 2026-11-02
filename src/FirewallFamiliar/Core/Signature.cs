@@ -39,6 +39,8 @@ public sealed record SignatureInfo(SignatureStatus Status, string Signer, string
     /// <summary>Explicación para la ficha de detalles.</summary>
     public string Long => Status switch
     {
+        SignatureStatus.Valida when Signer == Signature.HomeSigner || Signer.StartsWith("Firewall Familiar") =>
+            $"{Signer}: programa hecho para la familia. No lleva firma de pago, pero Firewall Familiar lo reconoce y no es un riesgo.",
         SignatureStatus.Valida => $"Firma digital válida de {(Signer.Length > 0 ? Signer : "un fabricante reconocido")}{Detail}. El archivo no ha sido modificado.",
         SignatureStatus.SinFirma => "Sin firma digital. No se sabe quién lo ha hecho; muchos programas pequeños o caseros no la llevan, pero los virus tampoco.",
         SignatureStatus.NoValida => $"La firma NO es válida ({Detail}). El archivo puede haber sido modificado o el certificado no es de confianza.",
@@ -92,11 +94,42 @@ public static class Signature
                System.IO.Path.GetFileName(path).StartsWith("FirewallFamiliar-Instalar", StringComparison.OrdinalIgnoreCase);
     }
 
+    public const string HomeSigner = "PDF Familiar (de casa)";
+
+    /// <summary>
+    /// PDF Familiar (PDF Casero), el editor de PDF hecho para la familia: no lleva firma de pago,
+    /// así que se reconoce por el nombre del archivo y por los datos que lleva dentro (fabricante
+    /// "PDF Familiar"). Vale para el programa, su instalador y el archivo temporal del instalador.
+    /// </summary>
+    public static bool IsHomeProgram(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return false;
+        string name = Path.GetFileName(path);
+        bool program = name.Equals("PDFCasero.exe", StringComparison.OrdinalIgnoreCase);
+        bool installer = name.StartsWith("PDFCasero-Instalador", StringComparison.OrdinalIgnoreCase);
+        if (!program && !installer) return false;
+        // El instalador (Inno Setup) se copia a sí mismo a Temp\is-XXXX.tmp\<nombre>.tmp para funcionar
+        if (installer && name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
+        {
+            string dir = Path.GetFileName(Path.GetDirectoryName(path) ?? "");
+            return dir.StartsWith("is-", StringComparison.OrdinalIgnoreCase) && dir.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase);
+        }
+        try
+        {
+            var v = System.Diagnostics.FileVersionInfo.GetVersionInfo(path);
+            return string.Equals(v.CompanyName?.Trim(), "PDF Familiar", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(v.ProductName?.Trim(), "PDF Familiar", StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
     /// <summary>Comprobación inmediata (para las fichas de detalles).</summary>
     public static SignatureInfo CheckNow(string path)
     {
         if (string.Equals(path, "System", StringComparison.OrdinalIgnoreCase))
             return new SignatureInfo(SignatureStatus.Valida, "Microsoft Windows", "");
+        if (IsOwn(path))
+            return new SignatureInfo(SignatureStatus.Valida, "Firewall Familiar (este programa)", "");
         DateTime stamp = Stamp(path);
         if (Cache.TryGetValue(path, out var hit) && hit.Stamp == stamp) return hit.Info;
         var info = Verify(path);
@@ -151,6 +184,10 @@ public static class Signature
         // 3) Apps de la Microsoft Store: la firma va en el paquete (AppxSignature.p7x), no en cada .exe
         if (PackageSigner(path) is { } pkg)
             return new SignatureInfo(SignatureStatus.Valida, pkg, " (paquete de la Microsoft Store)");
+
+        // 4) Programas hechos en casa (sin firma de pago), que no son un riesgo
+        if (IsHomeProgram(path))
+            return new SignatureInfo(SignatureStatus.Valida, HomeSigner, " (programa hecho en casa, sin firma de pago)");
         return new SignatureInfo(SignatureStatus.SinFirma, "", "");
     }
 

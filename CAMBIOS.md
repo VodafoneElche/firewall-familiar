@@ -1,4 +1,9 @@
-Novedades de esta versión (0.10.4):
+Novedades de esta versión (0.10.5):
+
+- PDF Familiar (PDF Casero), el editor de PDF de casa, ya no sale como riesgo: ni el programa, ni su instalador, ni el archivo temporal del instalador. Se reconoce por su nombre y por los datos que lleva dentro (fabricante "PDF Familiar"). En la columna Firma sale "✔ PDF Familiar (de casa)".
+- Firewall Familiar tampoco se marca a sí mismo como "sin firma" en la lista de arranque ni en las "conexiones periódicas" (su latido al SOC).
+
+De la 0.10.4:
 
 - Limpieza separada en dos sitios, como pidió Jose:
   - "Programas que arrancan solos" ya solo tiene programas que existen. Cada fila tiene casilla y hay "Marcar todos" (no marca lo de Windows). "Desactivar", "Volver a activar" y "Eliminar" funcionan con todas las marcadas a la vez (o con la fila pinchada si no hay ninguna marcada).
