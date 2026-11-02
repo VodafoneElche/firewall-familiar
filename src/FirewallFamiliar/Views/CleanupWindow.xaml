@@ -11,15 +11,16 @@
             <TabItem Header="Programas que arrancan solos">
                 <DockPanel Margin="6">
                     <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#333">
-                        Todo lo que se pone en marcha sin que nadie lo abra: inicio de Windows, tareas programadas, servicios,
-                        extensiones del menú contextual y ajustes del navegador. Pincha una línea y abajo verás qué es y qué conviene hacer.
-                        Naranja = conviene mirarlo. Gris = resto de un programa que ya no está. "Desactivar" se puede deshacer;
-                        "Eliminar entrada" la quita para siempre (antes guarda una copia).
+                        Programas que se ponen en marcha solos al encender el PC: inicio de Windows, tareas programadas, servicios,
+                        extensiones del menú contextual y ajustes del navegador. Marca las casillas (o pincha una línea) y pulsa
+                        "Desactivar" (se puede deshacer) o "Eliminar" (para siempre, antes guarda una copia). Naranja = conviene mirarlo.
+                        Las entradas de programas que ya no existen están en la pestaña "Restos de programas".
                     </TextBlock>
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                        <CheckBox x:Name="ChkAllStartup" Content="Marcar todos" VerticalAlignment="Center" Margin="0,0,14,0" Click="OnSelectAllStartup"/>
                         <Button x:Name="BtnDisable" Content="Desactivar" Padding="12,3" Margin="0,0,8,0" Click="OnDisable"/>
                         <Button x:Name="BtnEnable" Content="Volver a activar" Padding="12,3" Margin="0,0,8,0" Click="OnEnable"/>
-                        <Button x:Name="BtnRemove" Content="Eliminar entrada" Padding="12,3" Margin="0,0,8,0" Click="OnRemove"
+                        <Button x:Name="BtnRemove" Content="Eliminar" Padding="12,3" Margin="0,0,8,0" Click="OnRemove"
                                 ToolTip="Quita la entrada para siempre. Antes guarda una copia en C:\ProgramData\FirewallFamiliar\copias-limpieza"/>
                         <Button Content="Abrir ubicación del archivo" Padding="12,3" Margin="0,0,8,0" Click="OnOpenStartupFile"/>
                         <Button Content="Actualizar" Padding="12,3" Margin="0,0,16,0" Click="OnRefreshStartup"/>
@@ -51,6 +52,13 @@
                         </ListView.ItemContainerStyle>
                         <ListView.View>
                             <GridView>
+                                <GridViewColumn Header="Marcar" Width="55">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}" IsEnabled="{Binding CanMark}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="Nivel" Width="80" DisplayMemberBinding="{Binding LevelText}"/>
                                 <GridViewColumn Header="Tipo" Width="120" DisplayMemberBinding="{Binding Kind}"/>
                                 <GridViewColumn Header="Nombre" Width="200" DisplayMemberBinding="{Binding Name}"/>
@@ -67,49 +75,97 @@
 
             <!-- ===== Restos de programas ===== -->
             <TabItem Header="Restos de programas">
-                <DockPanel Margin="6">
-                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#333">
-                        Carpetas que no son de ningún programa instalado y llevan meses sin cambiar, y carpetas de programas basura conocidos
-                        (SweetLabs, OneLaunch...). Marca las que quieras quitar: van a la Papelera, así que se pueden recuperar.
-                        Si no sabes qué es una carpeta, déjala.
-                    </TextBlock>
-                    <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                        <Button x:Name="BtnRecycle" Content="Mandar las marcadas a la Papelera" Padding="12,3" Margin="0,0,8,0" Click="OnRecycle"/>
-                        <CheckBox x:Name="ChkAll" Content="Marcar todos" VerticalAlignment="Center" Margin="0,0,14,0" Click="OnSelectAll"/>
-                        <Button Content="Abrir carpeta" Padding="12,3" Margin="0,0,8,0" Click="OnOpenLeftover"/>
-                        <Button Content="Buscar otra vez" Padding="12,3" Click="OnRefreshLeftovers"/>
-                    </WrapPanel>
-                    <ListView x:Name="LeftoverList" SelectionMode="Single">
-                        <ListView.ItemContainerStyle>
-                            <Style TargetType="ListViewItem">
-                                <Setter Property="ToolTip" Value="{Binding Reason}"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding KnownJunk}" Value="True">
-                                        <Setter Property="Background" Value="#FFDCB4"/>
-                                        <Setter Property="FontWeight" Value="SemiBold"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ListView.ItemContainerStyle>
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="Quitar" Width="55">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}" IsEnabled="{Binding CanSelect}"/>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="Estado" Width="130" DisplayMemberBinding="{Binding StateText}"/>
-                                <GridViewColumn Header="Carpeta" Width="170" DisplayMemberBinding="{Binding Name}"/>
-                                <GridViewColumn Header="Dónde" Width="190" DisplayMemberBinding="{Binding Where}"/>
-                                <GridViewColumn Header="Tamaño" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
-                                <GridViewColumn Header="Último cambio" Width="95" DisplayMemberBinding="{Binding LastChangeText}"/>
-                                <GridViewColumn Header="Ruta completa" Width="330" DisplayMemberBinding="{Binding Path}"/>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
-                </DockPanel>
+                <Grid Margin="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="2*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="3*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Entradas de arranque de programas que ya no existen -->
+                    <DockPanel Grid.Row="0">
+                        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,6" Foreground="#333">
+                            <Run FontWeight="Bold" FontSize="13">1. Entradas de arranque que ya no sirven</Run><LineBreak/>
+                            Programas desinstalados que dejaron apuntado que arrancaran solos (por ejemplo una tarea de CCleaner).
+                            El archivo ya no existe, así que se pueden eliminar sin miedo (antes se guarda una copia).
+                        </TextBlock>
+                        <WrapPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                            <Button x:Name="BtnRemoveOrphans" Content="Eliminar las marcadas" Padding="12,3" Margin="0,0,8,0" Click="OnRemoveOrphans"/>
+                            <CheckBox x:Name="ChkAllOrphans" Content="Marcar todas" VerticalAlignment="Center" Margin="0,0,14,0" Click="OnSelectAllOrphans"/>
+                            <Button Content="Abrir dónde está apuntada" Padding="12,3" Margin="0,0,8,0" Click="OnOpenOrphan"/>
+                        </WrapPanel>
+                        <ListView x:Name="OrphanList" SelectionMode="Single">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="ToolTip" Value="{Binding Command}"/>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Quitar" Width="55">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}" IsEnabled="{Binding CanRemove}"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Tipo" Width="130" DisplayMemberBinding="{Binding Kind}"/>
+                                    <GridViewColumn Header="Nombre" Width="220" DisplayMemberBinding="{Binding Name}"/>
+                                    <GridViewColumn Header="Usuario" Width="80" DisplayMemberBinding="{Binding User}"/>
+                                    <GridViewColumn Header="Archivo que ya no existe" Width="420" DisplayMemberBinding="{Binding Shown}"/>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </DockPanel>
+
+                    <Border Grid.Row="1" Height="1" Background="#C8D4E8" Margin="0,10"/>
+
+                    <!-- Carpetas abandonadas -->
+                    <DockPanel Grid.Row="2">
+                        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,6" Foreground="#333">
+                            <Run FontWeight="Bold" FontSize="13">2. Carpetas que han quedado</Run><LineBreak/>
+                            Carpetas que no son de ningún programa instalado y llevan meses sin cambiar, y carpetas de programas basura conocidos
+                            (SweetLabs, OneLaunch...). Marca las que quieras quitar: van a la Papelera, así que se pueden recuperar.
+                            Si no sabes qué es una carpeta, déjala.
+                        </TextBlock>
+                        <WrapPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                            <Button x:Name="BtnRecycle" Content="Mandar las marcadas a la Papelera" Padding="12,3" Margin="0,0,8,0" Click="OnRecycle"/>
+                            <CheckBox x:Name="ChkAll" Content="Marcar todas" VerticalAlignment="Center" Margin="0,0,14,0" Click="OnSelectAll"/>
+                            <Button Content="Abrir carpeta" Padding="12,3" Margin="0,0,8,0" Click="OnOpenLeftover"/>
+                            <Button Content="Buscar otra vez" Padding="12,3" Click="OnRefreshLeftovers"/>
+                        </WrapPanel>
+                        <ListView x:Name="LeftoverList" SelectionMode="Single">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="ToolTip" Value="{Binding Reason}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding KnownJunk}" Value="True">
+                                            <Setter Property="Background" Value="#FFDCB4"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Quitar" Width="55">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}" IsEnabled="{Binding CanSelect}"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Estado" Width="130" DisplayMemberBinding="{Binding StateText}"/>
+                                    <GridViewColumn Header="Carpeta" Width="170" DisplayMemberBinding="{Binding Name}"/>
+                                    <GridViewColumn Header="Dónde" Width="190" DisplayMemberBinding="{Binding Where}"/>
+                                    <GridViewColumn Header="Tamaño" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
+                                    <GridViewColumn Header="Último cambio" Width="95" DisplayMemberBinding="{Binding LastChangeText}"/>
+                                    <GridViewColumn Header="Ruta completa" Width="330" DisplayMemberBinding="{Binding Path}"/>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </DockPanel>
+                </Grid>
             </TabItem>
 
             <!-- ===== Discos y chequeo ===== -->

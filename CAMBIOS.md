@@ -1,4 +1,10 @@
-Novedades de esta versión (0.10.3):
+Novedades de esta versión (0.10.4):
+
+- Limpieza separada en dos sitios, como pidió Jose:
+  - "Programas que arrancan solos" ya solo tiene programas que existen. Cada fila tiene casilla y hay "Marcar todos" (no marca lo de Windows). "Desactivar", "Volver a activar" y "Eliminar" funcionan con todas las marcadas a la vez (o con la fila pinchada si no hay ninguna marcada).
+  - "Restos de programas" tiene ahora dos listas, cada una con sus casillas y "Marcar todas": 1) entradas de arranque de programas que ya no existen (como la tarea de CCleaner), que se eliminan guardando antes una copia; 2) carpetas que han quedado, que van a la Papelera.
+
+De la 0.10.3:
 
 - Chequeo de seguridad: nueva comprobación "DNS del PC". Avisa si un PC tiene las DNS puestas a mano (por ejemplo, las de AdGuard sin filtro), porque así se salta el filtro familiar del router (OpenDNS FamilyShield). Explica cómo dejarlas en Automático. Las VPN y las máquinas virtuales no cuentan. Si un PC que estaba bien pasa a tener DNS a mano, llega un aviso al SOC.
 

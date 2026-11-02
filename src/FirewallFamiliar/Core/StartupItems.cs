@@ -38,6 +38,11 @@ public sealed class StartupItem
     /// <summary>Clave del registro donde está apuntado (para abrirla en el Editor del registro), si la hay.</summary>
     public string? RegKey { get; init; }
     public SignatureInfo Signature { get; set; } = SignatureInfo.Pending;
+    /// <summary>Marcada con la casilla en la ventana de Limpieza.</summary>
+    public bool Selected { get; set; }
+    /// <summary>Resto de un programa que ya no está (va en "Restos de programas", no en el arranque).</summary>
+    public bool IsLeftover => FileMissing && !IsWindows;
+    public bool CanMark => CanToggle || CanRemove;
 
     /// <summary>Identifica la entrada (para saber si es nueva).</summary>
     public string Id => $"{Kind}|{User}|{Where}|{Name}";
@@ -92,10 +97,10 @@ public sealed class StartupItem
             if (IsWindows) return "Es de Windows. No hace falta tocarlo.";
             if (Kind == "Navegador" && FixedRisk != null)
                 return "Mira en el navegador chrome://policy (o edge://policy) y chrome://extensions qué es. Si no la reconoces " +
-                       "y no la ha puesto tu antivirus o tu empresa, pulsa \"Eliminar entrada\" y reinicia el navegador.";
+                       "y no la ha puesto tu antivirus o tu empresa, pulsa \"Eliminar\" y reinicia el navegador.";
             if (Kind == "Navegador") return "Solo informa. Si cambia sin que lo hayas hecho tú, avisa.";
             if (Kind == "Secuestro de programa") return "Si no lo has puesto tú (por ejemplo Process Explorer en lugar del Administrador de tareas), pásale el antivirus y avísame.";
-            if (FileMissing) return CanRemove ? "Es un resto de un programa que ya no está. Puedes pulsar \"Eliminar entrada\" sin miedo (se guarda una copia)."
+            if (FileMissing) return CanRemove ? "Es un resto de un programa que ya no está. Está en \"Restos de programas\": se puede eliminar sin miedo (se guarda una copia)."
                                               : "Es un resto de un programa que ya no está. No molesta.";
             return Level switch
             {
