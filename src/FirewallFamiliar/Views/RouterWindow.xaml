@@ -6,6 +6,8 @@
     <DockPanel Margin="8">
         <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <Button x:Name="BtnRefresh" Content="Revisar ahora" Padding="12,3" Margin="0,0,8,0" Click="OnRefresh"/>
+            <Button x:Name="BtnHome" Content="Esta es la red de casa" Padding="12,3" Margin="0,0,8,0" Click="OnSetHome"
+                    ToolTip="En casa se avisa de todo (aparatos nuevos incluidos). Fuera de casa solo de lo crítico."/>
             <Button x:Name="BtnAdmin" Content="Abrir la configuración del router" Padding="12,3" Margin="0,0,16,0" Click="OnOpenAdmin"/>
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#555" TextWrapping="Wrap"/>
         </WrapPanel>

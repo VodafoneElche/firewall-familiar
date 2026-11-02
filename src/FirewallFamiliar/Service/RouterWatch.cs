@@ -10,7 +10,8 @@ namespace FirewallFamiliar.Service;
 
 /// <summary>
 /// Vigilante del router (cada 15 minutos, sin salir de casa):
-///  - aparato nuevo en la red de casa → aviso urgente (correo del SOC);
+///  - aparato nuevo en la red de casa → aviso urgente (correo del SOC); fuera de casa no se avisa
+///    de aparatos, solo de lo crítico para este PC (UPnP hacia él, Telnet abierto en el router);
 ///  - puerto nuevo abierto por UPnP hacia este PC con un programa sin firma, o hacia cualquier
 ///    aparato en un puerto de control remoto → urgente; los demás se apuntan en el registro;
 ///  - cada 6 horas mira las puertas del router y avisa si se abre una peligrosa (Telnet, SSH...).
@@ -56,11 +57,16 @@ internal sealed class RouterWatch
             bool first = !_nets.TryGetValue(r.NetworkKey, out var net);
             net ??= _nets[r.NetworkKey] = new Net();
             string where = $"red del router {r.Gateway}";
+            // La primera red que ve el servicio es la de casa (se cambia en la ventana Router).
+            // Fuera de casa (oficina, casa de amigos...) solo se avisa de lo crítico para este PC.
+            string? homeKey = RouterCheck.HomeNetwork();
+            if (homeKey == null) { RouterCheck.SetHomeNetwork(r.NetworkKey); homeKey = r.NetworkKey; }
+            bool home = homeKey == r.NetworkKey;
 
             // Aparatos
             foreach (var d in r.Devices.Where(d => !d.IsThisPc))
             {
-                if (!net.Devices.Add(d.Mac) || first) continue;
+                if (!net.Devices.Add(d.Mac) || first || !home) continue;
                 _log($"⚠ APARATO NUEVO EN LA RED DE CASA: {d.Ip} (MAC {d.Mac}, {d.VendorText}{(d.Kind.Length > 0 ? ", " + d.Kind.ToLowerInvariant() : "")}). " +
                      "Si no sabes qué es (visita, móvil nuevo, tele...), cambia la contraseña del Wi-Fi.", "Alerta", null);
             }
@@ -68,7 +74,7 @@ internal sealed class RouterWatch
             // UPnP
             if (r.UpnpOn != null && net.Upnp != r.UpnpOn)
             {
-                if (!first && net.Upnp != null)
+                if (!first && net.Upnp != null && home)
                     _log(r.UpnpOn == true ? $"Router: UPnP se ha encendido en la {where}. {r.UpnpNote}" : $"Router: UPnP ya no contesta en la {where}.", "", null);
                 net.Upnp = r.UpnpOn;
             }
@@ -77,6 +83,7 @@ internal sealed class RouterWatch
             {
                 if (!net.Mappings.Add(m.Key) || first) continue;
                 bool toMe = m.InternalClient == r.LocalIp;
+                if (!home && !toMe) continue; // fuera de casa, los aparatos de otros no son cosa nuestra
                 bool remote = RemotePorts.Contains(m.InternalPort);
                 bool unsigned = toMe && m.Program.Length > 0 && File.Exists(m.Program) &&
                                 Signature.CheckNow(m.Program).Status != SignatureStatus.Valida && !Signature.IsOwn(m.Program);
@@ -97,9 +104,9 @@ internal sealed class RouterWatch
                 foreach (var p in open)
                 {
                     if (net.OpenPorts.Contains(p.Port) || !net.PortsKnown || first) continue;
-                    if (p.Level >= 2)
+                    if (p.Level >= (home ? 2 : 3))
                         _log($"⚠ PUERTA NUEVA EN EL ROUTER: {p.Port} {p.Service} contesta desde hoy. {p.Advice}", "Alerta", null);
-                    else
+                    else if (home)
                         _log($"Router: ahora contesta el puerto {p.Port} {p.Service}.", "", null);
                 }
                 net.OpenPorts = open.Select(p => p.Port).ToHashSet();

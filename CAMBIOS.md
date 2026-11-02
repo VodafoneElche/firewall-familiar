@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.0):
+Novedades de esta versión (0.11.1):
+
+- Router fuera de casa (como pidió Jose): la primera red que ve cada PC es la "red de casa" (se puede cambiar con el botón "Esta es la red de casa" de la ventana Router). En casa se avisa de todo. Fuera (oficina, casa de amigos...) no se avisa de aparatos nuevos ni de lo que hacen los aparatos de otros: solo de lo crítico para este PC (un puerto abierto por UPnP hacia este PC por un programa sin firma o desconocido, o en un puerto de control remoto, y Telnet abierto en el router). La ventana y el informe dicen en qué red está el PC.
+
+De la 0.11.0:
 
 - Botón nuevo "Router" (y menú "Router y red de casa..."): revisa el router desde dentro de casa, sin salir a Internet y sin probar ninguna contraseña. Idea sacada del programa Bastion (github.com/0xCodez/bastion), hecha desde cero en Firewall Familiar:
   - Puertas del router que contestan: Telnet, SSH, FTP, disco compartido, página de configuración sin cifrar, gestión remota del operador (TR-069, normal en routers del operador)... con lo que conviene hacer en cada caso.

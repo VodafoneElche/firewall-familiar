@@ -44,7 +44,11 @@ public partial class RouterWindow : Window
             string model = r.RouterModel.Length > 0 ? r.RouterModel : r.RouterVendor;
             var open = r.Ports.Where(p => p.Open).ToList();
             int bad = open.Count(p => p.Level >= 2) + (r.WifiLevel >= 2 ? 1 : 0);
-            RouterText.Text = $"Router {r.Gateway}{(model.Length > 0 ? $" ({model})" : "")}. " +
+            string? homeKey = RouterCheck.HomeNetwork();
+            bool home = homeKey == null || homeKey == r.NetworkKey;
+            BtnHome.IsEnabled = !home && r.NetworkKey.Length > 0;
+            RouterText.Text = (home ? "🏠 Red de casa (avisa de todo). " : "💼 Fuera de casa: solo avisa de lo crítico. ") +
+                              $"Router {r.Gateway}{(model.Length > 0 ? $" ({model})" : "")}. " +
                               (r.RouterSilent ? "No contesta a nada (una VPN o el Wi-Fi de invitados lo tapan)."
                                : bad == 0 ? "No se ve nada peligroso." : $"⚠ Hay {bad} cosa(s) que conviene revisar.");
         }
@@ -55,6 +59,16 @@ public partial class RouterWindow : Window
         UpnpList.ItemsSource = r.Mappings;
         DeviceList.ItemsSource = r.Devices;
         DevicesTitle.Text = $"Aparatos que este PC ve en la red ({r.Devices.Count}). Solo salen los que han hablado hace poco con este PC; puede haber más.";
+    }
+
+    private void OnSetHome(object sender, RoutedEventArgs e)
+    {
+        if (_last == null || _last.NetworkKey.Length == 0) return;
+        if (MessageBox.Show(this, "¿Marcar esta red como la de casa? En casa se avisa de todo, también de cada aparato nuevo. " +
+                "La red que era la de casa pasará a tratarse como \"fuera de casa\".", "Red de casa",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        RouterCheck.SetHomeNetwork(_last.NetworkKey);
+        Show(_last);
     }
 
     private void OnOpenAdmin(object sender, RoutedEventArgs e)

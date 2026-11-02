@@ -107,6 +107,21 @@ public static class RouterCheck
         (52869, "Control UPnP (chip Realtek)"),
     };
 
+    // ------------------------------------------------------------------ red de casa
+    private static readonly string HomeFile = Path.Combine(RuleStore.Folder, "router-casa.txt");
+
+    /// <summary>MAC del router de casa (null si aún no se ha visto ninguna red).</summary>
+    public static string? HomeNetwork()
+    {
+        try { return File.Exists(HomeFile) ? File.ReadAllText(HomeFile).Trim() is { Length: > 0 } k ? k : null : null; }
+        catch { return null; }
+    }
+
+    public static void SetHomeNetwork(string key)
+    {
+        try { Directory.CreateDirectory(RuleStore.Folder); File.WriteAllText(HomeFile, key); } catch { }
+    }
+
     // ------------------------------------------------------------------ todo junto
     public static RouterReport Run(bool ports = true, CancellationToken cancel = default)
     {
@@ -484,6 +499,12 @@ public static class RouterCheck
         var sb = new StringBuilder();
         sb.AppendLine("## 11. Router y red de casa");
         sb.AppendLine();
+        string? homeKey = HomeNetwork();
+        if (r.NetworkKey.Length > 0 && homeKey != null && homeKey != r.NetworkKey)
+        {
+            sb.AppendLine("**Este PC NO está ahora en la red de casa** (oficina u otro sitio): fuera de casa solo se avisa de lo crítico para este PC.");
+            sb.AppendLine();
+        }
         sb.AppendLine($"Revisión hecha desde este PC ({r.Time:dd/MM/yyyy HH:mm}), sin salir de casa: solo se habla con el router. " +
                       "No se prueba ninguna contraseña. Lo que se ve desde dentro no demuestra qué se ve desde Internet.");
         sb.AppendLine();
