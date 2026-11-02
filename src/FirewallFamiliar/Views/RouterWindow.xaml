@@ -33,6 +33,8 @@
                 <RowDefinition Height="0.6*"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Text="Puertas del router que contestan" FontWeight="SemiBold" Margin="0,0,0,4"/>
             <ListView Grid.Row="1" x:Name="PortList">
@@ -81,6 +83,32 @@
                         <GridViewColumn Header="MAC" Width="150" DisplayMemberBinding="{Binding Mac}"/>
                         <GridViewColumn Header="Fabricante" Width="300" DisplayMemberBinding="{Binding VendorText}"/>
                         <GridViewColumn Header="Qué es" Width="300" DisplayMemberBinding="{Binding Kind}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+            <TextBlock Grid.Row="6" Text="Mediciones de velocidad (una al día en casa, y las que hagas a mano). En rojo, problemas de red." FontWeight="SemiBold" Margin="0,8,0,4"/>
+            <ListView Grid.Row="7" x:Name="SpeedList">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="ToolTip" Value="{Binding StateText}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Bad}" Value="True">
+                                <Setter Property="Foreground" Value="#C00000"/>
+                                <Setter Property="Background" Value="#FFE4E4"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Cuándo" Width="120" DisplayMemberBinding="{Binding TimeText}"/>
+                        <GridViewColumn Header="Bajada" Width="80" DisplayMemberBinding="{Binding DownText}"/>
+                        <GridViewColumn Header="Subida" Width="80" DisplayMemberBinding="{Binding UpText}"/>
+                        <GridViewColumn Header="Latencia" Width="90" DisplayMemberBinding="{Binding PingText}"/>
+                        <GridViewColumn Header="Con la línea llena (↓/↑)" Width="150" DisplayMemberBinding="{Binding LoadedText}"/>
+                        <GridViewColumn Header="Router" Width="60" DisplayMemberBinding="{Binding RouterText}"/>
+                        <GridViewColumn Header="Estado" Width="560" DisplayMemberBinding="{Binding StateText}"/>
                     </GridView>
                 </ListView.View>
             </ListView>

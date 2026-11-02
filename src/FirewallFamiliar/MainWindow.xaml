@@ -127,6 +127,9 @@
             <StatusBarItem><TextBlock x:Name="StatusCounts"/></StatusBarItem>
             <Separator/>
             <StatusBarItem><TextBlock x:Name="StatusAttacks"/></StatusBarItem>
+            <Separator/>
+            <StatusBarItem><TextBlock x:Name="StatusNet" Cursor="Hand" MouseLeftButtonUp="OnStatusNetClick"
+                                      ToolTip="Medición diaria de la velocidad y latencia de Internet. Pincha para ver el router y el historial."/></StatusBarItem>
         </StatusBar>
 
         <Grid Margin="6">

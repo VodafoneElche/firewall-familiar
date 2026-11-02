@@ -122,6 +122,14 @@ public static class RouterCheck
         try { Directory.CreateDirectory(RuleStore.Folder); File.WriteAllText(HomeFile, key); } catch { }
     }
 
+    /// <summary>Router y red actual sin preguntar nada a nadie (solo la tabla ARP): para la medición diaria.</summary>
+    public static (string Gateway, string NetworkKey) CurrentNetwork()
+    {
+        var r = new RouterReport();
+        try { FindGateway(r); if (r.Gateway.Length > 0) ReadDevices(r); } catch { }
+        return (r.Gateway, r.NetworkKey);
+    }
+
     // ------------------------------------------------------------------ todo junto
     public static RouterReport Run(bool ports = true, CancellationToken cancel = default)
     {
@@ -538,6 +546,19 @@ public static class RouterCheck
             foreach (var m in r.Mappings) sb.AppendLine("- " + m.Text);
             sb.AppendLine();
         }
+
+        var speeds = SpeedHistory.Load().Where(s => s.Time > DateTime.Now.AddDays(-14)).ToList();
+        sb.AppendLine($"### Mediciones de velocidad (últimos 14 días: {speeds.Count}, {speeds.Count(s => s.Bad)} con problemas)");
+        sb.AppendLine();
+        if (speeds.Count == 0) sb.AppendLine("Ninguna todavía (se mide una vez al día cuando el PC está en casa).");
+        else
+        {
+            sb.AppendLine("| Cuándo | Bajada | Subida | Latencia | Línea llena ↓/↑ | Router | Estado |");
+            sb.AppendLine("|---|---|---|---|---|---|---|");
+            foreach (var s in speeds)
+                sb.AppendLine($"| {s.TimeText} | {s.DownText} | {s.UpText} | {s.PingText} | {s.LoadedText} | {s.RouterText} | {s.StateText.Replace("|", "/")} |");
+        }
+        sb.AppendLine();
 
         if (r.Devices.Count > 0)
         {

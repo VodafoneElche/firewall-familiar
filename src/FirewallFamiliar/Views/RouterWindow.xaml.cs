@@ -15,7 +15,14 @@ public partial class RouterWindow : Window
     public RouterWindow()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await RefreshAsync();
+        Loaded += async (_, _) => { ShowHistory(); await RefreshAsync(); };
+    }
+
+    private void ShowHistory()
+    {
+        var list = SpeedHistory.Load();
+        list.Reverse();
+        SpeedList.ItemsSource = list;
     }
 
     private async void OnRefresh(object sender, RoutedEventArgs e) => await RefreshAsync();
@@ -68,7 +75,12 @@ public partial class RouterWindow : Window
         {
             var progress = new Progress<string>(t => SpeedText.Text = "Velocidad: " + t);
             var r = await SpeedTest.RunAsync(_last?.Gateway ?? "", progress);
-            SpeedText.Text = $"Velocidad ({DateTime.Now:HH:mm}): {r.Text}";
+            var sample = SpeedSample.From(r, _last?.NetworkKey ?? "", manual: true);
+            sample.Problem = SpeedHistory.Evaluate(sample, SpeedHistory.Load());
+            SpeedHistory.Add(sample);
+            SpeedText.Text = $"Velocidad ({DateTime.Now:HH:mm}): {r.Text}" + (sample.Bad ? $"\n⚠ {sample.Problem}" : "");
+            SpeedText.Foreground = sample.Bad ? System.Windows.Media.Brushes.Red : System.Windows.Media.Brushes.Black;
+            ShowHistory();
         }
         catch (Exception ex) { SpeedText.Text = "Velocidad: no se pudo medir: " + ex.Message; }
         finally { BtnSpeed.IsEnabled = true; }

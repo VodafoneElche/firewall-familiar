@@ -1,4 +1,13 @@
-Novedades de esta versión (0.11.3):
+Novedades de esta versión (0.11.4):
+
+- Medición de red diaria (lo pidió Jose): una vez al día, cuando el PC está en la red de casa y lleva 15 minutos encendido, el servicio mide bajada, subida y latencias. Si algo sale mal, lo repite a la media hora; si vuelve a salir mal, es un PROBLEMA DE RED y se ve EN ROJO:
+  - en la barra de abajo de la ventana principal (pinchando se abre la ventana Router),
+  - en la lista nueva "Mediciones de velocidad" de la ventana Router (también guarda las que hagas a mano),
+  - en el registro y en el informe (apartado 11, tabla de los últimos 14 días).
+- Cuenta como problema: sin Internet; el router no contesta o tarda más de 30 ms; latencia de más de 60 ms o muy irregular (más de ±30 ms); la latencia sube más de 200 ms al usar la línea; bajada o subida por debajo del 40 % de lo normal EN ESE PC (lo normal se saca de sus propias mediciones, porque un portátil por Wi-Fi no va como uno por cable). No manda correo al SOC.
+- Fuera de casa no se mide solo. Historial en C:\ProgramData\FirewallFamiliar\velocidad.json.
+
+De la 0.11.3:
 
 - Medir velocidad: la latencia ya no incluye el tiempo que tarda el servidor de pruebas en contestar (Cloudflare lo indica en cada respuesta), solo el viaje por la red, como fast.com. En la 0.11.2 salía 40 ms en el portátil de Jose cuando fast.com daba 6 ms; las velocidades sí coincidían (471/514 frente a 490/560 Mbps).
 

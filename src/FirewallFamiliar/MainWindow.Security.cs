@@ -205,6 +205,37 @@ public partial class MainWindow
     }
 
     private RouterWindow? _routerWindow;
+    private System.Windows.Threading.DispatcherTimer? _netTimer;
+
+    /// <summary>Barra de estado: resultado de la última medición diaria, en rojo si hay un problema de red.</summary>
+    private void StartNetStatus()
+    {
+        UpdateNetStatus();
+        _netTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+        _netTimer.Tick += (_, _) => UpdateNetStatus();
+        _netTimer.Start();
+    }
+
+    private void UpdateNetStatus()
+    {
+        var last = SpeedHistory.Load().LastOrDefault(s => !s.Manual);
+        if (last == null) { StatusNet.Text = "Red: sin medir todavía"; StatusNet.Foreground = System.Windows.Media.Brushes.Gray; return; }
+        bool recent = DateTime.Now - last.Time < TimeSpan.FromDays(2);
+        if (last.Bad && recent)
+        {
+            StatusNet.Text = $"⚠ PROBLEMA DE RED ({last.Time:dd/MM HH:mm}): {last.Problem}";
+            StatusNet.Foreground = System.Windows.Media.Brushes.Red;
+            StatusNet.FontWeight = FontWeights.SemiBold;
+        }
+        else
+        {
+            StatusNet.Text = $"Red ({last.Time:dd/MM}): ↓{last.DownText} ↑{last.UpText}, {last.PingText}";
+            StatusNet.Foreground = System.Windows.Media.Brushes.Black;
+            StatusNet.FontWeight = FontWeights.Normal;
+        }
+    }
+
+    private void OnStatusNetClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => OnRouter(sender, e);
 
     /// <summary>Router y red de casa (puertas del router, UPnP, aparatos, Wi-Fi).</summary>
     private void OnRouter(object sender, RoutedEventArgs e)
