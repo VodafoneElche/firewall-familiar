@@ -61,6 +61,19 @@ public partial class RouterWindow : Window
         DevicesTitle.Text = $"Aparatos que este PC ve en la red ({r.Devices.Count}). Solo salen los que han hablado hace poco con este PC; puede haber más.";
     }
 
+    private async void OnSpeed(object sender, RoutedEventArgs e)
+    {
+        BtnSpeed.IsEnabled = false;
+        try
+        {
+            var progress = new Progress<string>(t => SpeedText.Text = "Velocidad: " + t);
+            var r = await SpeedTest.RunAsync(_last?.Gateway ?? "", progress);
+            SpeedText.Text = $"Velocidad ({DateTime.Now:HH:mm}): {r.Text}";
+        }
+        catch (Exception ex) { SpeedText.Text = "Velocidad: no se pudo medir: " + ex.Message; }
+        finally { BtnSpeed.IsEnabled = true; }
+    }
+
     private void OnSetHome(object sender, RoutedEventArgs e)
     {
         if (_last == null || _last.NetworkKey.Length == 0) return;

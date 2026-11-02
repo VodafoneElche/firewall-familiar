@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.1):
+Novedades de esta versión (0.11.2):
+
+- Ventana Router: botón "Medir velocidad". Mide bajada, subida, latencia a Internet (y su variación), latencia con la línea llena (bajando y subiendo: si sube mucho, las videollamadas y juegos van a tirones) y latencia al router. Solo cuando se pulsa. Usa el servidor de pruebas de Cloudflare (speed.cloudflare.com): solo viajan datos de relleno, nada del PC.
+
+De la 0.11.1:
 
 - Router fuera de casa (como pidió Jose): la primera red que ve cada PC es la "red de casa" (se puede cambiar con el botón "Esta es la red de casa" de la ventana Router). En casa se avisa de todo. Fuera (oficina, casa de amigos...) no se avisa de aparatos nuevos ni de lo que hacen los aparatos de otros: solo de lo crítico para este PC (un puerto abierto por UPnP hacia este PC por un programa sin firma o desconocido, o en un puerto de control remoto, y Telnet abierto en el router). La ventana y el informe dicen en qué red está el PC.
 

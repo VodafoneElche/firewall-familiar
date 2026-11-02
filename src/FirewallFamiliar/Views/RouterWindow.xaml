@@ -6,6 +6,8 @@
     <DockPanel Margin="8">
         <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <Button x:Name="BtnRefresh" Content="Revisar ahora" Padding="12,3" Margin="0,0,8,0" Click="OnRefresh"/>
+            <Button x:Name="BtnSpeed" Content="Medir velocidad" Padding="12,3" Margin="0,0,8,0" Click="OnSpeed"
+                    ToolTip="Bajada, subida y latencia. Usa el servidor de pruebas de Cloudflare: solo viajan datos de relleno."/>
             <Button x:Name="BtnHome" Content="Esta es la red de casa" Padding="12,3" Margin="0,0,8,0" Click="OnSetHome"
                     ToolTip="En casa se avisa de todo (aparatos nuevos incluidos). Fuera de casa solo de lo crítico."/>
             <Button x:Name="BtnAdmin" Content="Abrir la configuración del router" Padding="12,3" Margin="0,0,16,0" Click="OnOpenAdmin"/>
@@ -20,6 +22,7 @@
                 <TextBlock x:Name="RouterText" TextWrapping="Wrap" FontWeight="SemiBold" Text="Revisando..."/>
                 <TextBlock x:Name="WifiText" TextWrapping="Wrap" Margin="0,4,0,0"/>
                 <TextBlock x:Name="UpnpText" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock x:Name="SpeedText" TextWrapping="Wrap" Margin="0,4,0,0" Text="Velocidad: pulsa &quot;Medir velocidad&quot; (unos 20 segundos)."/>
             </StackPanel>
         </Border>
         <Grid>
