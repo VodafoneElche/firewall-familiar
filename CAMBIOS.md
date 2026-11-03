@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.4):
+Novedades de esta versión (0.11.5):
+
+- El tráfico por programa vuelve a verse aunque otro programa tenga cogido el "NT Kernel Logger" de Windows (pasó en el portátil de Jose en la red de la oficina: abajo ponía "solo totales (sin detalle por programa)"). Ahora la ventana usa su propia sesión de eventos de red, igual que el vigilante de subidas, y solo si falla prueba la del kernel.
+
+De la 0.11.4:
 
 - Medición de red diaria (lo pidió Jose): una vez al día, cuando el PC está en la red de casa y lleva 15 minutos encendido, el servicio mide bajada, subida y latencias. Si algo sale mal, lo repite a la media hora; si vuelve a salir mal, es un PROBLEMA DE RED y se ve EN ROJO:
   - en la barra de abajo de la ventana principal (pinchando se abre la ventana Router),

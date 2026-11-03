@@ -39,6 +39,11 @@ public sealed class TrafficMonitor : IDisposable
     public long TotalIn => Interlocked.Read(ref _totalIn);
     public long TotalOut => Interlocked.Read(ref _totalOut);
 
+    private const string OwnSessionName = "FirewallFamiliar-Trafico";
+    private static readonly Guid KernelNetwork = new("7DD42A49-5329-4832-8DFD-43D979153A88");
+    private static readonly HashSet<int> SendIds = new() { 10, 26, 42, 58 };    // TCP y UDP, IPv4 e IPv6
+    private static readonly HashSet<int> RecvIds = new() { 11, 27, 43, 59 };
+
     public void Start()
     {
         if (!(TraceEventSession.IsElevated() ?? false))
@@ -46,17 +51,56 @@ public sealed class TrafficMonitor : IDisposable
             Error?.Invoke("Hace falta ejecutar como administrador para ver el tráfico por programa.");
             return;
         }
+        // Primero, una sesión de eventos propia: nadie nos la puede quitar. El "NT Kernel Logger"
+        // es único en todo Windows y algunos programas (antivirus, herramientas de empresa,
+        // monitores de red) lo cogen para ellos; entonces el detalle por programa se perdía.
+        string? own = StartOwnSession();
+        if (own == null) return;
+        string? kernel = StartKernelSession();
+        if (kernel == null) return;
+        IsRunning = false;
+        Error?.Invoke($"No se pudo iniciar el monitor de tráfico: {own} / {kernel}");
+    }
 
+    private string? StartOwnSession()
+    {
         try
         {
-            // Windows solo permite una sesión del "NT Kernel Logger" a la vez.
-            // Si quedó una abierta (por ejemplo, de un cierre anterior), se reemplaza.
-            _session = new TraceEventSession(KernelTraceEventParser.KernelSessionName)
+            try { TraceEventSession.GetActiveSession(OwnSessionName)?.Stop(true); } catch { }
+            _session = new TraceEventSession(OwnSessionName) { StopOnDispose = true };
+            _session.EnableProvider(KernelNetwork, TraceEventLevel.Informational, 0x30 /* IPv4 + IPv6 */);
+            var parser = new RegisteredTraceEventParser(_session.Source);
+            parser.All += e =>
             {
-                StopOnDispose = true
+                int id = (int)e.ID;
+                bool send = SendIds.Contains(id);
+                if (!send && !RecvIds.Contains(id)) return;
+                try
+                {
+                    int pid = Convert.ToInt32(e.PayloadByName("PID") ?? e.ProcessID);
+                    int size = Convert.ToInt32(e.PayloadByName("size") ?? 0);
+                    var ip = e.PayloadByName("daddr") is { } d && System.Net.IPAddress.TryParse(d.ToString(), out var a) ? a : System.Net.IPAddress.None;
+                    Add(pid, size, ip, incoming: !send);
+                }
+                catch { }
             };
-            _session.EnableKernelProvider(KernelTraceEventParser.Keywords.NetworkTCPIP);
+            Run();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            try { _session?.Dispose(); } catch { }
+            _session = null;
+            return ex.Message;
+        }
+    }
 
+    private string? StartKernelSession()
+    {
+        try
+        {
+            _session = new TraceEventSession(KernelTraceEventParser.KernelSessionName) { StopOnDispose = true };
+            _session.EnableKernelProvider(KernelTraceEventParser.Keywords.NetworkTCPIP);
             var kernel = _session.Source.Kernel;
             kernel.TcpIpRecv += e => Add(e.ProcessID, e.size, e.daddr, incoming: true);
             kernel.TcpIpRecvIPV6 += e => Add(e.ProcessID, e.size, e.daddr, incoming: true);
@@ -66,20 +110,27 @@ public sealed class TrafficMonitor : IDisposable
             kernel.TcpIpSendIPV6 += e => Add(e.ProcessID, e.size, e.daddr, incoming: false);
             kernel.UdpIpSend += e => Add(e.ProcessID, e.size, e.daddr, incoming: false);
             kernel.UdpIpSendIPV6 += e => Add(e.ProcessID, e.size, e.daddr, incoming: false);
-
-            IsRunning = true;
-            _task = Task.Run(() =>
-            {
-                try { _session.Source.Process(); }
-                catch (Exception ex) { Error?.Invoke("El monitor de tráfico se ha detenido: " + ex.Message); }
-                finally { IsRunning = false; }
-            });
+            Run();
+            return null;
         }
         catch (Exception ex)
         {
-            IsRunning = false;
-            Error?.Invoke("No se pudo iniciar el monitor de tráfico: " + ex.Message);
+            try { _session?.Dispose(); } catch { }
+            _session = null;
+            return ex.Message;
         }
+    }
+
+    private void Run()
+    {
+        var session = _session!;
+        IsRunning = true;
+        _task = Task.Run(() =>
+        {
+            try { session.Source.Process(); }
+            catch (Exception ex) { Error?.Invoke("El monitor de tráfico se ha detenido: " + ex.Message); }
+            finally { if (_session == session) IsRunning = false; }
+        });
     }
 
     private void Add(int pid, int size, System.Net.IPAddress remote, bool incoming)
