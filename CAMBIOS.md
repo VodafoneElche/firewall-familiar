@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.6):
+Novedades de esta versión (0.11.7):
+
+- Como en Sygate (lo pidió Jose): en "Programas en ejecución", delante de cada nombre hay dos flechas. La verde (▼) se enciende cuando el programa está recibiendo datos en ese momento y la roja (▲) cuando está enviando. Así se ve de un vistazo qué programa mueve la gráfica. Lo mismo en "Conexiones": las flechas se encienden en la línea de la dirección IP con la que se están moviendo datos en ese momento. Pasando el ratón por encima salen los KB/s exactos. (Necesita el monitor de tráfico por programa; si abajo pone "solo totales", las flechas no se encienden.)
+
+De la 0.11.6:
 
 - Revisando el informe del portátil de Jose en la oficina (03/11):
   - Las direcciones de las "subidas grandes" salían como números raros (por ejemplo -594763870). Ahora se ven bien (esa era 162.159.140.220, el servidor de pruebas de Cloudflare). Además, el tráfico dentro de la red de casa ya no cuenta como subida a Internet.

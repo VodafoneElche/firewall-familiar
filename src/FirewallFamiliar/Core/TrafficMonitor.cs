@@ -167,9 +167,28 @@ public sealed class TrafficMonitor : IDisposable
             if (!_perProcess.TryGetValue(pid, out var t))
                 _perProcess[pid] = t = new ProcessTraffic();
             if (incoming) t.BytesIn += size; else t.BytesOut += size;
+            if (!remote.Equals(System.Net.IPAddress.None))
+            {
+                var key = (pid, remote.ToString());
+                var r = _recentByRemote.GetValueOrDefault(key);
+                _recentByRemote[key] = incoming ? (r.In + size, r.Out) : (r.In, r.Out + size);
+            }
         }
         if (incoming) Interlocked.Add(ref _totalIn, size);
         else Interlocked.Add(ref _totalOut, size);
+    }
+
+    private readonly Dictionary<(int Pid, string Ip), (long In, long Out)> _recentByRemote = new();
+
+    /// <summary>Bytes por programa y dirección remota desde la última llamada (para las flechas de "Conexiones").</summary>
+    public Dictionary<(int Pid, string Ip), (long In, long Out)> TakeRecentByRemote()
+    {
+        lock (_lock)
+        {
+            var copy = new Dictionary<(int, string), (long, long)>(_recentByRemote);
+            _recentByRemote.Clear();
+            return copy;
+        }
     }
 
     /// <summary>Copia de los contadores acumulados por PID desde que arrancó el monitor.</summary>

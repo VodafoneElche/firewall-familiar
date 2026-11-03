@@ -215,10 +215,36 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Header="Programa" Width="190">
+                                <GridViewColumn Header="Programa" Width="220">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,4,0" ToolTip="{Binding ArrowsTip}" VerticalAlignment="Center">
+                                                    <TextBlock Text="▼" FontSize="11" Margin="0,0,1,0">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#D8D8D8"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Receiving}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#18A818"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="▲" FontSize="11">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#D8D8D8"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Sending}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#E02020"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
                                                 <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,6,0"/>
                                                 <TextBlock Text="{Binding Name}"/>
                                             </StackPanel>
@@ -250,7 +276,41 @@
                               ToolTip="Doble clic en una conexión para ver a quién pertenece">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Programa" Width="170" DisplayMemberBinding="{Binding Program}"/>
+                                <GridViewColumn Header="Programa" Width="200">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,4,0" ToolTip="{Binding ArrowsTip}" VerticalAlignment="Center">
+                                                    <TextBlock Text="▼" FontSize="11" Margin="0,0,1,0">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#D8D8D8"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Receiving}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#18A818"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="▲" FontSize="11">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#D8D8D8"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Sending}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#E02020"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Program}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="PID" Width="55" DisplayMemberBinding="{Binding Pid}"/>
                                 <GridViewColumn Header="Protocolo" Width="70" DisplayMemberBinding="{Binding Protocol}"/>
                                 <GridViewColumn Header="Dirección local" Width="200" DisplayMemberBinding="{Binding Local}"/>

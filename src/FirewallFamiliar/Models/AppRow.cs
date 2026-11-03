@@ -92,10 +92,16 @@ public sealed class AppRow : INotifyPropertyChanged
     public string BytesOutText => Format.Bytes(BytesOut);
 
     private long _rateIn;
-    public long RateIn { get => _rateIn; set { if (Set(ref _rateIn, value)) Notify(nameof(RateText)); } }
+    public long RateIn { get => _rateIn; set { if (Set(ref _rateIn, value)) { Notify(nameof(RateText)); Notify(nameof(Receiving)); Notify(nameof(ArrowsTip)); } } }
 
     private long _rateOut;
-    public long RateOut { get => _rateOut; set { if (Set(ref _rateOut, value)) Notify(nameof(RateText)); } }
+    public long RateOut { get => _rateOut; set { if (Set(ref _rateOut, value)) { Notify(nameof(RateText)); Notify(nameof(Sending)); Notify(nameof(ArrowsTip)); } } }
+
+    /// <summary>Flechas como en Sygate: verde = está recibiendo datos ahora, roja = está enviando ahora.</summary>
+    public bool Receiving => RateIn > 0;
+    public bool Sending => RateOut > 0;
+    public string ArrowsTip => !Receiving && !Sending ? "Ahora no está usando la red"
+        : $"Ahora mismo: recibe {Format.Bytes(RateIn)}/s (flecha verde) y envía {Format.Bytes(RateOut)}/s (flecha roja)";
 
     public string RateText => RateIn == 0 && RateOut == 0 ? "" : $"↓{Format.Bytes(RateIn)}/s ↑{Format.Bytes(RateOut)}/s";
 

@@ -201,6 +201,13 @@ public partial class MainWindow : Window
 
             MergeProcesses(data.procs, data.conns, traffic, seconds);
             MergeConnections(data.conns);
+            var byRemote = _traffic.TakeRecentByRemote();
+            foreach (var c in _conns)
+            {
+                var t = byRemote.GetValueOrDefault((c.Pid, c.RemoteAddress));
+                c.RateIn = (long)(t.In / seconds);
+                c.RateOut = (long)(t.Out / seconds);
+            }
 
             int hidden = _apps.Count(a => a.Kind == ProcessKind.Oculto);
             StatusCounts.Text = $"Procesos: {_apps.Count}   Ocultos: {hidden}   Conexiones: {_conns.Count(c => !c.IsListening)}   Puertos en escucha: {_conns.Count(c => c.IsListening)}";
@@ -683,6 +690,7 @@ public sealed class ConnRow : INotifyPropertyChanged
         Protocol = c.Protocol;
         Local = c.Local;
         Remote = c.Remote;
+        RemoteAddress = c.RemoteAddress;
         _state = c.State;
         _program = program;
     }
@@ -691,6 +699,16 @@ public sealed class ConnRow : INotifyPropertyChanged
     public string Protocol { get; }
     public string Local { get; }
     public string Remote { get; }
+    public string RemoteAddress { get; }
+
+    private long _rateIn, _rateOut;
+    public long RateIn { get => _rateIn; set { if (Set(ref _rateIn, value)) { PropertyChanged?.Invoke(this, new(nameof(Receiving))); PropertyChanged?.Invoke(this, new(nameof(ArrowsTip))); } } }
+    public long RateOut { get => _rateOut; set { if (Set(ref _rateOut, value)) { PropertyChanged?.Invoke(this, new(nameof(Sending))); PropertyChanged?.Invoke(this, new(nameof(ArrowsTip))); } } }
+    /// <summary>Flechas como en Sygate: verde = recibe datos de esta dirección ahora, roja = le envía ahora.</summary>
+    public bool Receiving => RateIn > 0;
+    public bool Sending => RateOut > 0;
+    public string ArrowsTip => !Receiving && !Sending ? "Ahora no se mueven datos con esta dirección"
+        : $"Ahora mismo con esta dirección: recibe {Format.Bytes(RateIn)}/s (flecha verde) y envía {Format.Bytes(RateOut)}/s (flecha roja)";
 
     private string _program;
     public string Program { get => _program; set => Set(ref _program, value); }
