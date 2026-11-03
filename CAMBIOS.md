@@ -1,4 +1,11 @@
-Novedades de esta versión (0.11.5):
+Novedades de esta versión (0.11.6):
+
+- Revisando el informe del portátil de Jose en la oficina (03/11):
+  - Las direcciones de las "subidas grandes" salían como números raros (por ejemplo -594763870). Ahora se ven bien (esa era 162.159.140.220, el servidor de pruebas de Cloudflare). Además, el tráfico dentro de la red de casa ya no cuenta como subida a Internet.
+  - La prueba de velocidad del propio Firewall Familiar ya no sale como "subida grande".
+  - La prueba de velocidad gasta como mucho 200 MB por sentido (antes, con 500 Mbps, unos 500 MB de subida y otros tantos de bajada en cada prueba).
+
+De la 0.11.5:
 
 - El tráfico por programa vuelve a verse aunque otro programa tenga cogido el "NT Kernel Logger" de Windows (pasó en el portátil de Jose en la red de la oficina: abajo ponía "solo totales (sin detalle por programa)"). Ahora la ventana usa su propia sesión de eventos de red, igual que el vigilante de subidas, y solo si falla prueba la del kernel.
 

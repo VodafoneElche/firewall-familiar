@@ -102,22 +102,26 @@ public static class SpeedTest
         var total = TimeSpan.FromSeconds(8);
         var warm = TimeSpan.FromSeconds(2);
         long bytes = 0;
+        TimeSpan? endAt = null;
         var sw = Stopwatch.StartNew();
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancel);
         stop.CancelAfter(total + TimeSpan.FromSeconds(2));
+        // Tope de datos por sentido: con fibra de 500 Mbps se gastaban unos 500 MB por sentido en
+        // cada prueba (y la diaria lo repetía en cada PC). Al llegar al tope se mide con lo que hay.
+        const long Cap = 200L * 1024 * 1024;
         var payload = new byte[4 * 1024 * 1024];
         new Random().NextBytes(payload);
 
         async Task Worker()
         {
             var buf = new byte[64 * 1024];
-            while (sw.Elapsed < total && !stop.IsCancellationRequested)
+            while (sw.Elapsed < total && !stop.IsCancellationRequested && Interlocked.Read(ref bytes) < Cap)
             {
                 try
                 {
                     if (upload)
                     {
-                        using var content = new CountingContent(payload, n => { if (sw.Elapsed > warm) Interlocked.Add(ref bytes, n); });
+                        using var content = new CountingContent(payload, n => { if (sw.Elapsed > warm && Interlocked.Add(ref bytes, n) >= Cap) endAt ??= sw.Elapsed; });
                         using var res = await Http.PostAsync($"{Base}/__up", content, stop.Token);
                     }
                     else
@@ -128,7 +132,7 @@ public static class SpeedTest
                         while ((read = await s.ReadAsync(buf, stop.Token)) > 0)
                         {
                             if (sw.Elapsed > warm) Interlocked.Add(ref bytes, read);
-                            if (sw.Elapsed >= total) break;
+                            if (sw.Elapsed >= total || Interlocked.Read(ref bytes) >= Cap) { endAt ??= sw.Elapsed; break; }
                         }
                     }
                 }
@@ -160,7 +164,8 @@ public static class SpeedTest
         try { await Task.WhenAll(workers); } catch { }
         double? lp = null;
         try { lp = await loaded; } catch { }
-        double seconds = Math.Max(0.5, Math.Min(sw.Elapsed.TotalSeconds, total.TotalSeconds) - warm.TotalSeconds);
+        double end = Math.Min((endAt ?? sw.Elapsed).TotalSeconds, total.TotalSeconds);
+        double seconds = Math.Max(0.5, end - warm.TotalSeconds);
         return (bytes > 0 ? bytes * 8 / seconds / 1_000_000 : null, lp);
     }
 

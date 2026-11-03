@@ -62,6 +62,31 @@ public sealed class TrafficMonitor : IDisposable
         Error?.Invoke($"No se pudo iniciar el monitor de tráfico: {own} / {kernel}");
     }
 
+    /// <summary>
+    /// Dirección de un evento de Microsoft-Windows-Kernel-Network. En IPv4 llega como un número
+    /// (los 4 bytes en orden de red), no como texto: sin convertirlo salían cosas como "-594763870"
+    /// (que es 162.159.140.220).
+    /// </summary>
+    public static System.Net.IPAddress? EtwAddress(object? v)
+    {
+        try
+        {
+            switch (v)
+            {
+                case null: return null;
+                case System.Net.IPAddress a: return a;
+                case int i: return new System.Net.IPAddress((uint)i);
+                case uint u: return new System.Net.IPAddress(u);
+                case long l: return new System.Net.IPAddress((uint)l);
+                case byte[] { Length: 4 or 16 } b: return new System.Net.IPAddress(b);
+            }
+            string s = v.ToString() ?? "";
+            if (int.TryParse(s, out int n)) return new System.Net.IPAddress((uint)n);
+            return System.Net.IPAddress.TryParse(s, out var p) ? p : null;
+        }
+        catch { return null; }
+    }
+
     private string? StartOwnSession()
     {
         try
@@ -79,7 +104,7 @@ public sealed class TrafficMonitor : IDisposable
                 {
                     int pid = Convert.ToInt32(e.PayloadByName("PID") ?? e.ProcessID);
                     int size = Convert.ToInt32(e.PayloadByName("size") ?? 0);
-                    var ip = e.PayloadByName("daddr") is { } d && System.Net.IPAddress.TryParse(d.ToString(), out var a) ? a : System.Net.IPAddress.None;
+                    var ip = EtwAddress(e.PayloadByName("daddr")) ?? System.Net.IPAddress.None;
                     Add(pid, size, ip, incoming: !send);
                 }
                 catch { }

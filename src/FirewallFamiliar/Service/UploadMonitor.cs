@@ -69,9 +69,10 @@ internal sealed class UploadMonitor : IDisposable
         {
             int pid = Convert.ToInt32(e.PayloadByName("PID") ?? e.ProcessID);
             long size = Convert.ToInt64(e.PayloadByName("size") ?? 0);
-            string ip = e.PayloadByName("daddr")?.ToString() ?? "";
+            var a = TrafficMonitor.EtwAddress(e.PayloadByName("daddr"));
+            string ip = a?.ToString() ?? "?";
             if (size <= 0 || pid <= 4) return;
-            if (IPAddress.TryParse(ip, out var a) && IpInfo.Special(a) != null) return; // solo lo que va a Internet
+            if (a != null && IpInfo.Special(a) != null) return; // solo lo que va a Internet (no la red de casa)
             lock (_lock)
             {
                 if (!_current.TryGetValue(pid, out var byIp)) _current[pid] = byIp = new Dictionary<string, long>();
@@ -114,6 +115,8 @@ internal sealed class UploadMonitor : IDisposable
         {
             long total = ips.Values.Sum();
             if (total < SuspiciousAlertBytes) continue;
+            // La prueba de velocidad de Firewall Familiar sube cientos de MB a Cloudflare a propósito
+            if (path.Contains('\\') && Signature.IsOwn(path)) continue;
             bool windows = path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.OrdinalIgnoreCase);
             bool sync = SyncApps.Any(s => path.Contains(s, StringComparison.OrdinalIgnoreCase));
             bool suspicious = !windows && path.Contains('\\') && IsSuspicious(path);
