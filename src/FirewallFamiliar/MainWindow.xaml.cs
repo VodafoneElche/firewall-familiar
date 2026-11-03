@@ -400,6 +400,13 @@ public partial class MainWindow : Window
         SetDefaultConnOrder(CollectionViewSource.GetDefaultView(_conns));
     }
 
+    /// <summary>Botón "Por tráfico" de la barra: vuelve al orden por actividad aunque se haya ordenado por otra columna.</summary>
+    private void OnSortByTraffic(object sender, RoutedEventArgs e)
+    {
+        ChkTalkersFirst.IsChecked = true;
+        OnTalkersFirst(sender, e);
+    }
+
     private bool FilterApp(object o)
     {
         var a = (AppRow)o;

@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.8):
+Novedades de esta versión (0.11.9):
+
+- Botón "T" (de tráfico) en la barra de arriba (lo pidió Jose). Si has ordenado por riesgo o por otra columna, al pulsarlo se vuelve a ordenar por los que más datos mueven ahora mismo, en "Programas en ejecución" y en "Conexiones".
+
+De la 0.11.8:
 
 - Nueva casilla "Los que hablan, primero" (marcada de serie), encima de las listas. En "Programas en ejecución" y en "Conexiones", los que más datos mueven en ese momento suben arriba solos, de más a menos, y los que están callados quedan abajo en su orden de siempre. El orden se suaviza un poco para que la lista no baile a cada segundo. Si pulsas la cabecera de una columna para ordenar a mano, la casilla se desmarca; vuelve a marcarla para recuperar este orden.
 
