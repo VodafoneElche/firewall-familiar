@@ -77,7 +77,8 @@ public partial class MainWindow : Window
 
         var connView = CollectionViewSource.GetDefaultView(_conns);
         connView.Filter = FilterConn;
-        connView.SortDescriptions.Add(new SortDescription(nameof(ConnRow.Program), ListSortDirection.Ascending));
+        SetDefaultConnOrder(connView);
+        if (connView is ICollectionViewLiveShaping liveConn && liveConn.CanChangeLiveSorting) liveConn.IsLiveSorting = true;
 
         _fastTimer.Tick += (_, _) => OnFastTick();
         _slowTimer.Tick += async (_, _) => await RefreshListsAsync();
@@ -207,7 +208,9 @@ public partial class MainWindow : Window
                 var t = byRemote.GetValueOrDefault((c.Pid, c.RemoteAddress));
                 c.RateIn = (long)(t.In / seconds);
                 c.RateOut = (long)(t.Out / seconds);
+                c.UpdateActivity();
             }
+            foreach (var a in _apps) a.UpdateActivity();
 
             int hidden = _apps.Count(a => a.Kind == ProcessKind.Oculto);
             StatusCounts.Text = $"Procesos: {_apps.Count}   Ocultos: {hidden}   Conexiones: {_conns.Count(c => !c.IsListening)}   Puertos en escucha: {_conns.Count(c => c.IsListening)}";
@@ -375,11 +378,26 @@ public partial class MainWindow : Window
     // =====================================================================
 
     /// <summary>Orden de origen: primero los críticos, luego los medios y después el resto.</summary>
-    private static void SetDefaultAppOrder(ICollectionView view)
+    private void SetDefaultAppOrder(ICollectionView view)
     {
         view.SortDescriptions.Clear();
+        if (ChkTalkersFirst?.IsChecked == true) view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Activity), ListSortDirection.Descending));
         view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Severity), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Name), ListSortDirection.Ascending));
+    }
+
+    private void SetDefaultConnOrder(ICollectionView view)
+    {
+        view.SortDescriptions.Clear();
+        if (ChkTalkersFirst?.IsChecked == true) view.SortDescriptions.Add(new SortDescription(nameof(ConnRow.Activity), ListSortDirection.Descending));
+        view.SortDescriptions.Add(new SortDescription(nameof(ConnRow.Program), ListSortDirection.Ascending));
+    }
+
+    /// <summary>Casilla "Los que hablan, primero": arriba los que más datos mueven ahora (como pidió Jose).</summary>
+    private void OnTalkersFirst(object sender, RoutedEventArgs e)
+    {
+        SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps));
+        SetDefaultConnOrder(CollectionViewSource.GetDefaultView(_conns));
     }
 
     private bool FilterApp(object o)
@@ -488,6 +506,7 @@ public partial class MainWindow : Window
 
         view.SortDescriptions.Clear();
         view.SortDescriptions.Add(new SortDescription(prop, dir));
+        ChkTalkersFirst.IsChecked = false; // el orden elegido a mano manda
     }
 
     // =====================================================================
@@ -705,6 +724,10 @@ public sealed class ConnRow : INotifyPropertyChanged
     public long RateIn { get => _rateIn; set { if (Set(ref _rateIn, value)) { PropertyChanged?.Invoke(this, new(nameof(Receiving))); PropertyChanged?.Invoke(this, new(nameof(ArrowsTip))); } } }
     public long RateOut { get => _rateOut; set { if (Set(ref _rateOut, value)) { PropertyChanged?.Invoke(this, new(nameof(Sending))); PropertyChanged?.Invoke(this, new(nameof(ArrowsTip))); } } }
     /// <summary>Flechas como en Sygate: verde = recibe datos de esta dirección ahora, roja = le envía ahora.</summary>
+    private double _activity;
+    public double Activity { get => _activity; set => Set(ref _activity, value); }
+    public void UpdateActivity() { double a = RateIn + RateOut + _activity * 0.5; Activity = a < 1 ? 0 : a; }
+
     public bool Receiving => RateIn > 0;
     public bool Sending => RateOut > 0;
     public string ArrowsTip => !Receiving && !Sending ? "Ahora no se mueven datos con esta dirección"

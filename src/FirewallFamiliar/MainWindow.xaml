@@ -170,6 +170,9 @@
                           VerticalAlignment="Center" Click="OnFilterChanged"/>
                 <CheckBox DockPanel.Dock="Right" x:Name="ChkHideWindows" Content="Ocultar servicios, Windows y segundo plano" Margin="14,0,0,0"
                           VerticalAlignment="Center" Click="OnFilterChanged"/>
+                <CheckBox DockPanel.Dock="Right" x:Name="ChkTalkersFirst" Content="Los que hablan, primero" Margin="14,0,0,0" IsChecked="True"
+                          VerticalAlignment="Center" Click="OnTalkersFirst" FontWeight="SemiBold"
+                          ToolTip="Pone arriba los programas y conexiones que más datos mueven ahora mismo (flechas encendidas)"/>
                 <CheckBox DockPanel.Dock="Right" x:Name="ChkHideListening" Content="Ocultar puertos en escucha" Margin="14,0,0,0"
                           VerticalAlignment="Center" Click="OnFilterChanged" IsChecked="False"/>
             </DockPanel>

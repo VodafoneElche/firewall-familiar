@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.7):
+Novedades de esta versión (0.11.8):
+
+- Nueva casilla "Los que hablan, primero" (marcada de serie), encima de las listas. En "Programas en ejecución" y en "Conexiones", los que más datos mueven en ese momento suben arriba solos, de más a menos, y los que están callados quedan abajo en su orden de siempre. El orden se suaviza un poco para que la lista no baile a cada segundo. Si pulsas la cabecera de una columna para ordenar a mano, la casilla se desmarca; vuelve a marcarla para recuperar este orden.
+
+De la 0.11.7:
 
 - Como en Sygate (lo pidió Jose): en "Programas en ejecución", delante de cada nombre hay dos flechas. La verde (▼) se enciende cuando el programa está recibiendo datos en ese momento y la roja (▲) cuando está enviando. Así se ve de un vistazo qué programa mueve la gráfica. Lo mismo en "Conexiones": las flechas se encienden en la línea de la dirección IP con la que se están moviendo datos en ese momento. Pasando el ratón por encima salen los KB/s exactos. (Necesita el monitor de tráfico por programa; si abajo pone "solo totales", las flechas no se encienden.)
 

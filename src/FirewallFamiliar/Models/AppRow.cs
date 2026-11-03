@@ -98,6 +98,11 @@ public sealed class AppRow : INotifyPropertyChanged
     public long RateOut { get => _rateOut; set { if (Set(ref _rateOut, value)) { Notify(nameof(RateText)); Notify(nameof(Sending)); Notify(nameof(ArrowsTip)); } } }
 
     /// <summary>Flechas como en Sygate: verde = está recibiendo datos ahora, roja = está enviando ahora.</summary>
+    /// <summary>Cuánto habla ahora (B/s, suavizado para que la lista no salte a cada momento).</summary>
+    private double _activity;
+    public double Activity { get => _activity; set => Set(ref _activity, value); }
+    public void UpdateActivity() { double a = RateIn + RateOut + _activity * 0.5; Activity = a < 1 ? 0 : a; }
+
     public bool Receiving => RateIn > 0;
     public bool Sending => RateOut > 0;
     public string ArrowsTip => !Receiving && !Sending ? "Ahora no está usando la red"
