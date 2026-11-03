@@ -377,34 +377,23 @@ public partial class MainWindow : Window
     // Filtros, orden y pestañas
     // =====================================================================
 
-    /// <summary>Orden de origen: primero los críticos, luego los medios y después el resto.</summary>
-    private void SetDefaultAppOrder(ICollectionView view)
+    /// <summary>
+    /// Orden de origen. Con traffic = true (columna "T", el de serie) van arriba los que más datos
+    /// mueven ahora; con false (columna "Riesgo") primero lo crítico, luego lo medio y después el resto.
+    /// </summary>
+    private static void SetDefaultAppOrder(ICollectionView view, bool traffic = true)
     {
         view.SortDescriptions.Clear();
-        if (ChkTalkersFirst?.IsChecked == true) view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Activity), ListSortDirection.Descending));
+        if (traffic) view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Activity), ListSortDirection.Descending));
         view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Severity), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(AppRow.Name), ListSortDirection.Ascending));
     }
 
-    private void SetDefaultConnOrder(ICollectionView view)
+    private static void SetDefaultConnOrder(ICollectionView view)
     {
         view.SortDescriptions.Clear();
-        if (ChkTalkersFirst?.IsChecked == true) view.SortDescriptions.Add(new SortDescription(nameof(ConnRow.Activity), ListSortDirection.Descending));
+        view.SortDescriptions.Add(new SortDescription(nameof(ConnRow.Activity), ListSortDirection.Descending));
         view.SortDescriptions.Add(new SortDescription(nameof(ConnRow.Program), ListSortDirection.Ascending));
-    }
-
-    /// <summary>Casilla "Los que hablan, primero": arriba los que más datos mueven ahora (como pidió Jose).</summary>
-    private void OnTalkersFirst(object sender, RoutedEventArgs e)
-    {
-        SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps));
-        SetDefaultConnOrder(CollectionViewSource.GetDefaultView(_conns));
-    }
-
-    /// <summary>Botón "Por tráfico" de la barra: vuelve al orden por actividad aunque se haya ordenado por otra columna.</summary>
-    private void OnSortByTraffic(object sender, RoutedEventArgs e)
-    {
-        ChkTalkersFirst.IsChecked = true;
-        OnTalkersFirst(sender, e);
     }
 
     private bool FilterApp(object o)
@@ -469,7 +458,13 @@ public partial class MainWindow : Window
         if (e.OriginalSource is not GridViewColumnHeader { Column: { } column } header || sender is not ListView list) return;
         if (header.Tag is "OrdenInicial")
         {
-            SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps));
+            SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps), traffic: false);
+            return;
+        }
+        if (header.Tag is "Trafico")
+        {
+            if (list == AppsList) SetDefaultAppOrder(CollectionViewSource.GetDefaultView(_apps));
+            else SetDefaultConnOrder(CollectionViewSource.GetDefaultView(_conns));
             return;
         }
 
@@ -513,7 +508,6 @@ public partial class MainWindow : Window
 
         view.SortDescriptions.Clear();
         view.SortDescriptions.Add(new SortDescription(prop, dir));
-        ChkTalkersFirst.IsChecked = false; // el orden elegido a mano manda
     }
 
     // =====================================================================

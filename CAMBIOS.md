@@ -1,4 +1,9 @@
-Novedades de esta versión (0.11.9):
+Novedades de esta versión (0.11.10):
+
+- La "T" ya no está en la barra de arriba: ahora es una columna en las listas (lo pidió Jose). En "Programas en ejecución" va entre "Riesgo" y "Programa", y en "Conexiones" es la primera. En esa columna están las flechas verde y roja. Pulsando la cabecera "T" se ordena por tráfico (arriba los que más datos mueven ahora mismo) y pulsando "Riesgo" se ordena por riesgo. Se puede pasar de uno a otro cuando quieras. Al abrir el programa, el orden es por tráfico.
+- Se quita la casilla "Los que hablan, primero": ya no hace falta.
+
+De la 0.11.9:
 
 - Botón "T" (de tráfico) en la barra de arriba (lo pidió Jose). Si has ordenado por riesgo o por otra columna, al pulsarlo se vuelve a ordenar por los que más datos mueven ahora mismo, en "Programas en ejecución" y en "Conexiones".
 

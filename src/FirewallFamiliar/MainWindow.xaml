@@ -85,9 +85,6 @@
                         <TextBlock Text="Limpieza" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Button>
-                <Button Style="{StaticResource ToolButton}" Click="OnSortByTraffic" ToolTip="T = ordenar por tráfico. Vuelve a poner arriba los programas y conexiones que más datos mueven ahora mismo, de más a menos">
-                    <TextBlock Text="T" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
                 <Button Style="{StaticResource ToolButton}" Click="OnRouter" ToolTip="Puertas del router, puertos abiertos por UPnP, aparatos de casa y cifrado del Wi-Fi">
                     <StackPanel>
                         <TextBlock Text="&#xE701;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center"/>
@@ -173,9 +170,6 @@
                           VerticalAlignment="Center" Click="OnFilterChanged"/>
                 <CheckBox DockPanel.Dock="Right" x:Name="ChkHideWindows" Content="Ocultar servicios, Windows y segundo plano" Margin="14,0,0,0"
                           VerticalAlignment="Center" Click="OnFilterChanged"/>
-                <CheckBox DockPanel.Dock="Right" x:Name="ChkTalkersFirst" Content="Los que hablan, primero" Margin="14,0,0,0" IsChecked="True"
-                          VerticalAlignment="Center" Click="OnTalkersFirst" FontWeight="SemiBold"
-                          ToolTip="Pone arriba los programas y conexiones que más datos mueven ahora mismo (flechas encendidas)"/>
                 <CheckBox DockPanel.Dock="Right" x:Name="ChkHideListening" Content="Ocultar puertos en escucha" Margin="14,0,0,0"
                           VerticalAlignment="Center" Click="OnFilterChanged" IsChecked="False"/>
             </DockPanel>
@@ -221,11 +215,14 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Header="Programa" Width="220">
+                                <GridViewColumn Width="44">
+                                    <GridViewColumn.Header>
+                                        <GridViewColumnHeader Content="T" Tag="Trafico" FontWeight="Bold" Foreground="#1E6FD9"
+                                                              ToolTip="T = tráfico: arriba los que más datos mueven ahora mismo, de más a menos"/>
+                                    </GridViewColumn.Header>
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,4,0" ToolTip="{Binding ArrowsTip}" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" ToolTip="{Binding ArrowsTip}" VerticalAlignment="Center">
                                                     <TextBlock Text="▼" FontSize="11" Margin="0,0,1,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -251,6 +248,13 @@
                                                         </TextBlock.Style>
                                                     </TextBlock>
                                                 </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Programa" Width="220">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
                                                 <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,6,0"/>
                                                 <TextBlock Text="{Binding Name}"/>
                                             </StackPanel>
@@ -282,11 +286,14 @@
                               ToolTip="Doble clic en una conexión para ver a quién pertenece">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Programa" Width="200">
+                                <GridViewColumn Width="44">
+                                    <GridViewColumn.Header>
+                                        <GridViewColumnHeader Content="T" Tag="Trafico" FontWeight="Bold" Foreground="#1E6FD9"
+                                                              ToolTip="T = tráfico: arriba los que más datos mueven ahora mismo, de más a menos"/>
+                                    </GridViewColumn.Header>
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,4,0" ToolTip="{Binding ArrowsTip}" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" ToolTip="{Binding ArrowsTip}" VerticalAlignment="Center">
                                                     <TextBlock Text="▼" FontSize="11" Margin="0,0,1,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -312,6 +319,13 @@
                                                         </TextBlock.Style>
                                                     </TextBlock>
                                                 </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Programa" Width="200">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding Program}"/>
                                             </StackPanel>
                                         </DataTemplate>
