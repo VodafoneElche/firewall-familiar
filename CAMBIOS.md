@@ -1,4 +1,8 @@
-Novedades de esta versión (0.11.10):
+Novedades de esta versión (0.11.11):
+
+- El modo de seguridad (Sin preguntas, Preguntar, Bloquear todo) sale de la barra de arriba y pasa al menú principal, en su propio apartado "Modo de seguridad", entre "Ver" y "Ayuda" (lo pidió Jose). El modo actual se sigue viendo abajo, en la barra de estado, y el botón "Bloquear todo" de la barra sigue igual.
+
+De la 0.11.10:
 
 - La "T" ya no está en la barra de arriba: ahora es una columna en las listas (lo pidió Jose). En "Programas en ejecución" va entre "Riesgo" y "Programa", y en "Conexiones" es la primera. En esa columna están las flechas verde y roja. Pulsando la cabecera "T" se ordena por tráfico (arriba los que más datos mueven ahora mismo) y pulsando "Riesgo" se ordena por riesgo. Se puede pasar de uno a otro cuando quieras. Al abrir el programa, el orden es por tráfico.
 - Se quita la casilla "Los que hablan, primero": ya no hace falta.

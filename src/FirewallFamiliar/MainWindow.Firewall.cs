@@ -85,7 +85,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             Log("⚠ No se pudo activar el cortafuegos: " + ex.Message + " Solo funcionará el monitor.");
-            CmbMode.IsEnabled = false;
+            MenuMode.IsEnabled = false;
             BtnBlockAll.IsEnabled = false;
             MenuSecurity.IsEnabled = false;
         }
@@ -180,7 +180,6 @@ public partial class MainWindow
         {
             var mode = _rules.Mode;
             _tray?.SetMode(mode);
-            CmbMode.SelectedIndex = (int)mode;
             MenuModeAllow.IsChecked = mode == FirewallMode.SinPreguntas;
             MenuModeAsk.IsChecked = mode == FirewallMode.Preguntar;
             MenuModeBlock.IsChecked = mode == FirewallMode.BloquearTodo;
@@ -205,12 +204,6 @@ public partial class MainWindow
             StatusMode.Foreground = blockAll ? Brushes.Red : mode == FirewallMode.Preguntar ? Brushes.DarkGreen : Brushes.Black;
         }
         finally { _updatingModeUi = false; }
-    }
-
-    private void OnModeComboChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_updatingModeUi || CmbMode.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
-        SetMode(Enum.Parse<FirewallMode>(tag));
     }
 
     private void OnMenuMode(object sender, RoutedEventArgs e)
