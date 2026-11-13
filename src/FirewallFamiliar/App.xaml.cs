@@ -22,6 +22,26 @@ public partial class App : Application
     }
     private EventWaitHandle? _showEvent;
 
+    /// <summary>
+    /// Imagen "Abriendo Firewall Familiar..." que sale nada más pulsar el icono, mientras se prepara
+    /// la ventana (así se ve enseguida que algo pasa). Se quita en cuanto la ventana está pintada.
+    /// </summary>
+    private static SplashScreen? _splash;
+
+    public static void CloseSplash()
+    {
+        var s = _splash;
+        _splash = null;
+        try { s?.Close(TimeSpan.FromMilliseconds(150)); } catch { }
+    }
+
+    /// <summary>Segundos desde que Windows lanzó este programa (para medir cuánto tarda en abrirse).</summary>
+    public static double SecondsSinceLaunch()
+    {
+        try { return (DateTime.Now - Process.GetCurrentProcess().StartTime).TotalSeconds; }
+        catch { return 0; }
+    }
+
     /// <summary>true si Windows se está apagando o cerrando sesión (entonces se cierra sin preguntar).</summary>
     public static bool IsSessionEnding { get; private set; }
 
@@ -99,6 +119,16 @@ public partial class App : Application
             try { EventWaitHandle.OpenExisting(ShowEventName).Set(); } catch { }
             Shutdown();
             return;
+        }
+
+        if (!args.Contains("--bandeja"))
+        {
+            try
+            {
+                _splash = new SplashScreen("Assets/arranque.png");
+                _splash.Show(autoClose: false, topMost: false);
+            }
+            catch { _splash = null; }
         }
 
         var window = new MainWindow { StartHidden = args.Contains("--bandeja") };

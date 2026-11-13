@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -59,23 +60,27 @@ public partial class MainWindow
     // Arranque
     // =====================================================================
 
-    private void CheckPortScanOption()
+    /// <summary>Se mira en segundo plano (abre el motor de filtrado un momento) para no frenar la ventana.</summary>
+    private async void CheckPortScanOption()
     {
         try
         {
-            string? msg = _firewall.EnsurePortScanEvents();
+            string? msg = await Task.Run(() => _firewall.EnsurePortScanEvents());
             if (msg != null) Log(msg);
         }
         catch (Exception ex) { Log("⚠ Detección de escaneos: " + ex.Message); }
     }
 
-    private void InitFirewall()
+    /// <summary>
+    /// Pone en marcha el cortafuegos. Abrir el motor de filtrado de Windows y meter todos los filtros
+    /// (también las listas de servidores espía) se hace en segundo plano: la ventana sigue respondiendo.
+    /// </summary>
+    private async Task InitFirewallAsync()
     {
         try
         {
-            _firewall.Open();
+            await Task.Run(() => _firewall.Open());
             _firewall.Blocked += c => Dispatcher.BeginInvoke(() => OnBlocked(c));
-            _firewallReady = true;
             Log("Cortafuegos activo. Reglas guardadas en " + RuleStore.FilePath);
             CheckPortScanOption();
             var scanTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
@@ -88,8 +93,42 @@ public partial class MainWindow
             MenuMode.IsEnabled = false;
             BtnBlockAll.IsEnabled = false;
             MenuSecurity.IsEnabled = false;
+            ApplyRules();
+            return;
         }
-        ApplyRules();
+
+        // Primera vez: los filtros se meten en segundo plano. Si mientras tanto cambia alguna regla,
+        // al terminar se vuelven a aplicar con los cambios.
+        UpdateModeUi();
+        foreach (var row in _apps)
+            row.Rule = row.Path.Length > 0 ? _rules.ActionFor(row.Path) : RuleAction.Preguntar;
+        var rules = _rules;
+        var permits = AutoPermits();
+        _rulesChangedWhileStarting = false;
+        try
+        {
+            var warnings = await Task.Run(() => _firewall.Apply(rules, permits, Array.Empty<string>(), SpyIndicators.BlockList()));
+            _appliedPermits = new HashSet<string>(permits, StringComparer.OrdinalIgnoreCase);
+            foreach (var w in warnings) Log("⚠ " + w);
+        }
+        catch (Exception ex)
+        {
+            Log("⚠ Error al aplicar las reglas: " + ex.Message);
+        }
+        _firewallReady = true;
+        if (_rulesChangedWhileStarting || !ReferenceEquals(rules, _rules)) ApplyRules();
+    }
+
+    private bool _rulesChangedWhileStarting;
+
+    private List<string> AutoPermits()
+    {
+        var autoPermits = new List<string> { "System" };
+        string? self = Environment.ProcessPath;
+        if (self != null) autoPermits.Add(self);
+        if (_rules.AllowWindowsComponents) autoPermits.AddRange(_windowsPaths);
+        autoPermits.AddRange(_sessionAllows);
+        return autoPermits;
     }
 
     /// <summary>Envía las reglas actuales al motor de filtrado de Windows y actualiza la interfaz.</summary>
@@ -99,14 +138,10 @@ public partial class MainWindow
         foreach (var row in _apps)
             row.Rule = row.Path.Length > 0 ? _rules.ActionFor(row.Path) : RuleAction.Preguntar;
 
-        if (!_firewallReady) return;
+        if (!_firewallReady) { _rulesChangedWhileStarting = true; return; }
         try
         {
-            var autoPermits = new List<string> { "System" };
-            string? self = Environment.ProcessPath;
-            if (self != null) autoPermits.Add(self);
-            if (_rules.AllowWindowsComponents) autoPermits.AddRange(_windowsPaths);
-            autoPermits.AddRange(_sessionAllows);
+            var autoPermits = AutoPermits();
 
             var warnings = _firewall.Apply(_rules, autoPermits, Array.Empty<string>(), SpyIndicators.BlockList());
             _appliedPermits = new HashSet<string>(autoPermits, StringComparer.OrdinalIgnoreCase);

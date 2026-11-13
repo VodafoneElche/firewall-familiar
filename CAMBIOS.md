@@ -1,4 +1,11 @@
-Novedades de esta versión (0.11.11):
+Novedades de esta versión (0.11.12):
+
+- La ventana completa se abre antes (lo pidió Jose). Antes, al pulsar el icono, el programa hacía todo el trabajo pesado (arrancar el monitor de tráfico, leer los avisos de la semana, meter en Windows todos los filtros del cortafuegos y las listas de servidores espía) ANTES de pintar la ventana, y por eso tardaba. Ahora la ventana se pinta primero y lo pesado se hace después en segundo plano, sin congelarla. Durante esos segundos abajo pone "Monitor de tráfico: arrancando...".
+- Nada más pulsar el icono sale un cartelito "Firewall Familiar – Abriendo la ventana..." para que se vea que algo está pasando.
+- El programa va ya traducido a instrucciones del procesador dentro del instalador (ReadyToRun), en lugar de traducirse cada vez que se abre. El instalador pesa algo más, pero arranca antes (también el servicio y el icono).
+- En la consola sale cuánto ha tardado: "Ventana abierta en X s y todo listo en Y s (segundos de cada parte: ...)". Así podemos ver en cada PC qué parte es la lenta.
+
+De la 0.11.11:
 
 - El modo de seguridad (Sin preguntas, Preguntar, Bloquear todo) sale de la barra de arriba y pasa al menú principal, en su propio apartado "Modo de seguridad", entre "Ver" y "Ayuda" (lo pidió Jose). El modo actual se sigue viendo abajo, en la barra de estado, y el botón "Bloquear todo" de la barra sigue igual.
 

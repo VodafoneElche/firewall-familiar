@@ -94,27 +94,51 @@ public partial class MainWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Log("Firewall Familiar se ha iniciado (versión " + typeof(App).Assembly.GetName().Version?.ToString(3) + ").");
-        VersionText.Text = "versión " + typeof(App).Assembly.GetName().Version?.ToString(3);
+        var clock = Stopwatch.StartNew();
+        var steps = new List<string>();
+        void Step(string what) { steps.Add($"{what} {clock.Elapsed.TotalSeconds:0.0}"); clock.Restart(); }
 
-        _traffic.Start();
-        StatusTraffic.Text = _traffic.IsRunning
-            ? "Monitor de tráfico: activo"
-            : "Monitor de tráfico: solo totales (sin detalle por programa)";
-        if (_traffic.IsRunning) Log("Monitor de tráfico por programa activo.");
+        string version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "";
+        Log("Firewall Familiar se ha iniciado (versión " + version + ").");
+        VersionText.Text = "versión " + version;
+        StatusTraffic.Text = "Monitor de tráfico: arrancando...";
 
         if (StartHidden) Hide();
         InitTray();
         InitUpdates();
         StartNetStatus();
-        LoadPreviousAlerts();
+
+        // Primero se deja que Windows pinte la ventana; lo pesado viene después, sin congelarla.
+        // (Antes todo esto se hacía antes de pintar y por eso tardaba en aparecer.)
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+        App.CloseSplash();
+        double shownAt = App.SecondsSinceLaunch();
+
+        // El monitor de tráfico (ETW) y los avisos de los últimos 7 días, a la vez y en segundo plano
+        var trafficTask = Task.Run(() => _traffic.Start());
+        var previous = await Task.Run(ReadPreviousAlerts);
+        _alertedSuspicious.UnionWith(previous);
+        Step("avisos");
         await RefreshListsAsync();
+        Step("listas");
         InitSecurity();
         await TakeOverFromServiceAsync();
-        InitFirewall();
+        Step("servicio");
+        await InitFirewallAsync();
+        Step("cortafuegos");
         UpdateProtectionMenu();
+        await trafficTask;
+        Step("tráfico");
+        StatusTraffic.Text = _traffic.IsRunning
+            ? "Monitor de tráfico: activo"
+            : "Monitor de tráfico: solo totales (sin detalle por programa)";
+        if (_traffic.IsRunning) Log("Monitor de tráfico por programa activo.");
         _fastTimer.Start();
         _slowTimer.Start();
+
+        // Cuánto ha tardado: así se puede saber qué parte es la lenta en cada PC
+        Log($"Ventana abierta en {shownAt:0.0} s y todo listo en {App.SecondsSinceLaunch():0.0} s " +
+            $"(segundos de cada parte: {string.Join(", ", steps)}).");
     }
 
     private void OnClosed(object? sender, EventArgs e)

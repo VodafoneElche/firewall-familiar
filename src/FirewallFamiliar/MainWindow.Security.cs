@@ -27,15 +27,17 @@ public partial class MainWindow
     /// Programas de los que ya se avisó en los últimos 7 días: no se repite el aviso cada vez
     /// que se abre Firewall Familiar (siguen marcados en naranja en la lista).
     /// </summary>
-    private void LoadPreviousAlerts()
+    private static HashSet<string> ReadPreviousAlerts()
     {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             for (int d = 0; d < 7; d++)
                 foreach (var e in LogStore.Read(LogKind.Seguridad, DateTime.Today.AddDays(-d)))
-                    if (e.Outcome == "Sospechoso" && !string.IsNullOrEmpty(e.App)) _alertedSuspicious.Add(e.App);
+                    if (e.Outcome == "Sospechoso" && !string.IsNullOrEmpty(e.App)) set.Add(e.App);
         }
         catch { }
+        return set;
     }
 
     private void InitSecurity()

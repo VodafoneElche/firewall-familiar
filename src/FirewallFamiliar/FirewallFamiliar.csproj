@@ -14,17 +14,22 @@
     <AssemblyName>FirewallFamiliar</AssemblyName>
     <RootNamespace>FirewallFamiliar</RootNamespace>
     <Product>Firewall Familiar</Product>
-    <Version>0.11.11</Version>
+    <Version>0.11.12</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <Platforms>x64</Platforms>
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <PlatformTarget>x64</PlatformTarget>
+    <!-- Arranque más rápido: el código ya va traducido a instrucciones del procesador dentro del
+         instalador, en lugar de traducirlo cada vez que se abre (ReadyToRun). -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <TieredPGO>true</TieredPGO>
   </PropertyGroup>
 
   <ItemGroup>
     <Resource Include="Assets\*.ico" />
     <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\arranque.png" />
     <EmbeddedResource Include="Assets\indicadores.txt" LogicalName="FirewallFamiliar.indicadores.txt" />
     <EmbeddedResource Include="Assets\indicadores-extra.txt" LogicalName="FirewallFamiliar.indicadores-extra.txt" />
     <EmbeddedResource Include="Assets\fabricantes.txt" LogicalName="FirewallFamiliar.fabricantes.txt" />
