@@ -1,4 +1,9 @@
-Novedades de esta versión (0.11.13):
+Novedades de esta versión (0.11.14):
+
+- Al abrir la ventana, ahora primero pone ella sus filtros y DESPUÉS le pide al servicio que quite los suyos. Antes era al revés y, mientras la ventana arrancaba, el PC podía quedarse unos segundos sin filtros. Ahora no hay ningún hueco.
+- La línea de tiempos de la consola dice también cuánto tarda el cortafuegos en abrirse, en poner sus filtros, y cuánto tarda el servicio en quitar los suyos, para encontrar la parte lenta.
+
+De la 0.11.13:
 
 - Arreglado: al abrir la ventana, abajo se quedaba puesto "Solo monitor (cortafuegos no disponible)" aunque el cortafuegos sí estaba funcionando. Era solo el letrero, que no se actualizaba al terminar de arrancar.
 - La lista de programas se prepara antes al abrir: los servicios de Windows se preguntan directamente a Windows (antes se usaba WMI, que tarda varios segundos la primera vez) y los iconos y descripciones de los programas se leen varios a la vez.

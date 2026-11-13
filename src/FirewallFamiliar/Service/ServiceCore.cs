@@ -940,13 +940,15 @@ internal sealed class ServiceCore
             await client.Channel.SendAsync(new PipeMessage { T = "pausado", Ok = false, Error = "Hace falta abrirlo como administrador." });
             return;
         }
+        var closeClock = System.Diagnostics.Stopwatch.StartNew();
         lock (_gate)
         {
             _gui = client;
             CloseFirewall();
         }
+        string closeSecs = closeClock.Elapsed.TotalSeconds.ToString("0.0");
         Log("Ventana de Firewall Familiar abierta: ella aplica las reglas mientras esté abierta.");
-        await client.Channel.SendAsync(new PipeMessage { T = "pausado", Ok = true });
+        await client.Channel.SendAsync(new PipeMessage { T = "pausado", Ok = true, Text = closeSecs });
         BroadcastStatus();
     }
 

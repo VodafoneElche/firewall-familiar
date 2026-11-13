@@ -46,7 +46,7 @@ public partial class MainWindow
             var m = await read;
             if (m == null) break;
             if (m.T != "pausado") continue;
-            _serviceTiming += ", respuesta " + Lap();
+            _serviceTiming += ", respuesta " + Lap() + (m.Text.Length > 0 ? " (quitar sus filtros " + m.Text + ")" : "");
             if (!m.Ok)
             {
                 Log("⚠ El servicio no ha cedido el control: " + m.Error);

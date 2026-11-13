@@ -75,11 +75,16 @@ public partial class MainWindow
     /// Pone en marcha el cortafuegos. Abrir el motor de filtrado de Windows y meter todos los filtros
     /// (también las listas de servidores espía) se hace en segundo plano: la ventana sigue respondiendo.
     /// </summary>
+    private string _firewallTiming = "";
+
     private async Task InitFirewallAsync()
     {
+        var sw = Stopwatch.StartNew();
         try
         {
             await Task.Run(() => _firewall.Open());
+            _firewallTiming = "abrir " + sw.Elapsed.TotalSeconds.ToString("0.0");
+            sw.Restart();
             _firewall.Blocked += c => Dispatcher.BeginInvoke(() => OnBlocked(c));
             Log("Cortafuegos activo. Reglas guardadas en " + RuleStore.FilePath);
             CheckPortScanOption();
@@ -108,6 +113,7 @@ public partial class MainWindow
         try
         {
             var warnings = await Task.Run(() => _firewall.Apply(rules, permits, Array.Empty<string>(), SpyIndicators.BlockList()));
+            _firewallTiming += ", filtros " + sw.Elapsed.TotalSeconds.ToString("0.0");
             _appliedPermits = new HashSet<string>(permits, StringComparer.OrdinalIgnoreCase);
             foreach (var w in warnings) Log("⚠ " + w);
         }

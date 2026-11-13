@@ -117,8 +117,9 @@ public partial class MainWindow : Window
 
         // El monitor de tráfico (ETW) y los avisos de los últimos 7 días, a la vez y en segundo plano
         var trafficTask = Task.Run(() => _traffic.Start());
-        // El relevo con el servicio va a la vez que la lista de programas (no dependen una de otra)
-        var serviceTask = TakeOverFromServiceAsync();
+        // Los filtros propios de la ventana se ponen ANTES de pedirle al servicio que quite los suyos:
+        // así el PC no se queda ni un momento sin protección, y mientras tanto se prepara la lista.
+        var firewallTask = InitFirewallAsync();
         var previous = await Task.Run(ReadPreviousAlerts);
         _alertedSuspicious.UnionWith(previous);
         Step("avisos");
@@ -126,10 +127,10 @@ public partial class MainWindow : Window
         Step("listas");
         steps[^1] += $" (leer {_lastReadSeconds:0.0})";
         InitSecurity();
-        await serviceTask;
-        Step("servicio");
-        await InitFirewallAsync();
+        await firewallTask;
         Step("cortafuegos");
+        await TakeOverFromServiceAsync();
+        Step("servicio");
         UpdateProtectionMenu();
         await trafficTask;
         Step("tráfico");
@@ -142,7 +143,7 @@ public partial class MainWindow : Window
 
         // Cuánto ha tardado: así se puede saber qué parte es la lenta en cada PC
         Log($"Ventana abierta en {shownAt:0.0} s y todo listo en {App.SecondsSinceLaunch():0.0} s " +
-            $"(segundos de cada parte: {string.Join(", ", steps)}; servicio: {_serviceTiming}).");
+            $"(segundos de cada parte: {string.Join(", ", steps)}; cortafuegos: {_firewallTiming}; servicio: {_serviceTiming}).");
     }
 
     private void OnClosed(object? sender, EventArgs e)
