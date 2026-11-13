@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private DateTime _lastSlowTick = DateTime.UtcNow;
     private bool _refreshing;
     private bool _firstRefreshDone;
+    private double _lastReadSeconds;
     private readonly HashSet<int> _announcedNetwork = new();
     private readonly Dictionary<int, (long In, long Out)> _lastBytes = new();
     private string? _connFilterProgram;
@@ -116,13 +117,16 @@ public partial class MainWindow : Window
 
         // El monitor de tráfico (ETW) y los avisos de los últimos 7 días, a la vez y en segundo plano
         var trafficTask = Task.Run(() => _traffic.Start());
+        // El relevo con el servicio va a la vez que la lista de programas (no dependen una de otra)
+        var serviceTask = TakeOverFromServiceAsync();
         var previous = await Task.Run(ReadPreviousAlerts);
         _alertedSuspicious.UnionWith(previous);
         Step("avisos");
         await RefreshListsAsync();
         Step("listas");
+        steps[^1] += $" (leer {_lastReadSeconds:0.0})";
         InitSecurity();
-        await TakeOverFromServiceAsync();
+        await serviceTask;
         Step("servicio");
         await InitFirewallAsync();
         Step("cortafuegos");
@@ -138,7 +142,7 @@ public partial class MainWindow : Window
 
         // Cuánto ha tardado: así se puede saber qué parte es la lenta en cada PC
         Log($"Ventana abierta en {shownAt:0.0} s y todo listo en {App.SecondsSinceLaunch():0.0} s " +
-            $"(segundos de cada parte: {string.Join(", ", steps)}).");
+            $"(segundos de cada parte: {string.Join(", ", steps)}; servicio: {_serviceTiming}).");
     }
 
     private void OnClosed(object? sender, EventArgs e)
@@ -218,7 +222,9 @@ public partial class MainWindow : Window
         _refreshing = true;
         try
         {
+            var readClock = Stopwatch.StartNew();
             var data = await Task.Run(() => (procs: _processes.Read(), conns: ConnectionMonitor.GetAll()));
+            _lastReadSeconds = readClock.Elapsed.TotalSeconds;
             var traffic = _traffic.Snapshot();
             var now = DateTime.UtcNow;
             double seconds = Math.Max(0.5, (now - _lastSlowTick).TotalSeconds);

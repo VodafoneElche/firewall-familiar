@@ -117,6 +117,7 @@ public partial class MainWindow
         }
         _firewallReady = true;
         if (_rulesChangedWhileStarting || !ReferenceEquals(rules, _rules)) ApplyRules();
+        else UpdateModeUi(); // la barra de abajo decía "cortafuegos no disponible" mientras arrancaba
     }
 
     private bool _rulesChangedWhileStarting;

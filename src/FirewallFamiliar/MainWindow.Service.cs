@@ -15,11 +15,23 @@ public partial class MainWindow
     /// <summary>Hay servicio instalado: cerrar la ventana no deja el PC sin protección.</summary>
     private bool ServiceProtects => _serviceLink != null || ServiceSetup.IsInstalled;
 
+    /// <summary>Cuánto tardó cada paso del relevo con el servicio (sale en la consola al abrir).</summary>
+    private string _serviceTiming = "";
+
     private async Task TakeOverFromServiceAsync()
     {
-        if (!ServiceSetup.IsInstalled) return;
-        if (!ServiceSetup.IsRunning) await Task.Run(ServiceSetup.Start);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        string Lap() { string t = sw.Elapsed.TotalSeconds.ToString("0.0"); sw.Restart(); return t; }
+        var (installed, running) = await Task.Run(() =>
+        {
+            bool i = ServiceSetup.IsInstalled;
+            return (i, i && ServiceSetup.IsRunning);
+        });
+        _serviceTiming = "comprobar " + Lap();
+        if (!installed) return;
+        if (!running) { await Task.Run(ServiceSetup.Start); _serviceTiming += ", arrancar " + Lap(); }
         var ch = await PipeChannel.ConnectAsync(5000);
+        _serviceTiming += ", conectar " + Lap();
         if (ch == null)
         {
             Log("⚠ El servicio de Firewall Familiar no responde. Esta ventana bloquea por su cuenta.");
@@ -34,6 +46,7 @@ public partial class MainWindow
             var m = await read;
             if (m == null) break;
             if (m.T != "pausado") continue;
+            _serviceTiming += ", respuesta " + Lap();
             if (!m.Ok)
             {
                 Log("⚠ El servicio no ha cedido el control: " + m.Error);
@@ -45,6 +58,7 @@ public partial class MainWindow
             _ = ListenToServiceAsync(ch);
             return;
         }
+        _serviceTiming += ", sin respuesta " + Lap();
         Log("⚠ El servicio no ha contestado a tiempo. Esta ventana bloquea por su cuenta.");
         ch.Dispose();
     }

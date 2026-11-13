@@ -85,13 +85,6 @@ public sealed class ProcessMonitor
 
                 if (p.Id == 4) snap.Description = "Núcleo de Windows";
 
-                if (snap.Path.Length > 0)
-                {
-                    var info = _fileInfo.GetOrAdd(snap.Path, ReadFileInfo);
-                    snap.Description = info.desc;
-                    snap.Version = info.ver;
-                    snap.Icon = info.icon;
-                }
 
                 long cpu = NativeMethods.GetProcessCpuTime(p.Id);
                 if (cpu >= 0 && _lastCpu.TryGetValue(p.Id, out var last))
@@ -104,6 +97,22 @@ public sealed class ProcessMonitor
 
                 result.Add(snap);
             }
+        }
+
+        // Descripción, versión e icono de cada programa. La primera vez son muchos archivos a la vez:
+        // se leen en paralelo (luego quedan guardados y ya no cuesta nada).
+        var missing = result.Where(s => s.Path.Length > 0 && !_fileInfo.ContainsKey(s.Path))
+                            .Select(s => s.Path).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (missing.Count > 0)
+            System.Threading.Tasks.Parallel.ForEach(missing, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 },
+                path => _fileInfo.GetOrAdd(path, ReadFileInfo));
+        foreach (var snap in result)
+        {
+            if (snap.Path.Length == 0) continue;
+            var info = _fileInfo.GetOrAdd(snap.Path, ReadFileInfo);
+            snap.Description = info.desc;
+            snap.Version = info.ver;
+            snap.Icon = info.icon;
         }
 
         ReclassifyHelpers(result);
@@ -164,6 +173,11 @@ public sealed class ProcessMonitor
     /// <summary>PID → nombres de los servicios de Windows que corren en ese proceso.</summary>
     private static Dictionary<int, string> ReadServices()
     {
+        // Preguntando directamente al administrador de servicios de Windows (instantáneo).
+        // WMI, que era lo de antes, tarda varios segundos la primera vez: queda solo de reserva.
+        // Primero con los servicios de cada usuario (0x40); si esta versión de Windows no lo acepta, sin ellos.
+        var fast = ReadServicesScm(0x30 | 0x40) ?? ReadServicesScm(0x30);
+        if (fast != null) return fast;
         var map = new Dictionary<int, string>();
         try
         {
@@ -184,6 +198,70 @@ public sealed class ProcessMonitor
             // Si WMI falla, simplemente no se marcan servicios.
         }
         return map;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ENUM_SERVICE_STATUS_PROCESS
+    {
+        public IntPtr ServiceName;
+        public IntPtr DisplayName;
+        public uint ServiceType, CurrentState, ControlsAccepted, Win32ExitCode, ServiceSpecificExitCode,
+            CheckPoint, WaitHint, ProcessId, ServiceFlags;
+    }
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr OpenSCManagerW(string? machine, string? database, uint access);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool EnumServicesStatusExW(IntPtr scm, int infoLevel, uint serviceType, uint serviceState,
+        IntPtr buffer, uint bufSize, out uint bytesNeeded, out uint servicesReturned, ref uint resumeHandle, string? groupName);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool CloseServiceHandle(IntPtr handle);
+
+    /// <summary>PID → servicios, con la API del administrador de servicios. null si falla.</summary>
+    private static Dictionary<int, string>? ReadServicesScm(uint types)
+    {
+        IntPtr scm = OpenSCManagerW(null, null, 0x0004 /* SC_MANAGER_ENUMERATE_SERVICE */);
+        if (scm == IntPtr.Zero) return null;
+        IntPtr buf = IntPtr.Zero;
+        try
+        {
+            var map = new Dictionary<int, string>();
+            uint size = 256 * 1024, resume = 0;
+            buf = Marshal.AllocHGlobal((int)size);
+            int entry = Marshal.SizeOf<ENUM_SERVICE_STATUS_PROCESS>();
+            while (true)
+            {
+                // SERVICE_ACTIVE (1)
+                bool ok = EnumServicesStatusExW(scm, 0, types, 1, buf, size, out uint needed, out uint count, ref resume, null);
+                int err = ok ? 0 : Marshal.GetLastWin32Error();
+                if (!ok && err != 234 /* ERROR_MORE_DATA */) return null;
+                for (int i = 0; i < count; i++)
+                {
+                    var s = Marshal.PtrToStructure<ENUM_SERVICE_STATUS_PROCESS>(buf + i * entry);
+                    if (s.ProcessId == 0) continue;
+                    int pid = (int)s.ProcessId;
+                    string name = Marshal.PtrToStringUni(s.DisplayName) ?? "";
+                    map[pid] = map.TryGetValue(pid, out var prev) ? prev + ", " + name : name;
+                }
+                if (ok) return map;
+                if (count == 0)
+                {
+                    // No cabía ni uno: buffer más grande
+                    if (needed <= size) return null;
+                    Marshal.FreeHGlobal(buf);
+                    size = needed + 4096;
+                    buf = Marshal.AllocHGlobal((int)size);
+                }
+            }
+        }
+        catch { return null; }
+        finally
+        {
+            if (buf != IntPtr.Zero) Marshal.FreeHGlobal(buf);
+            CloseServiceHandle(scm);
+        }
     }
 
     private static (string, string, ImageSource?) ReadFileInfo(string path)

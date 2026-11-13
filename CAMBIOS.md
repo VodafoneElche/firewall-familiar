@@ -1,4 +1,11 @@
-Novedades de esta versión (0.11.12):
+Novedades de esta versión (0.11.13):
+
+- Arreglado: al abrir la ventana, abajo se quedaba puesto "Solo monitor (cortafuegos no disponible)" aunque el cortafuegos sí estaba funcionando. Era solo el letrero, que no se actualizaba al terminar de arrancar.
+- La lista de programas se prepara antes al abrir: los servicios de Windows se preguntan directamente a Windows (antes se usaba WMI, que tarda varios segundos la primera vez) y los iconos y descripciones de los programas se leen varios a la vez.
+- El relevo con el servicio (que el servicio le pase el control a la ventana) se hace a la vez que se prepara la lista, en lugar de esperar uno al otro.
+- La línea de tiempos de la consola da más detalle de la parte del servicio y de la lista.
+
+De la 0.11.12:
 
 - La ventana completa se abre antes (lo pidió Jose). Antes, al pulsar el icono, el programa hacía todo el trabajo pesado (arrancar el monitor de tráfico, leer los avisos de la semana, meter en Windows todos los filtros del cortafuegos y las listas de servidores espía) ANTES de pintar la ventana, y por eso tardaba. Ahora la ventana se pinta primero y lo pesado se hace después en segundo plano, sin congelarla. Durante esos segundos abajo pone "Monitor de tráfico: arrancando...".
 - Nada más pulsar el icono sale un cartelito "Firewall Familiar – Abriendo la ventana..." para que se vea que algo está pasando.
