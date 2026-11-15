@@ -111,6 +111,21 @@ internal sealed class SocReporter
         finally { _busy.Release(); }
     }
 
+    /// <summary>Manda ya los avisos pendientes, sin esperar a la vuelta de cada minuto (antes de cortar Internet).</summary>
+    public async Task<bool> SendAlertsNowAsync(int waitSeconds)
+    {
+        var s = AppSettings.Load();
+        if (!s.SocEnabled) return false;
+        if (!await _busy.WaitAsync(TimeSpan.FromSeconds(waitSeconds))) return false;
+        try
+        {
+            _lastAlertFileWrite = DateTime.MinValue;
+            return await SendAlertsAsync(s);
+        }
+        catch { return false; }
+        finally { _busy.Release(); }
+    }
+
     private async Task<bool> SendAlertsAsync(AppSettings s)
     {
         // Solo se lee el registro si ha cambiado desde la última vez

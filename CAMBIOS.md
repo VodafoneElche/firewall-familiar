@@ -1,4 +1,13 @@
-Novedades de esta versión (0.11.14):
+Novedades de esta versión (0.12.0):
+
+- Archivos trampa (idea que vio Jose en Twitter). En la carpeta de cada usuario del PC se dejan tres archivos OCULTOS con contraseñas FALSAS: passwords.txt (en la carpeta del usuario), contraseñas.txt (en el Escritorio) y claves-banco.txt (en Documentos). Nadie de casa tiene por qué abrirlos, pero los programas que roban contraseñas los buscan.
+- Windows apunta quién los lee (se enciende su "auditoría de archivos", solo para estos archivos) y Firewall Familiar lo mira cada 10 segundos:
+  - Si los revisa el antivirus (Defender o Trend Micro), el buscador de Windows o el propio Firewall Familiar, es normal: solo se apunta.
+  - Si los abre un programa FIRMADO (por ejemplo el Bloc de notas porque alguien lo ha abierto a mano), llega un correo urgente del SOC, pero no se corta Internet.
+  - Si los lee un programa SIN FIRMA, con firma no válida, o que ya se ha borrado a sí mismo: correo urgente y, justo después, se pone "Bloquear todo" (lo eligió Jose). Para volver a tener Internet, quita "Bloquear todo" desde el icono con la contraseña.
+- Si ya existe un archivo de verdad con ese nombre, no se toca. Si alguien borra una trampa, se vuelve a poner a los 10 minutos. Al desinstalar Firewall Familiar se borran.
+
+De la 0.11.14:
 
 - Al abrir la ventana, ahora primero pone ella sus filtros y DESPUÉS le pide al servicio que quite los suyos. Antes era al revés y, mientras la ventana arrancaba, el PC podía quedarse unos segundos sin filtros. Ahora no hay ningún hueco.
 - La línea de tiempos de la consola dice también cuánto tarda el cortafuegos en abrirse, en poner sus filtros, y cuánto tarda el servicio en quitar los suyos, para encontrar la parte lenta.

@@ -68,6 +68,7 @@ public partial class App : Application
         if (args.Contains("--quitar-servicio"))
         {
             try { Core.ServiceSetup.Uninstall(); } catch { }
+            try { Service.TrapWatch.RemoveAll(); } catch { }
             Shutdown();
             return;
         }

@@ -67,6 +67,8 @@ internal sealed class ServiceCore
     private SpeedWatch? _speed;
     private UploadMonitor? _uploads;
     private DnsWatcher? _dns;
+    private TrapWatch? _traps;
+    private Timer? _trapTimer;
     /// <summary>Último aviso de programa espía por indicador (para no repetir correos).</summary>
     private readonly Dictionary<string, DateTime> _spyAlerts = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _hashChecked = new(StringComparer.OrdinalIgnoreCase);
@@ -179,6 +181,9 @@ internal sealed class ServiceCore
             $"{SpyIndicators.IpCount} IPs bloqueadas, {SpyIndicators.HashCount} huellas de archivos y {SpyIndicators.ArtifactCount} rastros en el disco.");
         _dns = new DnsWatcher((name, ips, pid) => SafeRun(() => OnDnsQuery(name, ips, pid)));
         if (_dns.Start() is { } dnsErr) Log("⚠ No se pudo vigilar las consultas DNS: " + dnsErr);
+        // Archivos trampa: contraseñas falsas que solo un ladrón leería
+        _traps = new TrapWatch((text, outcome, app, pid) => Log(text, outcome, null, app, pid), why => Task.Run(() => SafeRun(() => CutForTrap(why))));
+        _trapTimer = new Timer(_ => SafeRun(() => _traps.Tick()), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(10));
         // Al arrancar (o tras una actualización) el icono de cada usuario conectado
         Task.Delay(3000).ContinueWith(_ => SafeRun(() => SessionLauncher.LaunchInAllSessions(_exe, msg => Log(msg))));
     }
@@ -202,6 +207,7 @@ internal sealed class ServiceCore
         _watchTimer?.Dispose();
         _routerTimer?.Dispose();
         _speedTimer?.Dispose();
+        _trapTimer?.Dispose();
         _uploads?.Dispose();
         _dns?.Dispose();
         _soc?.Stop();
@@ -547,6 +553,30 @@ internal sealed class ServiceCore
             Log("Modo: " + ModeText(target).ToUpperInvariant() + " (cambiado desde el icono junto al reloj).");
             BroadcastStatus();
         }
+    }
+
+    /// <summary>
+    /// Un programa sin firma ha leído un archivo trampa: primero sale el correo urgente (con Internet
+    /// cortado ya no podría) y después se pone "Bloquear todo". Se quita desde el icono con la contraseña.
+    /// </summary>
+    private void CutForTrap(string why)
+    {
+        try { _soc?.SendAlertsNowAsync(40).Wait(TimeSpan.FromSeconds(50)); } catch { }
+        lock (_gate)
+        {
+            if (_rules.Mode == FirewallMode.BloquearTodo) return;
+            if (_gui != null)
+            {
+                Log("Archivos trampa: no se corta Internet porque la ventana completa está abierta (la maneja un administrador). Usa \"Bloquear todo\" si hace falta.");
+                return;
+            }
+            _modeBeforeBlockAll = _rules.Mode;
+            _rules.Mode = FirewallMode.BloquearTodo;
+            SaveRules();
+            ApplyRules();
+            Log("Modo: BLOQUEAR TODO (automático: " + why + ").");
+        }
+        BroadcastStatus();
     }
 
     private bool CheckPassword(string password)
