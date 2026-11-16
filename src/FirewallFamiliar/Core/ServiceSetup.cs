@@ -74,6 +74,7 @@ public static class ServiceSetup
     {
         Stop();
         Sc($"delete {ServiceName}");
+        DhcpNames.RemoveFirewallRule();
         Thread.Sleep(500);
     }
 

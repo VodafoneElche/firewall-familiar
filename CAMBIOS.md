@@ -5,6 +5,8 @@ Novedades de esta versión (0.13.2):
 - Los PCs con Windows dicen ahora su nombre también por LLMNR (lo que usa Windows cuando NetBIOS está apagado). Si un PC no lo dice (su cortafuegos no deja), ponle nombre a mano con "Ponerle nombre".
 - El aparato AC-FA-E4-AF-92-14 que salía como desconocido es de Nintendo (ese prefijo se repartió en 2024, después de la lista del programa): ahora sale como "Consola Nintendo".
 - En la ficha, "Qué parece" y "Servicios que anuncia" ya no salen en blanco: dicen "No se sabe" o "No anuncia ninguno".
+- En la ficha hay un apartado nuevo, "Qué es esta MAC" (lo pidió Jose): el fabricante y qué suele fabricar (por ejemplo "Nintendo fabrica consolas" o "Arcadyan fabrica routers, repetidores y descodificadores"). Si la MAC es privada (la que se inventan los móviles para no ser rastreados), lo explica y dice por qué no se sabe el fabricante.
+- Nombres de los aparatos como en la página del router: cada móvil, tablet o PC, al conectarse al Wi-Fi, dice su nombre a toda la red ("Tab-S9-de-Alejandro", "HONOR-Magic8-Lite"...). El servicio ahora escucha esos mensajes (solo escucha, no contesta nada; el router sigue repartiendo las direcciones) y apunta los nombres en C:\ProgramData\FirewallFamiliar\nombres-dhcp.json. Solo en casa. Los nombres van saliendo según los aparatos se vuelven a conectar (al encender el Wi-Fi, al despertar el móvil...). Para eso se da permiso a Firewall Familiar en el cortafuegos de Windows solo para el puerto 67 y solo en redes privadas; al desinstalar se quita.
 
 De la 0.13.1:
 

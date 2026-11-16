@@ -130,6 +130,14 @@ public static class RouterCheck
         return (r.Gateway, r.NetworkKey);
     }
 
+    /// <summary>Router, red y dirección de este PC, sin preguntar nada a nadie.</summary>
+    public static (string Gateway, string NetworkKey, string LocalIp) CurrentLocal()
+    {
+        var r = new RouterReport();
+        try { FindGateway(r); if (r.Gateway.Length > 0) ReadDevices(r); } catch { }
+        return (r.Gateway, r.NetworkKey, r.LocalIp);
+    }
+
     // ------------------------------------------------------------------ todo junto
     public static RouterReport Run(bool ports = true, CancellationToken cancel = default)
     {

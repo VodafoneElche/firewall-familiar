@@ -136,8 +136,8 @@
                                         <TextBlock Style="{StaticResource Val}">
                                             <Run Text="{Binding Ip, Mode=OneWay}"/><Run Text="   "/><Run Text="{Binding Mac, Mode=OneWay}"/>
                                         </TextBlock>
-                                        <TextBlock Style="{StaticResource Lbl}" Text="Fabricante (por la MAC)"/>
-                                        <TextBlock Style="{StaticResource Val}" Text="{Binding VendorText}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Qué es esta MAC"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding MacText}"/>
                                         <TextBlock Style="{StaticResource Lbl}" Text="Nombres que dice en la red"/>
                                         <TextBlock Style="{StaticResource Val}" Text="{Binding NamesText}"/>
                                         <TextBlock Style="{StaticResource Lbl}" Text="Servicios que anuncia"/>

@@ -37,6 +37,9 @@ public sealed class ScanDevice
     public string Workgroup { get; set; } = "";
     public string MdnsName { get; set; } = "";
     public string LlmnrName { get; set; } = "";
+    /// <summary>Nombre que dijo al conectarse al Wi-Fi (el mismo que sale en la página del router).</summary>
+    public string DhcpName { get; set; } = "";
+    public string DhcpVendor { get; set; } = "";
     public string DnsName { get; set; } = "";
     public string SsdpName { get; set; } = "";
     public string SsdpModel { get; set; } = "";
@@ -56,7 +59,7 @@ public sealed class ScanDevice
 
     /// <summary>Mejor nombre encontrado en la red (sin contar el que pone Jose).</summary>
     public string HostName =>
-        new[] { MdnsName, NetbiosName, LlmnrName, DnsName, SsdpName, OldName }.FirstOrDefault(s => s.Length > 0) ?? "";
+        new[] { DhcpName, MdnsName, NetbiosName, LlmnrName, DnsName, SsdpName, OldName }.FirstOrDefault(s => s.Length > 0) ?? "";
 
     public string DisplayName =>
         Label.Length > 0 ? Label :
@@ -110,6 +113,7 @@ public sealed class ScanDevice
         get
         {
             var parts = new List<string>();
+            if (DhcpName.Length > 0) parts.Add($"{DhcpName} (lo dijo al conectarse; es el nombre que sale en el router)");
             if (MdnsName.Length > 0) parts.Add($"{MdnsName} (Bonjour/mDNS)");
             if (NetbiosName.Length > 0) parts.Add($"{NetbiosName}{(Workgroup.Length > 0 ? $" en el grupo {Workgroup}" : "")} (red de Windows)");
             if (LlmnrName.Length > 0 && LlmnrName != NetbiosName) parts.Add($"{LlmnrName} (Windows, LLMNR)");
@@ -124,6 +128,9 @@ public sealed class ScanDevice
     public string PortsText => OpenPorts.Count == 0
         ? (Answered ? "Ninguna de las que se prueban." : "")
         : string.Join("\n", OpenPorts.Select(p => $"{(NetScan.PortLevel(p) >= 3 ? "⚠ " : NetScan.PortLevel(p) == 2 ? "· " : "")}{p} – {NetScan.PortName(p)}"));
+
+    /// <summary>Qué es esta MAC, explicado: fabricante y qué suele fabricar, o por qué no se sabe.</summary>
+    public string MacText => NetScan.ExplainMac(this);
 
     public string TypeDisplay => TypeText.Length > 0 ? TypeText : "No se sabe.";
 
@@ -270,6 +277,7 @@ public static class NetScan
         }
         cancel.ThrowIfCancellationRequested();
 
+        AddDhcp(devices);
         progress?.Report($"Encontrados {devices.Count} aparatos. Preguntando su nombre y qué son...");
         var ssdp = ReadSsdp(r.LocalIp, cancel);
         var others = devices.Where(d => !d.IsThisPc).ToList();
@@ -321,11 +329,54 @@ public static class NetScan
                 Task.Run(() => PingDevice(d)), Task.Run(() => Netbios(d)),
                 Task.Run(() => Mdns(d)), Task.Run(() => ReverseDns(d, gateway)), Task.Run(() => Llmnr(d)),
             }, 4000);
+            AddDhcp(new List<ScanDevice> { d });
             ProbePorts(new List<ScanDevice> { d }, default);
             Classify(d);
         }
         catch { }
         return d;
+    }
+
+    private static void AddDhcp(List<ScanDevice> devices)
+    {
+        var map = DhcpNames.Load();
+        foreach (var d in devices)
+            if (map.TryGetValue(d.Mac, out var n)) { d.DhcpName = n.Name; d.DhcpVendor = n.VendorClass; }
+    }
+
+    // ------------------------------------------------------------------ qué es cada MAC
+    private static readonly (string[] Words, string Text)[] VendorHints =
+    {
+        (new[] { "Nintendo" }, "Nintendo fabrica consolas (Switch, Switch 2). Casi seguro una consola."),
+        (new[] { "Sony Interactive" }, "Sony Interactive fabrica las PlayStation. Es una consola."),
+        (new[] { "Arcadyan" }, "Arcadyan fabrica routers, repetidores Wi-Fi y descodificadores de TV para los operadores (Vodafone, Movistar, Orange...). También hizo el Wi-Fi de algunas consolas antiguas."),
+        (new[] { "ZTE", "Sagemcom", "Mitrastar", "Askey", "Huawei Technologies" }, "Fabricante de routers y descodificadores de los operadores."),
+        (new[] { "TP-LINK", "TP-Link", "Tenda", "D-Link", "Netgear", "Linksys", "AVM", "Ubiquiti", "Mercusys" }, "Fabricante de routers, repetidores Wi-Fi y PLC; también enchufes y cámaras (TP-Link)."),
+        (new[] { "Apple" }, "Apple: iPhone, iPad, Mac, Apple TV o HomePod."),
+        (new[] { "Samsung" }, "Samsung: móvil, tablet, tele, nevera o lavadora con Wi-Fi."),
+        (new[] { "OPPO", "Xiaomi", "Honor", "Huawei Device", "OnePlus", "Motorola", "vivo", "Realme", "HMD", "Guangdong" }, "Fabricante de móviles (también tablets, relojes y aparatos de casa en el caso de Xiaomi)."),
+        (new[] { "Espressif" }, "Espressif hace el chip Wi-Fi de muchos aparatos baratos de domótica: enchufes, bombillas, aspiradoras, termostatos, tiras de LED..."),
+        (new[] { "Tuya", "Shelly", "Sonoff", "ITEAD", "Signify", "Philips Lighting" }, "Domótica: enchufes, bombillas o interruptores inteligentes."),
+        (new[] { "Amazon" }, "Amazon: altavoz Alexa (Echo), Fire TV o Kindle."),
+        (new[] { "Google" }, "Google: Chromecast, Google TV, altavoz Nest o móvil Pixel."),
+        (new[] { "Intel", "Realtek", "Liteon", "AzureWave", "Hon Hai", "Qualcomm Atheros", "MEDIATEK", "Rivet", "CyberTAN" }, "Fabricante de tarjetas de red (Wi-Fi o cable) que llevan los ordenadores. Casi seguro un PC o portátil."),
+        (new[] { "GIGA-BYTE", "Gigabyte", "ASUSTek", "Micro-Star", "ASRock", "Dell", "Hewlett", "Lenovo", "Acer", "TOSHIBA", "Dynabook" }, "Fabricante de ordenadores o placas base. Casi seguro un PC o portátil."),
+        (new[] { "Hikvision", "Dahua", "Ezviz", "Wyze", "Ring" }, "Fabricante de cámaras de vigilancia o timbres con cámara."),
+        (new[] { "Sonos" }, "Altavoz Sonos."),
+        (new[] { "LG Electronics", "Hisense", "TCL", "Vestel", "Panasonic", "Sharp", "Philips", "Sony" }, "Fabricante de teles (y otros aparatos de casa)."),
+        (new[] { "Epson", "Canon", "Brother", "Seiko Epson", "Kyocera" }, "Fabricante de impresoras."),
+    };
+
+    public static string ExplainMac(ScanDevice d)
+    {
+        if (d.Randomized)
+            return "Es una MAC PRIVADA: el propio aparato se la inventa para que no lo puedan seguir de un Wi-Fi a otro " +
+                   "(lo hacen los móviles Android, los iPhone y algunos PCs con Windows 11). Por eso no se sabe el fabricante. " +
+                   "El nombre lo dice al conectarse al Wi-Fi" + (d.DhcpName.Length > 0 ? $": "{d.DhcpName}"." : " (aún no se ha oído; sale en cuanto se vuelva a conectar).");
+        if (d.Vendor.Length == 0)
+            return "Fabricante desconocido: su prefijo no está en la lista del programa (puede ser muy nuevo o de una marca pequeña).";
+        var hint = VendorHints.FirstOrDefault(h => h.Words.Any(w => d.Vendor.Contains(w, StringComparison.OrdinalIgnoreCase)));
+        return $"{d.Vendor}." + (hint.Text != null ? " " + hint.Text : "");
     }
 
     // ------------------------------------------------------------------ ping (TTL y lo que tarda)
@@ -513,7 +564,7 @@ public static class NetScan
 
     public static void Classify(ScanDevice d)
     {
-        string names = $"{d.MdnsName} {d.NetbiosName} {d.LlmnrName} {d.DnsName} {d.SsdpName} {d.SsdpModel}";
+        string names = $"{d.DhcpName} {d.DhcpVendor} {d.MdnsName} {d.NetbiosName} {d.LlmnrName} {d.DnsName} {d.SsdpName} {d.SsdpModel}";
         string svc;
         lock (d.Services) svc = string.Join(" ", d.Services);
         string v = d.Vendor;
@@ -535,7 +586,7 @@ public static class NetScan
             if (p.Contains(62078) || Has(names, "iphone", "ipad")) return (DeviceGroup.Moviles, Has(names, "ipad") ? "iPad" : "iPhone o iPad");
             if (Has(names, "android", "galaxy", "redmi", "xiaomi", "oppo", "honor", "huawei", "pixel", "oneplus", "realme", "moto", "phone", "movil", "tablet", "tab-"))
                 return (DeviceGroup.Moviles, "Móvil o tablet");
-            if (p.Contains(445) || p.Contains(139) || p.Contains(3389) || d.NetbiosName.Length > 0 || d.LlmnrName.Length > 0 || Has(names, "desktop-", "laptop-", "-pc", "pc-", "macbook", "imac"))
+            if (p.Contains(445) || p.Contains(139) || p.Contains(3389) || d.NetbiosName.Length > 0 || d.LlmnrName.Length > 0 || Has(names, "desktop-", "laptop-", "-pc", "pc-", "macbook", "imac", "MSFT 5.0"))
                 return (DeviceGroup.Ordenadores, Has(names, "macbook", "imac") ? "Mac" : "Ordenador");
             if (Has(svc, "_airplay", "_raop", "_sleep-proxy")) return (DeviceGroup.TeleConsolas, "Apple TV o altavoz AirPlay");
             if (Has(svc, "_hap", "_homekit", "_amzn", "_spotify-connect") || p.Contains(1883) || p.Contains(554) ||
