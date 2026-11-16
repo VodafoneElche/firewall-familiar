@@ -94,12 +94,12 @@ public partial class RouterWindow : Window
         PortList.ItemsSource = r.Ports.Where(p => p.Open).OrderByDescending(p => p.Level).ThenBy(p => p.Port).ToList();
         UpnpList.ItemsSource = r.Mappings;
         UpnpTab.Header = $"  Puertos abiertos por UPnP ({r.Mappings.Count})  ";
-        bool home = IsHome();
-        BtnScan.IsEnabled = home && _scanCancel == null;
-        BtnScan.ToolTip = home
+        bool atHome = IsHome();
+        BtnScan.IsEnabled = atHome && _scanCancel == null;
+        BtnScan.ToolTip = atHome
             ? "Busca todos los aparatos encendidos de casa, su nombre, qué son y qué puertas tienen abiertas. No sale nada a Internet."
             : "Solo se escanea la red de casa. Fuera de casa (oficina, otra casa) no se mira lo que tienen los demás.";
-        if (!home && _devices.Count == 0)
+        if (!atHome && _devices.Count == 0)
             ScanText.Text = "Este PC no está en la red de casa: el escaneo solo se hace en casa.";
     }
 
