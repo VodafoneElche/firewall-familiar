@@ -598,11 +598,16 @@ public static class RouterCheck
             {
                 sb.AppendLine($"### Libreta de aparatos de esta red (escaneos de la ventana Router: {scanned.Count})");
                 sb.AppendLine();
-                sb.AppendLine("| Última IP | MAC | Nombre puesto | Nombre en la red | De casa | Qué parece | Puertas abiertas | Primera vez | Última vez |");
-                sb.AppendLine("|---|---|---|---|---|---|---|---|---|");
+                var hist = LanHistory.Load();
+                sb.AppendLine("| Última IP | MAC | Nombre puesto | Nombre en la red | De casa | Qué parece | Puertas abiertas | Encendido 24 h | Ping medio | Primera vez | Última vez |");
+                sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
                 foreach (var (mac, e) in scanned)
-                    sb.AppendLine($"| {e.LastIp} | {mac} | {e.Name.Replace("|", "/")} | {e.HostName.Replace("|", "/")} | {(e.Home ? "sí" : "")} | {e.Type.Replace("|", "/")} | " +
-                                  $"{string.Join(" ", e.Ports.Select(p => NetScan.PortLevel(p) >= 3 ? $"⚠{p}" : p.ToString()))} | {e.FirstSeen:dd/MM HH:mm} | {e.LastSeen:dd/MM HH:mm} |");
+                {
+                    var sum = LanHistory.Of(hist, mac);
+                    sb.AppendLine($"| {e.LastIp} | {mac} | {e.Name.Replace("|", "/")} | {e.HostName.Replace("|", "/")} | {(e.Home ? "sí" : "")}{(e.Watch ? " (vigilado)" : "")} | {e.Type.Replace("|", "/")} | " +
+                                  $"{string.Join(" ", e.Ports.Select(p => NetScan.PortLevel(p) >= 3 ? $"⚠{p}" : p.ToString()))} | " +
+                                  $"{(sum != null ? sum.OnPercent + "%" : "")} | {(sum is { AvgMs: >= 0 } ? sum.AvgMs + " ms" : "")} | {e.FirstSeen:dd/MM HH:mm} | {e.LastSeen:dd/MM HH:mm} |");
+                }
                 sb.AppendLine();
             }
         }

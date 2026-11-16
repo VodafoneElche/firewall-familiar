@@ -63,7 +63,8 @@ internal sealed class ServiceCore
     private Timer? _avTimer, _uploadTimer, _beaconTimer, _watchTimer;
     private SystemWatch? _watch;
     private RouterWatch? _router;
-    private Timer? _routerTimer, _speedTimer;
+    private Timer? _routerTimer, _speedTimer, _lanTimer;
+    private LanMonitor? _lan;
     private readonly CancellationTokenSource _dhcpStop = new();
     private SpeedWatch? _speed;
     private UploadMonitor? _uploads;
@@ -175,6 +176,9 @@ internal sealed class ServiceCore
         _watchTimer = new Timer(_ => SafeRun(() => _watch.Tick()), null, TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(2));
         _router = new RouterWatch((text, outcome, app) => Log(text, outcome, null, app));
         _routerTimer = new Timer(_ => SafeRun(() => _router.Tick()), null, TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(15));
+        // Vigilancia continua de la red de casa (cada 5 minutos)
+        _lan = new LanMonitor((text, outcome, app) => Log(text, outcome, null, app));
+        _lanTimer = new Timer(_ => SafeRun(() => _lan.Tick()), null, TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(LanHistory.SlotMinutes));
         // Nombres de los aparatos de casa: se oyen cuando se conectan al Wi-Fi (DHCP)
         new Thread(() => SafeRun(() => DhcpNames.Listen(_dhcpStop.Token, msg => Log(msg)))) { IsBackground = true, Name = "NombresDhcp" }.Start();
         _speed = new SpeedWatch((text, outcome, app) => Log(text, outcome, null, app));
@@ -209,6 +213,7 @@ internal sealed class ServiceCore
         _beaconTimer?.Dispose();
         _watchTimer?.Dispose();
         _routerTimer?.Dispose();
+        _lanTimer?.Dispose();
         try { _dhcpStop.Cancel(); } catch { }
         _speedTimer?.Dispose();
         _trapTimer?.Dispose();

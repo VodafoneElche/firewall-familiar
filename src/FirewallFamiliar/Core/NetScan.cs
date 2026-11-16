@@ -52,6 +52,7 @@ public sealed class ScanDevice
     // Lo que ha puesto Jose (aparatos.json)
     public string Label { get; set; } = "";
     public bool Home { get; set; }
+    public bool Watch { get; set; }
     /// <summary>Escaneado en una red que no es la de casa (cliente, oficina): no se guarda nada.</summary>
     public bool Away { get; set; }
     public DateTime FirstSeen { get; set; }

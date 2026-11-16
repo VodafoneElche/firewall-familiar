@@ -6,6 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
 using FirewallFamiliar.Core;
 
 namespace FirewallFamiliar.Views;
@@ -27,6 +30,8 @@ public partial class RouterWindow : Window
     private bool _autoScanned;
     /// <summary>El último escaneo se hizo fuera de casa (cliente, oficina): no se guarda nada.</summary>
     private bool _awayScan;
+    private LanHistory.Data _history = new();
+    private bool _settingWatch;
 
     public RouterWindow()
     {
@@ -40,6 +45,9 @@ public partial class RouterWindow : Window
             if (!_autoScanned && IsHome()) { _autoScanned = true; await ScanAsync(); }
         };
         Closed += (_, _) => _scanCancel?.Cancel();
+        HistoryCanvas.SizeChanged += (_, _) => DrawHistory();
+        LatencyCanvas.SizeChanged += (_, _) => DrawHistory();
+        MapCanvas.SizeChanged += (_, _) => DrawMap();
     }
 
     private bool IsHome()
@@ -173,7 +181,8 @@ public partial class RouterWindow : Window
 
     private void ShowDevices(bool remembered = false)
     {
-        string? selected = (DeviceTree.SelectedItem as ScanDevice)?.Mac;
+        string? selected = (DeviceCard.DataContext as ScanDevice)?.Mac;
+        _history = _awayScan ? new LanHistory.Data() : LanHistory.Load();
         var nodes = new List<DeviceNode>();
         foreach (var (group, icon, title) in Groups)
         {
@@ -197,6 +206,7 @@ public partial class RouterWindow : Window
         var again = _devices.FirstOrDefault(d => d.Mac == selected);
         ShowCard(again);
         if (again != null) SelectInTree(again);
+        DrawMap();
     }
 
     private void SelectInTree(ScanDevice d)
@@ -225,6 +235,160 @@ public partial class RouterWindow : Window
         BtnWeb.Visibility = d.Answered && d.OpenPorts.Any(p => p is 80 or 443 or 8080 or 8443) ? Visibility.Visible : Visibility.Collapsed;
         BtnForget.Visibility = !d.Answered && !_awayScan ? Visibility.Visible : Visibility.Collapsed;
         BtnName.Visibility = _awayScan ? Visibility.Collapsed : Visibility.Visible;
+        _settingWatch = true;
+        ChkWatch.IsChecked = d.Watch;
+        _settingWatch = false;
+        ChkWatch.Visibility = _awayScan || d.IsThisPc ? Visibility.Collapsed : Visibility.Visible;
+        DrawHistory();
+    }
+
+    private void OnWatchChanged(object sender, RoutedEventArgs e)
+    {
+        if (_settingWatch || DeviceCard.DataContext is not ScanDevice d) return;
+        d.Watch = ChkWatch.IsChecked == true;
+        DeviceBook.SetWatch(d.Mac, d.Watch);
+    }
+
+    // ------------------------------------------------------------------ historial de la ficha
+    private static readonly Brush OnBrush = Frozen("#2E9E44"), OffBrush = Frozen("#D32F2F"), NoDataBrush = Frozen("#ECEFF3"),
+        LineBrush = Frozen("#1F6FD1"), GridBrush = Frozen("#E3E8EF");
+
+    private static Brush Frozen(string hex)
+    {
+        var b = (SolidColorBrush)new BrushConverter().ConvertFromString(hex)!;
+        b.Freeze();
+        return b;
+    }
+
+    private void DrawHistory()
+    {
+        HistoryCanvas.Children.Clear();
+        LatencyCanvas.Children.Clear();
+        if (DeviceCard.DataContext is not ScanDevice d) return;
+        var sum = _awayScan ? null : LanHistory.Of(_history, d.Mac);
+        if (sum == null)
+        {
+            HistoryText.Text = _awayScan
+                ? "Fuera de casa no se vigila nada."
+                : "Aún no hay datos: la vigilancia mira la red cada 5 minutos, solo en casa y con este PC encendido.";
+            return;
+        }
+        double w = HistoryCanvas.ActualWidth, h = HistoryCanvas.ActualHeight;
+        int n = sum.Values.Length;
+        if (w > 0)
+        {
+            double cw = w / n;
+            for (int i = 0; i < n; i++)
+            {
+                int v = sum.Values[i];
+                var r = new Rectangle { Width = Math.Max(cw + 0.5, 1), Height = h, Fill = v == -3 ? NoDataBrush : v == LanHistory.Off ? OffBrush : OnBrush };
+                Canvas.SetLeft(r, i * cw);
+                HistoryCanvas.Children.Add(r);
+            }
+        }
+        HistoryText.Text = $"Contestaba en el {sum.OnPercent}% de las veces que se ha mirado ({sum.Checks}). " +
+                           (sum.AvgMs >= 0 ? $"Tarda de media {sum.AvgMs} ms; lo peor, {sum.MaxMs} ms." : "No contesta al ping, así que no se sabe lo que tarda.") +
+                           " Gris = no se miró (este PC apagado o fuera de casa).";
+
+        double lw = LatencyCanvas.ActualWidth, lh = LatencyCanvas.ActualHeight;
+        if (lw <= 0 || sum.MaxMs < 0) return;
+        double top = Math.Max(20, sum.MaxMs * 1.1);
+        foreach (double ms in new[] { 10.0, 50, 100, 500, 1000 }.Where(x => x < top))
+        {
+            double y = lh - ms / top * (lh - 4);
+            LatencyCanvas.Children.Add(new Line { X1 = 0, X2 = lw, Y1 = y, Y2 = y, Stroke = GridBrush, StrokeThickness = 1 });
+            var t = new TextBlock { Text = $"{ms} ms", FontSize = 9, Foreground = Brushes.Gray };
+            Canvas.SetLeft(t, 2); Canvas.SetTop(t, y - 11);
+            LatencyCanvas.Children.Add(t);
+        }
+        double step = lw / n;
+        Polyline? line = null;
+        for (int i = 0; i < n; i++)
+        {
+            int v = sum.Values[i];
+            if (v < 0) { line = null; continue; }
+            if (line == null) { line = new Polyline { Stroke = LineBrush, StrokeThickness = 1.5 }; LatencyCanvas.Children.Add(line); }
+            line.Points.Add(new Point(i * step + step / 2, lh - v / top * (lh - 4)));
+        }
+    }
+
+    // ------------------------------------------------------------------ mapa
+    private void DrawMap()
+    {
+        MapCanvas.Children.Clear();
+        double w = MapCanvas.ActualWidth, h = MapCanvas.ActualHeight;
+        if (w < 100 || h < 100) return;
+        if (_devices.Count == 0)
+        {
+            var t = new TextBlock { Text = "Escanea la red para ver el mapa.", Foreground = Brushes.Gray, FontSize = 14 };
+            Canvas.SetLeft(t, 20); Canvas.SetTop(t, 20);
+            MapCanvas.Children.Add(t);
+            return;
+        }
+        var router = _devices.FirstOrDefault(d => d.IsGateway);
+        var others = _devices.Where(d => d != router)
+            .OrderBy(d => d.Group).ThenBy(d => NetScan.IpOrder(d.Ip)).ToList();
+        double cx = w / 2, cy = h / 2;
+        int n = others.Count;
+        bool twoRings = n > 16;
+        var nodes = new List<(ScanDevice D, double X, double Y)>();
+        for (int i = 0; i < n; i++)
+        {
+            double a = -Math.PI / 2 + i * 2 * Math.PI / Math.Max(n, 1);
+            double k = twoRings && i % 2 == 1 ? 0.62 : 1.0;
+            double rx = (w / 2 - 110) * k, ry = (h / 2 - 45) * k;
+            nodes.Add((others[i], cx + Math.Cos(a) * rx, cy + Math.Sin(a) * ry));
+        }
+        // Líneas primero (debajo de los aparatos)
+        foreach (var (d, x, y) in nodes)
+        {
+            int v = Latency(d);
+            var line = new Line
+            {
+                X1 = cx, Y1 = cy, X2 = x, Y2 = y, StrokeThickness = v >= 0 ? 2.5 : 1.5,
+                Stroke = v >= 150 ? OffBrush : v >= 30 ? Frozen("#F08C00") : v >= 0 ? OnBrush : v == LanHistory.NoPing ? Frozen("#7FA889") : Frozen("#B0B6BE"),
+                ToolTip = v >= 0 ? $"{v} ms" : v == LanHistory.NoPing ? "Encendido (no contesta al ping)" : "No contesta",
+            };
+            if (v == LanHistory.Off) line.StrokeDashArray = new DoubleCollection { 4, 3 };
+            MapCanvas.Children.Add(line);
+        }
+        foreach (var (d, x, y) in nodes) AddNode(d, x, y, false);
+        if (router != null) AddNode(router, cx, cy, true);
+        else AddNode(new ScanDevice { Ip = _last?.Gateway ?? "", IsGateway = true, Group = DeviceGroup.Router, TypeText = "Router" }, cx, cy, true);
+    }
+
+    /// <summary>Lo último que se sabe de lo que tarda: la vigilancia del servicio o, si no hay, el escaneo.</summary>
+    private int Latency(ScanDevice d)
+    {
+        if (!_awayScan && LanHistory.Latest(_history, d.Mac) is { } v) return v;
+        return !d.Answered ? LanHistory.Off : d.PingMs >= 0 ? (int)d.PingMs : LanHistory.NoPing;
+    }
+
+    private void AddNode(ScanDevice d, double x, double y, bool big)
+    {
+        string icon = Groups.FirstOrDefault(g => g.Group == d.Group).Icon ?? "";
+        string name = d.DisplayName.Length > 24 ? d.DisplayName[..23] + "…" : d.DisplayName;
+        var stack = new StackPanel();
+        var top = new StackPanel { Orientation = Orientation.Horizontal };
+        top.Children.Add(new Border
+        {
+            Width = big ? 14 : 11, Height = big ? 14 : 11, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 0, 5, 0),
+            Background = Frozen(d.StateColor), VerticalAlignment = VerticalAlignment.Center
+        });
+        top.Children.Add(new TextBlock { Text = $"{icon} {name}", FontWeight = FontWeights.SemiBold, FontSize = big ? 14 : 12 });
+        stack.Children.Add(top);
+        stack.Children.Add(new TextBlock { Text = d.Ip, Foreground = Brushes.Gray, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center });
+        var node = new Border
+        {
+            Child = stack, Background = Brushes.White, BorderBrush = Frozen(d.StateColor), BorderThickness = new Thickness(big ? 2 : 1.5),
+            CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 3, 6, 3), Cursor = Cursors.Hand, ToolTip = d.Tooltip,
+        };
+        node.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(node, x - node.DesiredSize.Width / 2);
+        Canvas.SetTop(node, y - node.DesiredSize.Height / 2);
+        if (_devices.Contains(d))
+            node.MouseLeftButtonUp += (_, _) => { Tabs.SelectedIndex = 0; ShowCard(d); SelectInTree(d); };
+        MapCanvas.Children.Add(node);
     }
 
     private void OnNameDevice(object sender, RoutedEventArgs e)
