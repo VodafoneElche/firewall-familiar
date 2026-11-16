@@ -52,7 +52,7 @@
                                 <Border Background="#D32F2F" CornerRadius="2" Padding="8,2" Margin="0,0,12,0" ToolTip="Se conocían pero ahora no contestan (apagados o fuera de casa)">
                                     <TextBlock x:Name="CountGone" Text="0 no responden" FontWeight="SemiBold"/>
                                 </Border>
-                                <TextBlock x:Name="ScanText" Foreground="#DDE3EA" TextWrapping="Wrap" MaxWidth="420"
+                                <TextBlock x:Name="ScanText" Foreground="#DDE3EA" TextWrapping="Wrap" MaxWidth="760"
                                            Text="Pulsa &quot;Escanear la red&quot; para ver todo lo que hay conectado en casa."/>
                             </WrapPanel>
                         </DockPanel>
@@ -92,6 +92,7 @@
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" ToolTip="{Binding Tooltip}">
                                                 <Border Width="14" Height="14" CornerRadius="2" Background="{Binding StateColor}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Icon}" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
                                                 <TextBlock Text="{Binding IpText}" Foreground="#888" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                             </StackPanel>
@@ -120,11 +121,12 @@
                                         </StackPanel.Resources>
                                         <DockPanel>
                                             <Border Width="22" Height="22" CornerRadius="3" Background="{Binding StateColor}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Icon}" FontSize="34" Margin="0,0,10,0" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
                                         </DockPanel>
                                         <TextBlock Text="{Binding StateText}" Margin="32,2,0,0" TextWrapping="Wrap" Foreground="#444"/>
                                         <WrapPanel Margin="0,10,0,0">
-                                            <Button x:Name="BtnName" Content="✎ Ponerle nombre / es de casa" Padding="10,3" Margin="0,0,6,4" Click="OnNameDevice"/>
+                                            <Button x:Name="BtnName" Content="✎ Ponerle nombre y dibujo / es de casa" Padding="10,3" Margin="0,0,6,4" Click="OnNameDevice"/>
                                             <Button x:Name="BtnWeb" Content="Abrir su página" Padding="10,3" Margin="0,0,6,4" Click="OnOpenDeviceWeb"
                                                     ToolTip="Abre en el navegador la página de configuración del aparato (si tiene)."/>
                                             <Button x:Name="BtnForget" Content="Olvidar" Padding="10,3" Margin="0,0,6,4" Click="OnForgetDevice"
@@ -174,7 +176,7 @@
             <TabItem x:Name="MapTab" Header="  Mapa  ">
                 <DockPanel Margin="6">
                     <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,6" Foreground="#333"
-                               Text="El router en el centro y cada aparato alrededor. El cuadrito es su estado (como en la lista). La línea es lo que tarda en contestar: verde = rápido (menos de 30 ms), naranja = lento, rojo = muy lento (más de 150 ms), gris a trazos = no contesta. Pulsa un aparato para ver su ficha."/>
+                               Text="El router en el centro y cada aparato alrededor. El cuadrito es su estado (como en la lista). La línea es lo que tarda en contestar: verde = rápido (menos de 30 ms), naranja = lento, rojo = muy lento (más de 150 ms), verde claro y fino = encendido pero no contesta al ping (no se sabe lo que tarda), gris a trazos = no contesta. Pulsa un aparato para ver su ficha."/>
                     <Border BorderBrush="#C8D4E8" BorderThickness="1" Background="#F7F9FC">
                         <Canvas x:Name="MapCanvas" ClipToBounds="True"/>
                     </Border>

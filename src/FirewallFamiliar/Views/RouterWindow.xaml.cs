@@ -228,6 +228,7 @@ public partial class RouterWindow : Window
 
     private void ShowCard(ScanDevice? d)
     {
+        DeviceCard.DataContext = null; // así se vuelve a leer todo aunque sea el mismo aparato
         DeviceCard.DataContext = d;
         DeviceCard.Visibility = d != null ? Visibility.Visible : Visibility.Collapsed;
         NoSelection.Visibility = d == null ? Visibility.Visible : Visibility.Collapsed;
@@ -366,8 +367,7 @@ public partial class RouterWindow : Window
 
     private void AddNode(ScanDevice d, double x, double y, bool big)
     {
-        string icon = Groups.FirstOrDefault(g => g.Group == d.Group).Icon ?? "";
-        string name = d.DisplayName.Length > 24 ? d.DisplayName[..23] + "…" : d.DisplayName;
+        string name = d.DisplayName.Length > 32 ? d.DisplayName[..31] + "…" : d.DisplayName;
         var stack = new StackPanel();
         var top = new StackPanel { Orientation = Orientation.Horizontal };
         top.Children.Add(new Border
@@ -375,9 +375,12 @@ public partial class RouterWindow : Window
             Width = big ? 14 : 11, Height = big ? 14 : 11, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 0, 5, 0),
             Background = Frozen(d.StateColor), VerticalAlignment = VerticalAlignment.Center
         });
-        top.Children.Add(new TextBlock { Text = $"{icon} {name}", FontWeight = FontWeights.SemiBold, FontSize = big ? 14 : 12 });
+        top.Children.Add(new TextBlock { Text = d.IsGateway ? "📡" : d.Icon, FontSize = big ? 26 : 22, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+        var texts = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        texts.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.SemiBold, FontSize = big ? 14 : 12 });
+        texts.Children.Add(new TextBlock { Text = d.Ip, Foreground = Brushes.Gray, FontSize = 11 });
+        top.Children.Add(texts);
         stack.Children.Add(top);
-        stack.Children.Add(new TextBlock { Text = d.Ip, Foreground = Brushes.Gray, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center });
         var node = new Border
         {
             Child = stack, Background = Brushes.White, BorderBrush = Frozen(d.StateColor), BorderThickness = new Thickness(big ? 2 : 1.5),
@@ -396,7 +399,9 @@ public partial class RouterWindow : Window
         if (DeviceCard.DataContext is not ScanDevice d) return;
         var dlg = new DeviceNameDialog(d) { Owner = this };
         if (dlg.ShowDialog() != true) return;
-        DeviceBook.SetName(d.Mac, dlg.DeviceName, dlg.IsHome);
+        DeviceBook.SetName(d.Mac, dlg.DeviceName, dlg.IsHome, dlg.Kind);
+        d.Kind = dlg.Kind;
+        NetScan.ApplyKind(d);
         d.Label = dlg.DeviceName.Trim();
         d.Home = dlg.IsHome;
         ShowDevices();
