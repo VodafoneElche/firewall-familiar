@@ -124,7 +124,7 @@
                                         </DockPanel>
                                         <TextBlock Text="{Binding StateText}" Margin="32,2,0,0" TextWrapping="Wrap" Foreground="#444"/>
                                         <WrapPanel Margin="0,10,0,0">
-                                            <Button Content="✎ Ponerle nombre / es de casa" Padding="10,3" Margin="0,0,6,4" Click="OnNameDevice"/>
+                                            <Button x:Name="BtnName" Content="✎ Ponerle nombre / es de casa" Padding="10,3" Margin="0,0,6,4" Click="OnNameDevice"/>
                                             <Button x:Name="BtnWeb" Content="Abrir su página" Padding="10,3" Margin="0,0,6,4" Click="OnOpenDeviceWeb"
                                                     ToolTip="Abre en el navegador la página de configuración del aparato (si tiene)."/>
                                             <Button x:Name="BtnForget" Content="Olvidar" Padding="10,3" Margin="0,0,6,4" Click="OnForgetDevice"

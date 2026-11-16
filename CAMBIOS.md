@@ -1,4 +1,10 @@
-Novedades de esta versión (0.13.0):
+Novedades de esta versión (0.13.1):
+
+- El botón "Escanear la red" de la ventana Router ahora funciona también fuera de casa (lo pidió Jose, para revisar la red de un cliente cuando no le funciona). Fuera de casa el escaneo solo se hace cuando lo pulsas tú: no se hace solo, no se guarda nada en la libreta de aparatos de casa y no se avisa de nada. Los aparatos que contestan salen en verde y, en naranja, los que no se sabe qué son o tienen una puerta peligrosa abierta.
+- El escaneo automático cada 15 minutos y los avisos de aparato nuevo siguen siendo solo en casa.
+- Fuera de casa ya no se enseña la lista de aparatos de casa al abrir la ventana.
+
+De la 0.13.0:
 
 - Escaneo de la red de casa en la ventana Router (idea de Jose, al estilo de programas de vigilancia de red como PRTG, pero hecho por nosotros y sin salir de casa). La ventana Router ahora va por pestañas y la primera es "Aparatos de la red".
 - Se pregunta a las 254 direcciones de casa quién está encendido, no solo a los aparatos que ya habían hablado con este PC. A cada uno se le pide su nombre (red de Windows, Bonjour de Apple/Android y el nombre que le ha dado el router), su modelo por UPnP (teles, consolas) y se prueban unas pocas puertas para saber qué es. Nunca se prueba ninguna contraseña.
