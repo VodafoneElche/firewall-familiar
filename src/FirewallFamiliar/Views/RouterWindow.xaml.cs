@@ -133,8 +133,10 @@ public partial class RouterWindow : Window
             }
             ShowDevices();
             int alive = _devices.Count(d => d.Answered);
+            int heard = home ? DhcpNames.Load().Count : 0;
             ScanText.Text = $"{(home ? "" : "💼 Red fuera de casa (no se guarda). ")}Escaneado a las {DateTime.Now:HH:mm} en " +
-                            $"{(DateTime.Now - started).TotalSeconds:0} s: {alive} aparato(s) encendidos.";
+                            $"{(DateTime.Now - started).TotalSeconds:0} s: {alive} aparato(s) encendidos." +
+                            (home ? $" Nombres oídos al conectarse: {heard}." : "");
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { ScanText.Text = "No se pudo escanear: " + ex.Message; }

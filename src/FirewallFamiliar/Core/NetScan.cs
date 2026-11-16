@@ -65,7 +65,7 @@ public sealed class ScanDevice
         Label.Length > 0 ? Label :
         IsThisPc ? $"Este PC{(HostName.Length > 0 ? $" ({HostName})" : "")}" :
         HostName.Length > 0 ? HostName :
-        TypeShort.Length > 0 && Vendor.Length > 0 ? $"{TypeShort} {ShortVendor}" :
+        TypeShort.Length > 0 && Vendor.Length > 0 && !TypeShort.Contains(ShortVendor, StringComparison.OrdinalIgnoreCase) ? $"{TypeShort} {ShortVendor}" :
         TypeShort.Length > 0 ? TypeShort :
         Vendor.Length > 0 ? ShortVendor : "Aparato desconocido";
 
@@ -228,7 +228,7 @@ public static class NetScan
     private static void EnoughThreads()
     {
         ThreadPool.GetMinThreads(out int w, out int io);
-        if (w < 160) ThreadPool.SetMinThreads(160, Math.Max(io, 32));
+        if (w < 320) ThreadPool.SetMinThreads(320, Math.Max(io, 32));
     }
 
     public static List<(string Ip, string Mac)> Sweep(string gateway, CancellationToken cancel = default)
@@ -239,7 +239,7 @@ public static class NetScan
         byte[] b = gw.GetAddressBytes();
         try
         {
-            Parallel.For(1, 255, new ParallelOptions { MaxDegreeOfParallelism = 64, CancellationToken = cancel }, i =>
+            Parallel.For(1, 255, new ParallelOptions { MaxDegreeOfParallelism = 254, CancellationToken = cancel }, i =>
             {
                 var ip = new IPAddress(new[] { b[0], b[1], b[2], (byte)i });
                 byte[] mac = new byte[6];
@@ -279,9 +279,18 @@ public static class NetScan
 
         AddDhcp(devices);
         progress?.Report($"Encontrados {devices.Count} aparatos. Preguntando su nombre y qué son...");
-        var ssdp = ReadSsdp(r.LocalIp, cancel);
+        // Todo a la vez: nombres, UPnP y puertas (antes iba por turnos y tardaba el doble)
         var others = devices.Where(d => !d.IsThisPc).ToList();
         var tasks = new List<Task>();
+        var ssdpTask = Task.Run(() => ReadSsdp(r.LocalIp, cancel), cancel);
+        tasks.Add(Task.Run(() => ProbePorts(others, cancel), cancel));
+        tasks.Add(ssdpTask.ContinueWith(t =>
+        {
+            if (t.Status != TaskStatus.RanToCompletion) return;
+            var desc = devices.Where(d => t.Result.ContainsKey(d.Ip))
+                .Select(d => Task.Run(() => SsdpDescription(d, t.Result[d.Ip], cancel))).ToArray();
+            try { Task.WaitAll(desc, cancel); } catch { }
+        }, cancel));
         foreach (var d in devices)
         {
             tasks.Add(Task.Run(() => PingDevice(d), cancel));
@@ -292,12 +301,8 @@ public static class NetScan
                 tasks.Add(Task.Run(() => Llmnr(d), cancel));
                 if (!d.IsGateway) tasks.Add(Task.Run(() => ReverseDns(d, r.Gateway), cancel));
             }
-            if (ssdp.TryGetValue(d.Ip, out var loc)) tasks.Add(Task.Run(() => SsdpDescription(d, loc, cancel), cancel));
         }
         try { Task.WaitAll(tasks.ToArray(), cancel); } catch (AggregateException) { }
-
-        progress?.Report("Probando unas pocas puertas de cada aparato...");
-        ProbePorts(others, cancel);
         foreach (var d in devices) Classify(d);
         // El nombre de este PC lo sabemos sin preguntar
         var thisPc = devices.FirstOrDefault(d => d.IsThisPc);
@@ -543,7 +548,7 @@ public static class NetScan
         var open = new ConcurrentBag<(ScanDevice, int)>();
         try
         {
-            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 96, CancellationToken = cancel }, job =>
+            Parallel.ForEach(jobs, new ParallelOptions { MaxDegreeOfParallelism = 240, CancellationToken = cancel }, job =>
             {
                 using var s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 try
