@@ -15,6 +15,8 @@ public sealed class DeviceEntry
     public bool Home { get; set; }
     /// <summary>Avisar si deja de contestar (vigilancia continua).</summary>
     public bool Watch { get; set; }
+    /// <summary>Qué es (dibujo), elegido a mano. Vacío = lo adivina el programa.</summary>
+    public string Kind { get; set; } = "";
     public string Network { get; set; } = "";
     public string LastIp { get; set; } = "";
     public string HostName { get; set; } = "";
@@ -85,6 +87,8 @@ public static class DeviceBook
             d.Label = e.Name;
             d.Home = e.Home;
             d.Watch = e.Watch;
+            d.Kind = e.Kind;
+            NetScan.ApplyKind(d);
             d.FirstSeen = e.FirstSeen;
             d.LastSeen = e.LastSeen;
             // Si esta vez no dice su nombre ni se sabe qué es, vale lo que se supo otra vez
@@ -100,19 +104,21 @@ public static class DeviceBook
                 Ip = e.LastIp, Mac = mac, Vendor = e.Vendor, Answered = false,
                 Randomized = mac.Length >= 2 && (Convert.ToByte(mac[..2], 16) & 2) == 2,
                 OldName = e.HostName, TypeText = e.Type, Group = e.Group, OpenPorts = e.Ports.ToList(),
-                Label = e.Name, Home = e.Home, Watch = e.Watch, FirstSeen = e.FirstSeen, LastSeen = e.LastSeen,
+                Label = e.Name, Home = e.Home, Watch = e.Watch, Kind = e.Kind, FirstSeen = e.FirstSeen, LastSeen = e.LastSeen,
             });
         }
+        foreach (var d in result.Where(x => !x.Answered)) NetScan.ApplyKind(d);
         // El router puede contestar con dos MAC: una sola entrada por router (la que contesta, primero)
         return result.GroupBy(d => d.Group == DeviceGroup.Router ? "router " + d.Ip : d.Mac).Select(g => g.First()).ToList();
     }
 
-    public static void SetName(string mac, string name, bool home)
+    public static void SetName(string mac, string name, bool home, string kind)
     {
         var book = Load();
         if (!book.TryGetValue(mac, out var e)) book[mac] = e = new DeviceEntry { FirstSeen = DateTime.Now, LastSeen = DateTime.Now };
         e.Name = name.Trim();
         e.Home = home;
+        e.Kind = kind;
         Save(book);
     }
 

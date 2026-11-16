@@ -1,5 +1,7 @@
 Novedades de esta versión (0.14.1):
 
+- Cada aparato lleva su dibujo (lo pidió Jose) en la lista, en la ficha y en el mapa: 🖥 ordenador de sobremesa, 💻 portátil, 📱 móvil o tablet, 🎮 consola, 📺 tele, 🖨 impresora, 📷 cámara, 🔊 altavoz, 💡 domótica, 📶 repetidor, 📡 router. El programa lo adivina (por ejemplo, GIGA-BYTE hace placas base, así que es un sobremesa; Toshiba y CyberTAN son de portátil).
+- Si no acierta, en "Ponerle nombre y dibujo" se puede elegir a mano qué es. Lo elegido manda también en qué grupo sale.
 - Mapa: los nombres se cortan menos y los móviles sin nombre salen como "Móvil o tablet" (antes "Móvil, tablet o PC con ..."). La explicación de arriba dice qué es la línea verde claro y fina (encendido pero no contesta al ping).
 - El resultado del escaneo cabe en una línea en la barra oscura.
 

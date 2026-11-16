@@ -53,6 +53,11 @@ public sealed class ScanDevice
     public string Label { get; set; } = "";
     public bool Home { get; set; }
     public bool Watch { get; set; }
+    /// <summary>Qué es, elegido a mano por Jose ("sobremesa", "movil"...). Vacío = lo adivina el programa.</summary>
+    public string Kind { get; set; } = "";
+    public string KindKey => Kind.Length > 0 ? Kind : NetScan.GuessKind(this);
+    /// <summary>Dibujo del aparato (sobremesa, portátil, móvil, consola...).</summary>
+    public string Icon => NetScan.KindIcon(KindKey);
     /// <summary>Escaneado en una red que no es la de casa (cliente, oficina): no se guarda nada.</summary>
     public bool Away { get; set; }
     public DateTime FirstSeen { get; set; }
@@ -184,6 +189,66 @@ public static class NetScan
         (9295, "PlayStation (juego remoto)", 0),
         (62078, "iPhone / iPad (sincronización)", 0),
     };
+
+    // ------------------------------------------------------------------ dibujos de cada tipo de aparato
+    public static readonly (string Key, string Label, string Icon, DeviceGroup Group)[] Kinds =
+    {
+        ("sobremesa", "Ordenador de sobremesa", "🖥", DeviceGroup.Ordenadores),
+        ("portatil", "Portátil", "💻", DeviceGroup.Ordenadores),
+        ("movil", "Móvil", "📱", DeviceGroup.Moviles),
+        ("tablet", "Tablet", "📱", DeviceGroup.Moviles),
+        ("reloj", "Reloj", "⌚", DeviceGroup.Moviles),
+        ("consola", "Consola", "🎮", DeviceGroup.TeleConsolas),
+        ("tele", "Tele", "📺", DeviceGroup.TeleConsolas),
+        ("impresora", "Impresora", "🖨", DeviceGroup.Impresoras),
+        ("camara", "Cámara", "📷", DeviceGroup.Otros),
+        ("altavoz", "Altavoz", "🔊", DeviceGroup.Otros),
+        ("domotica", "Domótica (enchufe, bombilla...)", "💡", DeviceGroup.Otros),
+        ("red", "Repetidor Wi-Fi o aparato de red", "📶", DeviceGroup.Otros),
+        ("router", "Router", "📡", DeviceGroup.Router),
+        ("otro", "Otro aparato", "🔌", DeviceGroup.Otros),
+    };
+
+    public static string KindIcon(string key) => Kinds.FirstOrDefault(k => k.Key == key).Icon ?? "❔";
+
+    /// <summary>Si Jose ha dicho qué es, manda eso (grupo y tipo).</summary>
+    public static void ApplyKind(ScanDevice d)
+    {
+        var k = Kinds.FirstOrDefault(x => x.Key == d.Kind);
+        if (k.Key == null) return;
+        d.Group = k.Group;
+        d.TypeText = k.Label;
+    }
+
+    /// <summary>Dibujo que el programa adivina por lo que sabe del aparato.</summary>
+    public static string GuessKind(ScanDevice d)
+    {
+        string names = $"{d.DhcpName} {d.MdnsName} {d.NetbiosName} {d.LlmnrName} {d.DnsName} {d.SsdpName} {d.SsdpModel} {d.OldName} {d.TypeText}";
+        string v = d.Vendor;
+        switch (d.Group)
+        {
+            case DeviceGroup.Router: return "router";
+            case DeviceGroup.Ordenadores:
+                if (Has(names, "laptop", "portátil", "portatil", "notebook", "book", "surface")) return "portatil";
+                if (Has(v, "GIGA-BYTE", "Gigabyte", "ASRock", "Micro-Star", "ASUSTek")) return "sobremesa"; // placas base
+                if (Has(v, "TOSHIBA", "Dynabook", "AzureWave", "CyberTAN", "Liteon", "Hon Hai", "Rivet", "Qualcomm Atheros", "MEDIATEK")) return "portatil"; // Wi-Fi de portátil
+                if (d.IsThisPc && System.Windows.Forms.SystemInformation.PowerStatus.BatteryChargeStatus != System.Windows.Forms.BatteryChargeStatus.NoSystemBattery) return "portatil";
+                return "sobremesa";
+            case DeviceGroup.Moviles:
+                if (Has(names, "watch", "reloj")) return "reloj";
+                return Has(names, "tab", "ipad", "tablet", "pad") ? "tablet" : "movil";
+            case DeviceGroup.TeleConsolas:
+                return Has(names, "consola", "playstation", "xbox", "nintendo", "switch") ? "consola" : "tele";
+            case DeviceGroup.Impresoras: return "impresora";
+            case DeviceGroup.Otros:
+                if (Has(names, "cámara", "camara", "cam")) return "camara";
+                if (Has(names, "altavoz", "alexa", "sonos", "echo", "speaker")) return "altavoz";
+                if (Has(names, "domótica", "domotica", "plug", "bombilla")) return "domotica";
+                if (Has(names, "red", "repetidor", "router")) return "red";
+                return "otro";
+        }
+        return "";
+    }
 
     public static int PortLevel(int port) => Ports.FirstOrDefault(p => p.Port == port).Level;
     public static string PortName(int port) => Ports.FirstOrDefault(p => p.Port == port).Name ?? "";
