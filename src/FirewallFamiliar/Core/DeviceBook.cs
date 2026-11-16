@@ -13,6 +13,8 @@ public sealed class DeviceEntry
     public string Name { get; set; } = "";
     /// <summary>Jose ha dicho que es de casa.</summary>
     public bool Home { get; set; }
+    /// <summary>Avisar si deja de contestar (vigilancia continua).</summary>
+    public bool Watch { get; set; }
     public string Network { get; set; } = "";
     public string LastIp { get; set; } = "";
     public string HostName { get; set; } = "";
@@ -82,6 +84,7 @@ public static class DeviceBook
             e.Ports = d.OpenPorts.ToList();
             d.Label = e.Name;
             d.Home = e.Home;
+            d.Watch = e.Watch;
             d.FirstSeen = e.FirstSeen;
             d.LastSeen = e.LastSeen;
             // Si esta vez no dice su nombre ni se sabe qué es, vale lo que se supo otra vez
@@ -97,7 +100,7 @@ public static class DeviceBook
                 Ip = e.LastIp, Mac = mac, Vendor = e.Vendor, Answered = false,
                 Randomized = mac.Length >= 2 && (Convert.ToByte(mac[..2], 16) & 2) == 2,
                 OldName = e.HostName, TypeText = e.Type, Group = e.Group, OpenPorts = e.Ports.ToList(),
-                Label = e.Name, Home = e.Home, FirstSeen = e.FirstSeen, LastSeen = e.LastSeen,
+                Label = e.Name, Home = e.Home, Watch = e.Watch, FirstSeen = e.FirstSeen, LastSeen = e.LastSeen,
             });
         }
         // El router puede contestar con dos MAC: una sola entrada por router (la que contesta, primero)
@@ -110,6 +113,14 @@ public static class DeviceBook
         if (!book.TryGetValue(mac, out var e)) book[mac] = e = new DeviceEntry { FirstSeen = DateTime.Now, LastSeen = DateTime.Now };
         e.Name = name.Trim();
         e.Home = home;
+        Save(book);
+    }
+
+    public static void SetWatch(string mac, bool watch)
+    {
+        var book = Load();
+        if (!book.TryGetValue(mac, out var e)) return;
+        e.Watch = watch;
         Save(book);
     }
 

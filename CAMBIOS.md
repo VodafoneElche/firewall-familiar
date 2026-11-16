@@ -1,4 +1,16 @@
-Novedades de esta versión (0.13.3):
+Novedades de esta versión (0.14.0):
+
+Segunda parte del escaneo de red (al estilo de los programas de vigilancia de red como PRTG, hecho por nosotros):
+
+- Vigilancia continua de la red de casa: cada 5 minutos el servicio mira qué aparatos están encendidos y cuánto tardan en contestar (ping). Guarda los últimos 3 días en C:\ProgramData\FirewallFamiliar\vigilancia.json. Solo en casa; fuera de casa no se mira nada.
+- En la ficha de cada aparato (ventana Router > Aparatos de la red):
+  - Barra de las últimas 24 horas: verde = contestaba, rojo = no contestaba, gris = no se miró (este PC apagado o fuera de casa).
+  - Gráfico de lo que tarda en contestar, y el porcentaje del tiempo que ha estado encendido.
+  - Casilla "Avisar si deja de contestar": para aparatos que deberían estar siempre encendidos (una cámara, un repetidor, un disco de red...). Si pasa más de 15 minutos sin contestar, sale un aviso en rojo en el programa (sin correo), y otro cuando vuelve.
+- Pestaña nueva "Mapa": el router en el centro y los aparatos alrededor con su cuadrito de color. La línea de cada aparato al router dice lo que tarda en contestar: verde rápido, naranja lento, rojo muy lento, gris a trazos si no contesta. Al pulsar un aparato se abre su ficha.
+- En el informe, la libreta de aparatos dice también el % de tiempo encendido en las últimas 24 horas y el ping medio.
+
+De la 0.13.3:
 
 - El escaneo hace todo a la vez (nombres, UPnP y puertas) y pregunta a las 254 direcciones de golpe: debería bajar de 31 a unos 10-15 segundos.
 - El router ya no sale una segunda vez en rojo "(antes)": el ZTE contesta con dos MAC y la libreta se quedaba con las dos.

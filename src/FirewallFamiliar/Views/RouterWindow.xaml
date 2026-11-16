@@ -148,11 +148,36 @@
                                         <TextBlock Style="{StaticResource Val}" Text="{Binding PingText}"/>
                                         <TextBlock Style="{StaticResource Lbl}" Text="Visto"/>
                                         <TextBlock Style="{StaticResource Val}" Text="{Binding SeenText}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Últimas 24 horas (se mira cada 5 minutos)"/>
+                                        <Border BorderBrush="#C8D4E8" BorderThickness="1" Height="22" Background="White">
+                                            <Canvas x:Name="HistoryCanvas" ClipToBounds="True"/>
+                                        </Border>
+                                        <DockPanel Margin="0,1,0,0">
+                                            <TextBlock DockPanel.Dock="Right" Text="ahora" Foreground="#888" FontSize="11"/>
+                                            <TextBlock Text="hace 24 h" Foreground="#888" FontSize="11"/>
+                                        </DockPanel>
+                                        <TextBlock x:Name="HistoryText" Style="{StaticResource Val}" Margin="0,2,0,0"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Lo que tarda en contestar (ping, últimas 24 horas)"/>
+                                        <Border BorderBrush="#C8D4E8" BorderThickness="1" Height="80" Background="White">
+                                            <Canvas x:Name="LatencyCanvas" ClipToBounds="True"/>
+                                        </Border>
+                                        <CheckBox x:Name="ChkWatch" Margin="0,10,0,0" Checked="OnWatchChanged" Unchecked="OnWatchChanged"
+                                                  Content="Avisar si deja de contestar (más de 15 minutos sin respuesta)"
+                                                  ToolTip="Para aparatos que siempre deberían estar encendidos: una cámara, un disco de red, el repetidor Wi-Fi..."/>
                                     </StackPanel>
                                 </ScrollViewer>
                             </Grid>
                         </Border>
                     </Grid>
+                </DockPanel>
+            </TabItem>
+            <TabItem x:Name="MapTab" Header="  Mapa  ">
+                <DockPanel Margin="6">
+                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,6" Foreground="#333"
+                               Text="El router en el centro y cada aparato alrededor. El cuadrito es su estado (como en la lista). La línea es lo que tarda en contestar: verde = rápido (menos de 30 ms), naranja = lento, rojo = muy lento (más de 150 ms), gris a trazos = no contesta. Pulsa un aparato para ver su ficha."/>
+                    <Border BorderBrush="#C8D4E8" BorderThickness="1" Background="#F7F9FC">
+                        <Canvas x:Name="MapCanvas" ClipToBounds="True"/>
+                    </Border>
                 </DockPanel>
             </TabItem>
             <TabItem Header="  Puertas del router  ">
