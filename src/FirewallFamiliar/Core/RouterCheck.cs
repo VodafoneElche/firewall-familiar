@@ -566,10 +566,31 @@ public static class RouterCheck
             sb.AppendLine();
             sb.AppendLine("Solo salen los que han hablado hace poco con este PC (o han contestado al aviso de UPnP); puede haber más.");
             sb.AppendLine();
-            sb.AppendLine("| IP | MAC | Fabricante | Qué es |");
-            sb.AppendLine("|---|---|---|---|");
-            foreach (var d in r.Devices) sb.AppendLine($"| {d.Ip} | {d.Mac} | {d.VendorText.Replace("|", "/")} | {d.Kind} |");
+            var book = DeviceBook.Load();
+            sb.AppendLine("| IP | MAC | Nombre | De casa | Fabricante | Qué es |");
+            sb.AppendLine("|---|---|---|---|---|---|");
+            foreach (var d in r.Devices)
+            {
+                book.TryGetValue(d.Mac, out var e);
+                string kind = d.Kind.Length > 0 ? d.Kind : e?.Type ?? "";
+                sb.AppendLine($"| {d.Ip} | {d.Mac} | {DeviceBook.NameOf(book, d.Mac).Replace("|", "/")} | {(e?.Home == true || d.IsGateway || d.IsThisPc ? "sí" : "")} | " +
+                              $"{d.VendorText.Replace("|", "/")} | {kind.Replace("|", "/")} |");
+            }
             sb.AppendLine();
+            // Lo que se sabe del último escaneo hecho en la ventana Router (si se ha hecho alguno)
+            string net = r.NetworkKey;
+            var scanned = book.Where(x => x.Value.Network == net).OrderBy(x => NetScan.IpOrder(x.Value.LastIp)).ToList();
+            if (scanned.Count > 0)
+            {
+                sb.AppendLine($"### Libreta de aparatos de esta red (escaneos de la ventana Router: {scanned.Count})");
+                sb.AppendLine();
+                sb.AppendLine("| Última IP | MAC | Nombre puesto | Nombre en la red | De casa | Qué parece | Puertas abiertas | Primera vez | Última vez |");
+                sb.AppendLine("|---|---|---|---|---|---|---|---|---|");
+                foreach (var (mac, e) in scanned)
+                    sb.AppendLine($"| {e.LastIp} | {mac} | {e.Name.Replace("|", "/")} | {e.HostName.Replace("|", "/")} | {(e.Home ? "sí" : "")} | {e.Type.Replace("|", "/")} | " +
+                                  $"{string.Join(" ", e.Ports.Select(p => NetScan.PortLevel(p) >= 3 ? $"⚠{p}" : p.ToString()))} | {e.FirstSeen:dd/MM HH:mm} | {e.LastSeen:dd/MM HH:mm} |");
+                sb.AppendLine();
+            }
         }
         return sb.ToString();
     }

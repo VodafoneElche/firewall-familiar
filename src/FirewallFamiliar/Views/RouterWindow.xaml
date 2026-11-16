@@ -1,7 +1,7 @@
 <Window x:Class="FirewallFamiliar.Views.RouterWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Router y red de casa - Firewall Familiar" Width="980" Height="680" MinWidth="700" MinHeight="420"
+        Title="Router y red de casa - Firewall Familiar" Width="1080" Height="760" MinWidth="700" MinHeight="420"
         WindowStartupLocation="CenterOwner">
     <DockPanel Margin="8">
         <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
@@ -25,93 +25,210 @@
                 <TextBlock x:Name="SpeedText" TextWrapping="Wrap" Margin="0,4,0,0" Text="Velocidad: pulsa &quot;Medir velocidad&quot; (unos 20 segundos)."/>
             </StackPanel>
         </Border>
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="0.6*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Text="Puertas del router que contestan" FontWeight="SemiBold" Margin="0,0,0,4"/>
-            <ListView Grid.Row="1" x:Name="PortList">
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="ToolTip" Value="{Binding Advice}"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Level}" Value="3">
-                                <Setter Property="Background" Value="#FFDCB4"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Level}" Value="2">
-                                <Setter Property="Background" Value="#FFF0DC"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </ListView.ItemContainerStyle>
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="Nivel" Width="80" DisplayMemberBinding="{Binding LevelText}"/>
-                        <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding Port}"/>
-                        <GridViewColumn Header="Qué es" Width="250" DisplayMemberBinding="{Binding Service}"/>
-                        <GridViewColumn Header="Qué hacer" Width="540" DisplayMemberBinding="{Binding Advice}"/>
-                    </GridView>
-                </ListView.View>
-            </ListView>
-            <TextBlock Grid.Row="2" Text="Puertos abiertos en el router por UPnP (entran desde Internet hasta un aparato de casa)" FontWeight="SemiBold" Margin="0,8,0,4"/>
-            <ListView Grid.Row="3" x:Name="UpnpList">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="Tipo" Width="50" DisplayMemberBinding="{Binding Protocol}"/>
-                        <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding ExternalPort}"/>
-                        <GridViewColumn Header="Hacia" Width="120" DisplayMemberBinding="{Binding InternalClient}"/>
-                        <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding InternalPort}"/>
-                        <GridViewColumn Header="Aparato" Width="130" DisplayMemberBinding="{Binding Device}"/>
-                        <GridViewColumn Header="Descripción" Width="200" DisplayMemberBinding="{Binding Description}"/>
-                        <GridViewColumn Header="Programa" Width="300" DisplayMemberBinding="{Binding Program}"/>
-                    </GridView>
-                </ListView.View>
-            </ListView>
-            <TextBlock Grid.Row="4" x:Name="DevicesTitle" Text="Aparatos que este PC ve en la red" FontWeight="SemiBold" Margin="0,8,0,4"/>
-            <ListView Grid.Row="5" x:Name="DeviceList">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="IP" Width="120" DisplayMemberBinding="{Binding Ip}"/>
-                        <GridViewColumn Header="MAC" Width="150" DisplayMemberBinding="{Binding Mac}"/>
-                        <GridViewColumn Header="Fabricante" Width="300" DisplayMemberBinding="{Binding VendorText}"/>
-                        <GridViewColumn Header="Qué es" Width="300" DisplayMemberBinding="{Binding Kind}"/>
-                    </GridView>
-                </ListView.View>
-            </ListView>
-            <TextBlock Grid.Row="6" Text="Mediciones de velocidad (una al día en casa, y las que hagas a mano). En rojo, problemas de red." FontWeight="SemiBold" Margin="0,8,0,4"/>
-            <ListView Grid.Row="7" x:Name="SpeedList">
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="ToolTip" Value="{Binding StateText}"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Bad}" Value="True">
-                                <Setter Property="Foreground" Value="#C00000"/>
-                                <Setter Property="Background" Value="#FFE4E4"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </ListView.ItemContainerStyle>
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="Cuándo" Width="120" DisplayMemberBinding="{Binding TimeText}"/>
-                        <GridViewColumn Header="Bajada" Width="80" DisplayMemberBinding="{Binding DownText}"/>
-                        <GridViewColumn Header="Subida" Width="80" DisplayMemberBinding="{Binding UpText}"/>
-                        <GridViewColumn Header="Latencia" Width="90" DisplayMemberBinding="{Binding PingText}"/>
-                        <GridViewColumn Header="Con la línea llena (↓/↑)" Width="150" DisplayMemberBinding="{Binding LoadedText}"/>
-                        <GridViewColumn Header="Router" Width="60" DisplayMemberBinding="{Binding RouterText}"/>
-                        <GridViewColumn Header="Estado" Width="560" DisplayMemberBinding="{Binding StateText}"/>
-                    </GridView>
-                </ListView.View>
-            </ListView>
-        </Grid>
+        <TabControl x:Name="Tabs">
+            <TabItem Header="  Aparatos de la red  ">
+                <DockPanel Margin="6">
+                    <!-- Barra de contadores, como el resumen de colores de los programas de vigilancia de red -->
+                    <Border DockPanel.Dock="Top" Background="#2B3440" CornerRadius="3" Padding="10,6" Margin="0,0,0,6">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" x:Name="BtnScan" Content="🔍 Escanear la red" Padding="14,4" Click="OnScan" FontWeight="SemiBold"
+                                    ToolTip="Busca todos los aparatos encendidos de casa, su nombre, qué son y qué puertas tienen abiertas. No sale nada a Internet."/>
+                            <WrapPanel VerticalAlignment="Center">
+                                <WrapPanel.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </WrapPanel.Resources>
+                                <Border Background="#2E9E44" CornerRadius="2" Padding="8,2" Margin="0,0,6,0" ToolTip="Conocidos y contestan">
+                                    <TextBlock x:Name="CountHome" Text="0 de casa" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="#A0A4AA" CornerRadius="2" Padding="8,2" Margin="0,0,6,0" ToolTip="Se sabe qué son, pero aún no les has puesto nombre">
+                                    <TextBlock x:Name="CountNoName" Text="0 sin nombre" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="#F08C00" CornerRadius="2" Padding="8,2" Margin="0,0,6,0" ToolTip="No se sabe qué son, o tienen una puerta peligrosa abierta">
+                                    <TextBlock x:Name="CountCheck" Text="0 revisar" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border Background="#D32F2F" CornerRadius="2" Padding="8,2" Margin="0,0,12,0" ToolTip="Se conocían pero ahora no contestan (apagados o fuera de casa)">
+                                    <TextBlock x:Name="CountGone" Text="0 no responden" FontWeight="SemiBold"/>
+                                </Border>
+                                <TextBlock x:Name="ScanText" Foreground="#DDE3EA" TextWrapping="Wrap" MaxWidth="420"
+                                           Text="Pulsa &quot;Escanear la red&quot; para ver todo lo que hay conectado en casa."/>
+                            </WrapPanel>
+                        </DockPanel>
+                    </Border>
+                    <ProgressBar DockPanel.Dock="Top" x:Name="ScanProgress" Height="4" IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,0,6"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="400" MinWidth="250"/>
+                            <ColumnDefinition Width="5"/>
+                            <ColumnDefinition Width="*" MinWidth="250"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- Árbol: grupos y aparatos con su cuadrito de color -->
+                        <TreeView x:Name="DeviceTree" SelectedItemChanged="OnDeviceSelected" BorderBrush="#C8D4E8">
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="True"/>
+                                    <Setter Property="Padding" Value="1,2"/>
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Items}">
+                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,1">
+                                        <TextBlock Text="{Binding Icon}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#1F2D3D"/>
+                                        <ItemsControl ItemsSource="{Binding Items}" Margin="8,0,0,0" VerticalAlignment="Center">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Width="9" Height="9" Margin="1,0" CornerRadius="1" Background="{Binding StateColor}"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <HierarchicalDataTemplate.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" ToolTip="{Binding Tooltip}">
+                                                <Border Width="14" Height="14" CornerRadius="2" Background="{Binding StateColor}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding IpText}" Foreground="#888" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </HierarchicalDataTemplate.ItemTemplate>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                        <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="Transparent"/>
+                        <!-- Ficha del aparato -->
+                        <Border Grid.Column="2" BorderBrush="#C8D4E8" BorderThickness="1" Background="#FBFCFE">
+                            <Grid>
+                                <TextBlock x:Name="NoSelection" Margin="16" Foreground="#666" TextWrapping="Wrap"
+                                           Text="Elige un aparato de la lista para ver su ficha. Ponles nombre a los que conozcas: así los que nadie sepa qué son se ven a la primera."/>
+                                <ScrollViewer x:Name="DeviceCard" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Margin="12">
+                                        <StackPanel.Resources>
+                                            <Style TargetType="TextBlock" x:Key="Lbl">
+                                                <Setter Property="Foreground" Value="#5A6675"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="Margin" Value="0,8,0,1"/>
+                                            </Style>
+                                            <Style TargetType="TextBlock" x:Key="Val">
+                                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                            </Style>
+                                        </StackPanel.Resources>
+                                        <DockPanel>
+                                            <Border Width="22" Height="22" CornerRadius="3" Background="{Binding StateColor}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding StateText}" Margin="32,2,0,0" TextWrapping="Wrap" Foreground="#444"/>
+                                        <WrapPanel Margin="0,10,0,0">
+                                            <Button Content="✎ Ponerle nombre / es de casa" Padding="10,3" Margin="0,0,6,4" Click="OnNameDevice"/>
+                                            <Button x:Name="BtnWeb" Content="Abrir su página" Padding="10,3" Margin="0,0,6,4" Click="OnOpenDeviceWeb"
+                                                    ToolTip="Abre en el navegador la página de configuración del aparato (si tiene)."/>
+                                            <Button x:Name="BtnForget" Content="Olvidar" Padding="10,3" Margin="0,0,6,4" Click="OnForgetDevice"
+                                                    ToolTip="Lo quita de la lista. Si vuelve a aparecer, saldrá como nuevo."/>
+                                        </WrapPanel>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Qué parece"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding TypeText, TargetNullValue='No se sabe'}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Dirección (IP) y MAC"/>
+                                        <TextBlock Style="{StaticResource Val}">
+                                            <Run Text="{Binding Ip, Mode=OneWay}"/><Run Text="   "/><Run Text="{Binding Mac, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Fabricante (por la MAC)"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding VendorText}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Nombres que dice en la red"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding NamesText}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Servicios que anuncia"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding ServicesText}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Puertas abiertas"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding PortsText}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Respuesta (ping)"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding PingText}"/>
+                                        <TextBlock Style="{StaticResource Lbl}" Text="Visto"/>
+                                        <TextBlock Style="{StaticResource Val}" Text="{Binding SeenText}"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="  Puertas del router  ">
+        <ListView x:Name="PortList">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="ToolTip" Value="{Binding Advice}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Level}" Value="3">
+                                        <Setter Property="Background" Value="#FFDCB4"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Level}" Value="2">
+                                        <Setter Property="Background" Value="#FFF0DC"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Nivel" Width="80" DisplayMemberBinding="{Binding LevelText}"/>
+                                <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding Port}"/>
+                                <GridViewColumn Header="Qué es" Width="250" DisplayMemberBinding="{Binding Service}"/>
+                                <GridViewColumn Header="Qué hacer" Width="540" DisplayMemberBinding="{Binding Advice}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+            </TabItem>
+            <TabItem x:Name="UpnpTab" Header="  Puertos abiertos por UPnP  ">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Margin="4" TextWrapping="Wrap" Text="Cada línea es una puerta abierta desde Internet hasta un aparato de casa, puesta por un programa sin preguntar."/>
+        <ListView x:Name="UpnpList">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Tipo" Width="50" DisplayMemberBinding="{Binding Protocol}"/>
+                                <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding ExternalPort}"/>
+                                <GridViewColumn Header="Hacia" Width="120" DisplayMemberBinding="{Binding InternalClient}"/>
+                                <GridViewColumn Header="Puerto" Width="60" DisplayMemberBinding="{Binding InternalPort}"/>
+                                <GridViewColumn Header="Aparato" Width="130" DisplayMemberBinding="{Binding Device}"/>
+                                <GridViewColumn Header="Descripción" Width="200" DisplayMemberBinding="{Binding Description}"/>
+                                <GridViewColumn Header="Programa" Width="300" DisplayMemberBinding="{Binding Program}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="  Velocidad  ">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Margin="4" TextWrapping="Wrap" Text="Mediciones de velocidad (una al día en casa, y las que hagas a mano). En rojo, problemas de red."/>
+        <ListView x:Name="SpeedList">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="ToolTip" Value="{Binding StateText}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Bad}" Value="True">
+                                        <Setter Property="Foreground" Value="#C00000"/>
+                                        <Setter Property="Background" Value="#FFE4E4"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Cuándo" Width="120" DisplayMemberBinding="{Binding TimeText}"/>
+                                <GridViewColumn Header="Bajada" Width="80" DisplayMemberBinding="{Binding DownText}"/>
+                                <GridViewColumn Header="Subida" Width="80" DisplayMemberBinding="{Binding UpText}"/>
+                                <GridViewColumn Header="Latencia" Width="90" DisplayMemberBinding="{Binding PingText}"/>
+                                <GridViewColumn Header="Con la línea llena (↓/↑)" Width="150" DisplayMemberBinding="{Binding LoadedText}"/>
+                                <GridViewColumn Header="Router" Width="60" DisplayMemberBinding="{Binding RouterText}"/>
+                                <GridViewColumn Header="Estado" Width="560" DisplayMemberBinding="{Binding StateText}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </Window>
