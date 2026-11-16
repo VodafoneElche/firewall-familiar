@@ -1,4 +1,11 @@
-Novedades de esta versión (0.13.2):
+Novedades de esta versión (0.13.3):
+
+- El escaneo hace todo a la vez (nombres, UPnP y puertas) y pregunta a las 254 direcciones de golpe: debería bajar de 31 a unos 10-15 segundos.
+- El router ya no sale una segunda vez en rojo "(antes)": el ZTE contesta con dos MAC y la libreta se quedaba con las dos.
+- Arreglado el nombre repetido "Consola Nintendo Nintendo".
+- Arriba pone cuántos nombres se han oído ya al conectarse los aparatos ("Nombres oídos al conectarse: N"), y la consola apunta cada nombre nuevo. Así se ve si funciona la escucha.
+
+De la 0.13.2:
 
 - El escaneo de la red va mucho más rápido: tardaba casi un minuto porque Windows daba los hilos de trabajo de uno en uno; ahora se pregunta a todos a la vez (unos 15 segundos).
 - El router ya no sale dos veces (los ZTE contestan con dos MAC en la misma dirección).

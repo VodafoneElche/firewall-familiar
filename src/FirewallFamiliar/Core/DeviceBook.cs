@@ -100,7 +100,8 @@ public static class DeviceBook
                 Label = e.Name, Home = e.Home, FirstSeen = e.FirstSeen, LastSeen = e.LastSeen,
             });
         }
-        return result;
+        // El router puede contestar con dos MAC: una sola entrada por router (la que contesta, primero)
+        return result.GroupBy(d => d.Group == DeviceGroup.Router ? "router " + d.Ip : d.Mac).Select(g => g.First()).ToList();
     }
 
     public static void SetName(string mac, string name, bool home)

@@ -95,6 +95,7 @@ public static class DhcpNames
                 stop.WaitHandle.WaitOne(TimeSpan.FromMinutes(30));
                 continue;
             }
+            log($"Nombres de aparatos: escuchando en {localIp}:67 cuándo se conectan los aparatos de casa ({map.Count} nombres apuntados).");
             using (udp)
             using (stop.Register(() => { try { udp.Close(); } catch { } }))
             {
@@ -111,7 +112,11 @@ public static class DhcpNames
                             bool changed = !map.TryGetValue(f.Mac, out var old) || old.Name != f.Name || old.VendorClass != f.Vendor ||
                                            DateTime.Now - old.Time > TimeSpan.FromHours(6);
                             map[f.Mac] = new DhcpName { Name = f.Name, VendorClass = f.Vendor, Ip = f.Ip.Length > 0 ? f.Ip : old?.Ip ?? "", Time = DateTime.Now };
-                            if (changed) Save(map);
+                            if (changed)
+                            {
+                                Save(map);
+                                if (old == null || old.Name != f.Name) log($"Nombres de aparatos: {f.Mac} se llama \"{f.Name}\"{(f.Vendor.Length > 0 ? $" ({f.Vendor})" : "")}.");
+                            }
                         }
                     }
                     catch (SocketException) { }
