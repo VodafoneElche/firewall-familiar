@@ -48,6 +48,8 @@ public sealed class ScanDevice
     // Lo que ha puesto Jose (aparatos.json)
     public string Label { get; set; } = "";
     public bool Home { get; set; }
+    /// <summary>Escaneado en una red que no es la de casa (cliente, oficina): no se guarda nada.</summary>
+    public bool Away { get; set; }
     public DateTime FirstSeen { get; set; }
     public DateTime LastSeen { get; set; }
 
@@ -94,7 +96,7 @@ public sealed class ScanDevice
 
     public string StateText => State switch
     {
-        DeviceState.DeCasa => "De casa: conocido y contesta.",
+        DeviceState.DeCasa => Away ? "Contesta (red fuera de casa: no se guarda nada)." : "De casa: conocido y contesta.",
         DeviceState.SinNombre => "Contesta, pero aún no le has puesto nombre ni lo has marcado como de casa.",
         DeviceState.Revisar => DangerousPort ? "⚠ Tiene una puerta peligrosa abierta (mira abajo)." : "No se sabe qué es: conviene averiguarlo.",
         _ => "No ha contestado en este escaneo (apagado, fuera de casa o dormido)."

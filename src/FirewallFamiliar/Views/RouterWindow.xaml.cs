@@ -25,6 +25,8 @@ public partial class RouterWindow : Window
     private List<ScanDevice> _devices = new();
     private CancellationTokenSource? _scanCancel;
     private bool _autoScanned;
+    /// <summary>El último escaneo se hizo fuera de casa (cliente, oficina): no se guarda nada.</summary>
+    private bool _awayScan;
 
     public RouterWindow()
     {
@@ -32,8 +34,8 @@ public partial class RouterWindow : Window
         Loaded += async (_, _) =>
         {
             ShowHistory();
-            ShowBook();
             await RefreshAsync();
+            if (IsHome()) ShowBook();
             // En casa, el escaneo se hace solo al abrir la ventana
             if (!_autoScanned && IsHome()) { _autoScanned = true; await ScanAsync(); }
         };
@@ -95,12 +97,12 @@ public partial class RouterWindow : Window
         UpnpList.ItemsSource = r.Mappings;
         UpnpTab.Header = $"  Puertos abiertos por UPnP ({r.Mappings.Count})  ";
         bool atHome = IsHome();
-        BtnScan.IsEnabled = atHome && _scanCancel == null;
+        BtnScan.IsEnabled = r.Gateway.Length > 0 && _scanCancel == null;
         BtnScan.ToolTip = atHome
             ? "Busca todos los aparatos encendidos de casa, su nombre, qué son y qué puertas tienen abiertas. No sale nada a Internet."
-            : "Solo se escanea la red de casa. Fuera de casa (oficina, otra casa) no se mira lo que tienen los demás.";
+            : "Fuera de casa solo se escanea cuando lo pulsas tú (para revisar la red de un cliente). No se guarda nada ni se avisa de nada.";
         if (!atHome && _devices.Count == 0)
-            ScanText.Text = "Este PC no está en la red de casa: el escaneo solo se hace en casa.";
+            ScanText.Text = "💼 Fuera de casa: el escaneo no se hace solo. Pulsa \"Escanear la red\" si quieres revisar esta red (no se guarda nada).";
     }
 
     // ------------------------------------------------------------------ escaneo de la red de casa
@@ -108,8 +110,9 @@ public partial class RouterWindow : Window
 
     private async Task ScanAsync()
     {
-        if (_last == null || !IsHome() || _scanCancel != null) return;
+        if (_last == null || _last.Gateway.Length == 0 || _scanCancel != null) return;
         var r = _last;
+        bool home = IsHome();
         _scanCancel = new CancellationTokenSource();
         var cancel = _scanCancel.Token;
         BtnScan.IsEnabled = false;
@@ -119,10 +122,19 @@ public partial class RouterWindow : Window
         {
             var progress = new Progress<string>(t => ScanText.Text = t);
             var found = await Task.Run(() => NetScan.Run(r, progress, cancel), cancel);
-            _devices = DeviceBook.Merge(found, r.NetworkKey);
+            _awayScan = !home;
+            if (home) _devices = DeviceBook.Merge(found, r.NetworkKey);
+            else
+            {
+                // Red de otro (cliente, oficina): no se guarda en la libreta de casa. Los que
+                // contestan salen en verde; en naranja, los que no se sabe qué son o tienen algo peligroso.
+                foreach (var d in found) { d.Home = true; d.Away = true; d.FirstSeen = d.LastSeen = DateTime.Now; }
+                _devices = found;
+            }
             ShowDevices();
             int alive = _devices.Count(d => d.Answered);
-            ScanText.Text = $"Escaneado a las {DateTime.Now:HH:mm} en {(DateTime.Now - started).TotalSeconds:0} s: {alive} aparato(s) encendidos.";
+            ScanText.Text = $"{(home ? "" : "💼 Red fuera de casa (no se guarda). ")}Escaneado a las {DateTime.Now:HH:mm} en " +
+                            $"{(DateTime.Now - started).TotalSeconds:0} s: {alive} aparato(s) encendidos.";
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { ScanText.Text = "No se pudo escanear: " + ex.Message; }
@@ -130,7 +142,7 @@ public partial class RouterWindow : Window
         {
             _scanCancel = null;
             ScanProgress.Visibility = Visibility.Collapsed;
-            BtnScan.IsEnabled = IsHome();
+            BtnScan.IsEnabled = _last?.Gateway.Length > 0;
         }
     }
 
@@ -175,7 +187,7 @@ public partial class RouterWindow : Window
         }
         else
         {
-            CountHome.Text = $"{_devices.Count(d => d.State == DeviceState.DeCasa)} de casa";
+            CountHome.Text = $"{_devices.Count(d => d.State == DeviceState.DeCasa)} {(_awayScan ? "contestan" : "de casa")}";
             CountNoName.Text = $"{_devices.Count(d => d.State == DeviceState.SinNombre)} sin nombre";
             CountCheck.Text = $"{_devices.Count(d => d.State == DeviceState.Revisar)} revisar";
             CountGone.Text = $"{_devices.Count(d => d.State == DeviceState.NoResponde)} no responden";
@@ -209,7 +221,8 @@ public partial class RouterWindow : Window
         NoSelection.Visibility = d == null ? Visibility.Visible : Visibility.Collapsed;
         if (d == null) return;
         BtnWeb.Visibility = d.Answered && d.OpenPorts.Any(p => p is 80 or 443 or 8080 or 8443) ? Visibility.Visible : Visibility.Collapsed;
-        BtnForget.Visibility = !d.Answered ? Visibility.Visible : Visibility.Collapsed;
+        BtnForget.Visibility = !d.Answered && !_awayScan ? Visibility.Visible : Visibility.Collapsed;
+        BtnName.Visibility = _awayScan ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void OnNameDevice(object sender, RoutedEventArgs e)
