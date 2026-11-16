@@ -64,6 +64,7 @@ internal sealed class ServiceCore
     private SystemWatch? _watch;
     private RouterWatch? _router;
     private Timer? _routerTimer, _speedTimer;
+    private readonly CancellationTokenSource _dhcpStop = new();
     private SpeedWatch? _speed;
     private UploadMonitor? _uploads;
     private DnsWatcher? _dns;
@@ -174,6 +175,8 @@ internal sealed class ServiceCore
         _watchTimer = new Timer(_ => SafeRun(() => _watch.Tick()), null, TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(2));
         _router = new RouterWatch((text, outcome, app) => Log(text, outcome, null, app));
         _routerTimer = new Timer(_ => SafeRun(() => _router.Tick()), null, TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(15));
+        // Nombres de los aparatos de casa: se oyen cuando se conectan al Wi-Fi (DHCP)
+        new Thread(() => SafeRun(() => DhcpNames.Listen(_dhcpStop.Token, msg => Log(msg)))) { IsBackground = true, Name = "NombresDhcp" }.Start();
         _speed = new SpeedWatch((text, outcome, app) => Log(text, outcome, null, app));
         _speedTimer = new Timer(_ => SafeRun(() => _speed.Tick()), null, TimeSpan.FromMinutes(16), TimeSpan.FromMinutes(10));
         // Programas espía conocidos: nombres que se preguntan al DNS
@@ -206,6 +209,7 @@ internal sealed class ServiceCore
         _beaconTimer?.Dispose();
         _watchTimer?.Dispose();
         _routerTimer?.Dispose();
+        try { _dhcpStop.Cancel(); } catch { }
         _speedTimer?.Dispose();
         _trapTimer?.Dispose();
         _uploads?.Dispose();

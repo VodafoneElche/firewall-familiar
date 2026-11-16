@@ -130,6 +130,14 @@ public static class RouterCheck
         return (r.Gateway, r.NetworkKey);
     }
 
+    /// <summary>Router, red y dirección de este PC, sin preguntar nada a nadie.</summary>
+    public static (string Gateway, string NetworkKey, string LocalIp) CurrentLocal()
+    {
+        var r = new RouterReport();
+        try { FindGateway(r); if (r.Gateway.Length > 0) ReadDevices(r); } catch { }
+        return (r.Gateway, r.NetworkKey, r.LocalIp);
+    }
+
     // ------------------------------------------------------------------ todo junto
     public static RouterReport Run(bool ports = true, CancellationToken cancel = default)
     {
@@ -420,6 +428,12 @@ public static class RouterCheck
     private static Dictionary<string, string>? _vendors;
     private static readonly object VendorLock = new();
 
+    /// <summary>Prefijos repartidos después de la lista del programa (vistos en casa y comprobados a mano).</summary>
+    private static readonly Dictionary<string, string> Newer = new()
+    {
+        ["ACFAE4"] = "Nintendo Co.,Ltd", // 2024: aparato de casa 192.168.1.134/.135 (consola Nintendo)
+    };
+
     public static string Vendor(string mac)
     {
         string key = new string(mac.Where(Uri.IsHexDigit).Take(6).ToArray()).ToUpperInvariant();
@@ -446,7 +460,7 @@ public static class RouterCheck
                 }
                 catch { }
             }
-            return _vendors.TryGetValue(key, out var v) ? v : "";
+            return _vendors.TryGetValue(key, out var v) ? v : Newer.TryGetValue(key, out var n) ? n : "";
         }
     }
 

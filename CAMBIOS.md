@@ -1,4 +1,14 @@
-Novedades de esta versión (0.13.1):
+Novedades de esta versión (0.13.2):
+
+- El escaneo de la red va mucho más rápido: tardaba casi un minuto porque Windows daba los hilos de trabajo de uno en uno; ahora se pregunta a todos a la vez (unos 15 segundos).
+- El router ya no sale dos veces (los ZTE contestan con dos MAC en la misma dirección).
+- Los PCs con Windows dicen ahora su nombre también por LLMNR (lo que usa Windows cuando NetBIOS está apagado). Si un PC no lo dice (su cortafuegos no deja), ponle nombre a mano con "Ponerle nombre".
+- El aparato AC-FA-E4-AF-92-14 que salía como desconocido es de Nintendo (ese prefijo se repartió en 2024, después de la lista del programa): ahora sale como "Consola Nintendo".
+- En la ficha, "Qué parece" y "Servicios que anuncia" ya no salen en blanco: dicen "No se sabe" o "No anuncia ninguno".
+- En la ficha hay un apartado nuevo, "Qué es esta MAC" (lo pidió Jose): el fabricante y qué suele fabricar (por ejemplo "Nintendo fabrica consolas" o "Arcadyan fabrica routers, repetidores y descodificadores"). Si la MAC es privada (la que se inventan los móviles para no ser rastreados), lo explica y dice por qué no se sabe el fabricante.
+- Nombres de los aparatos como en la página del router: cada móvil, tablet o PC, al conectarse al Wi-Fi, dice su nombre a toda la red ("Tab-S9-de-Alejandro", "HONOR-Magic8-Lite"...). El servicio ahora escucha esos mensajes (solo escucha, no contesta nada; el router sigue repartiendo las direcciones) y apunta los nombres en C:\ProgramData\FirewallFamiliar\nombres-dhcp.json. Solo en casa. Los nombres van saliendo según los aparatos se vuelven a conectar (al encender el Wi-Fi, al despertar el móvil...). Para eso se da permiso a Firewall Familiar en el cortafuegos de Windows solo para el puerto 67 y solo en redes privadas; al desinstalar se quita.
+
+De la 0.13.1:
 
 - El botón "Escanear la red" de la ventana Router ahora funciona también fuera de casa (lo pidió Jose, para revisar la red de un cliente cuando no le funciona). Fuera de casa el escaneo solo se hace cuando lo pulsas tú: no se hace solo, no se guarda nada en la libreta de aparatos de casa y no se avisa de nada. Los aparatos que contestan salen en verde y, en naranja, los que no se sabe qué son o tienen una puerta peligrosa abierta.
 - El escaneo automático cada 15 minutos y los avisos de aparato nuevo siguen siendo solo en casa.
