@@ -609,7 +609,7 @@ public static class NetScan
                 return (DeviceGroup.Ordenadores, "Ordenador (por el fabricante)");
             if (Has(v, "Arcadyan", "ZTE", "Sagemcom", "Huawei Device", "AVM", "TP-LINK", "TP-Link", "Netgear", "Ubiquiti", "Mitrastar", "Askey", "Tenda", "D-Link", "Linksys"))
                 return (DeviceGroup.Otros, "Aparato de red (repetidor, PLC, router o descodificador)");
-            if (d.Randomized) return (DeviceGroup.Moviles, "Móvil, tablet o PC con dirección privada");
+            if (d.Randomized) return (DeviceGroup.Moviles, "Móvil o tablet (dirección privada; también puede ser un PC)");
             return (DeviceGroup.Desconocidos, "");
         }
         (d.Group, d.TypeText) = Pick();

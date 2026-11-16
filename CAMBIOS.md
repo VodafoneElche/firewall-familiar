@@ -1,4 +1,9 @@
-Novedades de esta versión (0.14.0):
+Novedades de esta versión (0.14.1):
+
+- Mapa: los nombres se cortan menos y los móviles sin nombre salen como "Móvil o tablet" (antes "Móvil, tablet o PC con ..."). La explicación de arriba dice qué es la línea verde claro y fina (encendido pero no contesta al ping).
+- El resultado del escaneo cabe en una línea en la barra oscura.
+
+De la 0.14.0:
 
 Segunda parte del escaneo de red (al estilo de los programas de vigilancia de red como PRTG, hecho por nosotros):
 

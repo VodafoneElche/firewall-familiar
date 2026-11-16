@@ -367,7 +367,7 @@ public partial class RouterWindow : Window
     private void AddNode(ScanDevice d, double x, double y, bool big)
     {
         string icon = Groups.FirstOrDefault(g => g.Group == d.Group).Icon ?? "";
-        string name = d.DisplayName.Length > 24 ? d.DisplayName[..23] + "…" : d.DisplayName;
+        string name = d.DisplayName.Length > 32 ? d.DisplayName[..31] + "…" : d.DisplayName;
         var stack = new StackPanel();
         var top = new StackPanel { Orientation = Orientation.Horizontal };
         top.Children.Add(new Border
