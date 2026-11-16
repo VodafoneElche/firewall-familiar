@@ -36,6 +36,7 @@ public sealed class ScanDevice
     public string NetbiosName { get; set; } = "";
     public string Workgroup { get; set; } = "";
     public string MdnsName { get; set; } = "";
+    public string LlmnrName { get; set; } = "";
     public string DnsName { get; set; } = "";
     public string SsdpName { get; set; } = "";
     public string SsdpModel { get; set; } = "";
@@ -55,7 +56,7 @@ public sealed class ScanDevice
 
     /// <summary>Mejor nombre encontrado en la red (sin contar el que pone Jose).</summary>
     public string HostName =>
-        new[] { MdnsName, NetbiosName, DnsName, SsdpName, OldName }.FirstOrDefault(s => s.Length > 0) ?? "";
+        new[] { MdnsName, NetbiosName, LlmnrName, DnsName, SsdpName, OldName }.FirstOrDefault(s => s.Length > 0) ?? "";
 
     public string DisplayName =>
         Label.Length > 0 ? Label :
@@ -111,6 +112,7 @@ public sealed class ScanDevice
             var parts = new List<string>();
             if (MdnsName.Length > 0) parts.Add($"{MdnsName} (Bonjour/mDNS)");
             if (NetbiosName.Length > 0) parts.Add($"{NetbiosName}{(Workgroup.Length > 0 ? $" en el grupo {Workgroup}" : "")} (red de Windows)");
+            if (LlmnrName.Length > 0 && LlmnrName != NetbiosName) parts.Add($"{LlmnrName} (Windows, LLMNR)");
             if (DnsName.Length > 0) parts.Add($"{DnsName} (router)");
             if (SsdpName.Length > 0) parts.Add($"{SsdpName}{(SsdpModel.Length > 0 && SsdpModel != SsdpName ? $" – {SsdpModel}" : "")} (UPnP)");
             else if (SsdpModel.Length > 0) parts.Add($"{SsdpModel} (UPnP)");
@@ -123,7 +125,9 @@ public sealed class ScanDevice
         ? (Answered ? "Ninguna de las que se prueban." : "")
         : string.Join("\n", OpenPorts.Select(p => $"{(NetScan.PortLevel(p) >= 3 ? "⚠ " : NetScan.PortLevel(p) == 2 ? "· " : "")}{p} – {NetScan.PortName(p)}"));
 
-    public string ServicesText { get { lock (Services) return Services.Count == 0 ? "" : string.Join(", ", Services.Select(NetScan.ServiceName).Distinct()); } }
+    public string TypeDisplay => TypeText.Length > 0 ? TypeText : "No se sabe.";
+
+    public string ServicesText { get { lock (Services) return Services.Count == 0 ? "No anuncia ninguno." : string.Join(", ", Services.Select(NetScan.ServiceName).Distinct()); } }
 
     public string PingText => !Answered ? "—" : PingMs < 0 ? "no contesta al ping (normal en móviles y PCs con cortafuegos)" :
         $"{PingMs} ms{(Ttl > 0 ? $" (TTL {Ttl}: {NetScan.TtlHint(Ttl)})" : "")}";
@@ -210,8 +214,19 @@ public static class NetScan
     /// Pregunta por ARP a las 254 direcciones de la red del router (/24, como todas las redes de casa).
     /// Los aparatos que contestan quedan además en la tabla ARP de Windows. Tarda unos segundos.
     /// </summary>
+    /// <summary>
+    /// Las preguntas a los aparatos esperan respuesta (bloquean un hilo). Sin esto, Windows da los
+    /// hilos de uno en uno y el escaneo tardaba casi un minuto en vez de unos 15 segundos.
+    /// </summary>
+    private static void EnoughThreads()
+    {
+        ThreadPool.GetMinThreads(out int w, out int io);
+        if (w < 160) ThreadPool.SetMinThreads(160, Math.Max(io, 32));
+    }
+
     public static List<(string Ip, string Mac)> Sweep(string gateway, CancellationToken cancel = default)
     {
+        EnoughThreads();
         var found = new ConcurrentBag<(string, string)>();
         if (!IPAddress.TryParse(gateway, out var gw)) return new();
         byte[] b = gw.GetAddressBytes();
@@ -244,7 +259,9 @@ public static class NetScan
         foreach (var (ip, mac) in arp)
             devices.Add(NewDevice(ip, mac, r));
         // Lo que ya estaba en la tabla ARP o ha contestado a UPnP en la revisión del router
-        foreach (var d in r.Devices.Where(d => !devices.Any(x => x.Mac == d.Mac)))
+        // Una sola entrada por IP (algunos routers, como los ZTE, contestan con dos MAC)
+        devices = devices.GroupBy(d => d.Ip).Select(g => g.First()).ToList();
+        foreach (var d in r.Devices.Where(d => !devices.Any(x => x.Mac == d.Mac || x.Ip == d.Ip)))
             devices.Add(NewDevice(d.Ip, d.Mac, r));
         if (r.LocalIp.Length > 0 && !devices.Any(d => d.IsThisPc))
         {
@@ -264,6 +281,7 @@ public static class NetScan
             {
                 tasks.Add(Task.Run(() => Netbios(d), cancel));
                 tasks.Add(Task.Run(() => Mdns(d), cancel));
+                tasks.Add(Task.Run(() => Llmnr(d), cancel));
                 if (!d.IsGateway) tasks.Add(Task.Run(() => ReverseDns(d, r.Gateway), cancel));
             }
             if (ssdp.TryGetValue(d.Ip, out var loc)) tasks.Add(Task.Run(() => SsdpDescription(d, loc, cancel), cancel));
@@ -293,6 +311,7 @@ public static class NetScan
     /// <summary>Nombre y tipo rápidos de un aparato (para el aviso de aparato nuevo del servicio).</summary>
     public static ScanDevice Quick(string ip, string mac, string gateway)
     {
+        EnoughThreads();
         bool random = mac.Length >= 2 && (Convert.ToByte(mac[..2], 16) & 2) == 2;
         var d = new ScanDevice { Ip = ip, Mac = mac, Randomized = random, Vendor = random ? "" : RouterCheck.Vendor(mac) };
         try
@@ -300,7 +319,7 @@ public static class NetScan
             Task.WaitAll(new[]
             {
                 Task.Run(() => PingDevice(d)), Task.Run(() => Netbios(d)),
-                Task.Run(() => Mdns(d)), Task.Run(() => ReverseDns(d, gateway)),
+                Task.Run(() => Mdns(d)), Task.Run(() => ReverseDns(d, gateway)), Task.Run(() => Llmnr(d)),
             }, 4000);
             ProbePorts(new List<ScanDevice> { d }, default);
             Classify(d);
@@ -386,6 +405,17 @@ public static class NetScan
                     lock (d.Services) { if (!d.Services.Contains(data)) d.Services.Add(data); }
             }
         }
+    }
+
+    // ------------------------------------------------------------------ nombre de los PCs Windows (LLMNR)
+    /// <summary>Windows 10/11 dice su nombre por LLMNR (puerto 5355) aunque tenga apagado NetBIOS.</summary>
+    private static void Llmnr(ScanDevice d)
+    {
+        if (d.LlmnrName.Length > 0) return;
+        byte[]? res = UdpAsk(d.Ip, 5355, DnsQuery(0x6161, ReverseName(d.Ip), 12), 1000);
+        if (res == null) return;
+        foreach (var (_, type, data) in DnsAnswers(res))
+            if (type == 12 && data.Length > 0) { d.LlmnrName = data.TrimEnd('.'); return; }
     }
 
     // ------------------------------------------------------------------ nombre que le ha dado el router (DNS)
@@ -483,7 +513,7 @@ public static class NetScan
 
     public static void Classify(ScanDevice d)
     {
-        string names = $"{d.MdnsName} {d.NetbiosName} {d.DnsName} {d.SsdpName} {d.SsdpModel}";
+        string names = $"{d.MdnsName} {d.NetbiosName} {d.LlmnrName} {d.DnsName} {d.SsdpName} {d.SsdpModel}";
         string svc;
         lock (d.Services) svc = string.Join(" ", d.Services);
         string v = d.Vendor;
@@ -505,7 +535,7 @@ public static class NetScan
             if (p.Contains(62078) || Has(names, "iphone", "ipad")) return (DeviceGroup.Moviles, Has(names, "ipad") ? "iPad" : "iPhone o iPad");
             if (Has(names, "android", "galaxy", "redmi", "xiaomi", "oppo", "honor", "huawei", "pixel", "oneplus", "realme", "moto", "phone", "movil", "tablet", "tab-"))
                 return (DeviceGroup.Moviles, "Móvil o tablet");
-            if (p.Contains(445) || p.Contains(139) || p.Contains(3389) || d.NetbiosName.Length > 0 || Has(names, "desktop-", "laptop-", "-pc", "pc-", "macbook", "imac"))
+            if (p.Contains(445) || p.Contains(139) || p.Contains(3389) || d.NetbiosName.Length > 0 || d.LlmnrName.Length > 0 || Has(names, "desktop-", "laptop-", "-pc", "pc-", "macbook", "imac"))
                 return (DeviceGroup.Ordenadores, Has(names, "macbook", "imac") ? "Mac" : "Ordenador");
             if (Has(svc, "_airplay", "_raop", "_sleep-proxy")) return (DeviceGroup.TeleConsolas, "Apple TV o altavoz AirPlay");
             if (Has(svc, "_hap", "_homekit", "_amzn", "_spotify-connect") || p.Contains(1883) || p.Contains(554) ||
