@@ -1,21 +1,50 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using FirewallFamiliar.Core;
 
 namespace FirewallFamiliar.Views;
 
-/// <summary>Ventana "Router": puertas del router, puertos abiertos por UPnP, aparatos de casa y Wi-Fi.</summary>
+/// <summary>Un grupo del árbol de aparatos.</summary>
+public sealed class DeviceNode
+{
+    public string Icon { get; init; } = "";
+    public string Title { get; init; } = "";
+    public List<ScanDevice> Items { get; init; } = new();
+}
+
+/// <summary>Ventana "Router": aparatos de casa (escaneo), puertas del router, UPnP, velocidad y Wi-Fi.</summary>
 public partial class RouterWindow : Window
 {
     private RouterReport? _last;
+    private List<ScanDevice> _devices = new();
+    private CancellationTokenSource? _scanCancel;
+    private bool _autoScanned;
 
     public RouterWindow()
     {
         InitializeComponent();
-        Loaded += async (_, _) => { ShowHistory(); await RefreshAsync(); };
+        Loaded += async (_, _) =>
+        {
+            ShowHistory();
+            ShowBook();
+            await RefreshAsync();
+            // En casa, el escaneo se hace solo al abrir la ventana
+            if (!_autoScanned && IsHome()) { _autoScanned = true; await ScanAsync(); }
+        };
+        Closed += (_, _) => _scanCancel?.Cancel();
+    }
+
+    private bool IsHome()
+    {
+        if (_last == null || _last.NetworkKey.Length == 0 || _last.Gateway.Length == 0) return false;
+        string? homeKey = RouterCheck.HomeNetwork();
+        return homeKey == null || homeKey == _last.NetworkKey;
     }
 
     private void ShowHistory()
@@ -64,8 +93,152 @@ public partial class RouterWindow : Window
         UpnpText.Text = "UPnP: " + (r.UpnpNote.Length > 0 ? r.UpnpNote : "no se ha podido mirar.");
         PortList.ItemsSource = r.Ports.Where(p => p.Open).OrderByDescending(p => p.Level).ThenBy(p => p.Port).ToList();
         UpnpList.ItemsSource = r.Mappings;
-        DeviceList.ItemsSource = r.Devices;
-        DevicesTitle.Text = $"Aparatos que este PC ve en la red ({r.Devices.Count}). Solo salen los que han hablado hace poco con este PC; puede haber más.";
+        UpnpTab.Header = $"  Puertos abiertos por UPnP ({r.Mappings.Count})  ";
+        bool home = IsHome();
+        BtnScan.IsEnabled = home && _scanCancel == null;
+        BtnScan.ToolTip = home
+            ? "Busca todos los aparatos encendidos de casa, su nombre, qué son y qué puertas tienen abiertas. No sale nada a Internet."
+            : "Solo se escanea la red de casa. Fuera de casa (oficina, otra casa) no se mira lo que tienen los demás.";
+        if (!home && _devices.Count == 0)
+            ScanText.Text = "Este PC no está en la red de casa: el escaneo solo se hace en casa.";
+    }
+
+    // ------------------------------------------------------------------ escaneo de la red de casa
+    private async void OnScan(object sender, RoutedEventArgs e) => await ScanAsync();
+
+    private async Task ScanAsync()
+    {
+        if (_last == null || !IsHome() || _scanCancel != null) return;
+        var r = _last;
+        _scanCancel = new CancellationTokenSource();
+        var cancel = _scanCancel.Token;
+        BtnScan.IsEnabled = false;
+        ScanProgress.Visibility = Visibility.Visible;
+        var started = DateTime.Now;
+        try
+        {
+            var progress = new Progress<string>(t => ScanText.Text = t);
+            var found = await Task.Run(() => NetScan.Run(r, progress, cancel), cancel);
+            _devices = DeviceBook.Merge(found, r.NetworkKey);
+            ShowDevices();
+            int alive = _devices.Count(d => d.Answered);
+            ScanText.Text = $"Escaneado a las {DateTime.Now:HH:mm} en {(DateTime.Now - started).TotalSeconds:0} s: {alive} aparato(s) encendidos.";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { ScanText.Text = "No se pudo escanear: " + ex.Message; }
+        finally
+        {
+            _scanCancel = null;
+            ScanProgress.Visibility = Visibility.Collapsed;
+            BtnScan.IsEnabled = IsHome();
+        }
+    }
+
+    /// <summary>Al abrir, se enseña lo que se recuerda del último escaneo (como "no responde" hasta escanear).</summary>
+    private void ShowBook()
+    {
+        var book = DeviceBook.Load();
+        string? homeKey = RouterCheck.HomeNetwork();
+        if (homeKey == null || book.Count == 0) return;
+        _devices = DeviceBook.Merge(new List<ScanDevice>(), homeKey);
+        foreach (var d in _devices) d.Answered = true; // aún no se sabe: se pinta según lo que se sabía
+        ShowDevices(remembered: true);
+        ScanText.Text = "Lo que se vio en el último escaneo de casa (se vuelve a escanear solo si estás en casa).";
+    }
+
+    private static readonly (DeviceGroup Group, string Icon, string Title)[] Groups =
+    {
+        (DeviceGroup.Router, "📡", "Router"),
+        (DeviceGroup.Ordenadores, "💻", "Ordenadores"),
+        (DeviceGroup.Moviles, "📱", "Móviles y tablets"),
+        (DeviceGroup.TeleConsolas, "📺", "Teles y consolas"),
+        (DeviceGroup.Impresoras, "🖨", "Impresoras"),
+        (DeviceGroup.Otros, "🔌", "Otros aparatos (domótica, cámaras, repetidores...)"),
+        (DeviceGroup.Desconocidos, "❓", "Desconocidos"),
+    };
+
+    private void ShowDevices(bool remembered = false)
+    {
+        string? selected = (DeviceTree.SelectedItem as ScanDevice)?.Mac;
+        var nodes = new List<DeviceNode>();
+        foreach (var (group, icon, title) in Groups)
+        {
+            var items = _devices.Where(d => d.Group == group)
+                .OrderBy(d => d.Answered ? 0 : 1).ThenBy(d => NetScan.IpOrder(d.Ip)).ToList();
+            if (items.Count > 0) nodes.Add(new DeviceNode { Icon = icon, Title = $"{title} ({items.Count})", Items = items });
+        }
+        DeviceTree.ItemsSource = nodes;
+        if (remembered)
+        {
+            CountHome.Text = $"{_devices.Count} recordados";
+            CountNoName.Text = CountCheck.Text = CountGone.Text = "…";
+        }
+        else
+        {
+            CountHome.Text = $"{_devices.Count(d => d.State == DeviceState.DeCasa)} de casa";
+            CountNoName.Text = $"{_devices.Count(d => d.State == DeviceState.SinNombre)} sin nombre";
+            CountCheck.Text = $"{_devices.Count(d => d.State == DeviceState.Revisar)} revisar";
+            CountGone.Text = $"{_devices.Count(d => d.State == DeviceState.NoResponde)} no responden";
+        }
+        var again = _devices.FirstOrDefault(d => d.Mac == selected);
+        ShowCard(again);
+        if (again != null) SelectInTree(again);
+    }
+
+    private void SelectInTree(ScanDevice d)
+    {
+        DeviceTree.UpdateLayout();
+        foreach (var node in DeviceTree.Items.OfType<DeviceNode>())
+        {
+            if (!node.Items.Contains(d)) continue;
+            if (DeviceTree.ItemContainerGenerator.ContainerFromItem(node) is TreeViewItem groupItem)
+            {
+                groupItem.IsExpanded = true;
+                groupItem.UpdateLayout();
+                if (groupItem.ItemContainerGenerator.ContainerFromItem(d) is TreeViewItem item) item.IsSelected = true;
+            }
+        }
+    }
+
+    private void OnDeviceSelected(object sender, RoutedPropertyChangedEventArgs<object> e) => ShowCard(e.NewValue as ScanDevice);
+
+    private void ShowCard(ScanDevice? d)
+    {
+        DeviceCard.DataContext = d;
+        DeviceCard.Visibility = d != null ? Visibility.Visible : Visibility.Collapsed;
+        NoSelection.Visibility = d == null ? Visibility.Visible : Visibility.Collapsed;
+        if (d == null) return;
+        BtnWeb.Visibility = d.Answered && d.OpenPorts.Any(p => p is 80 or 443 or 8080 or 8443) ? Visibility.Visible : Visibility.Collapsed;
+        BtnForget.Visibility = !d.Answered ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnNameDevice(object sender, RoutedEventArgs e)
+    {
+        if (DeviceCard.DataContext is not ScanDevice d) return;
+        var dlg = new DeviceNameDialog(d) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+        DeviceBook.SetName(d.Mac, dlg.DeviceName, dlg.IsHome);
+        d.Label = dlg.DeviceName.Trim();
+        d.Home = dlg.IsHome;
+        ShowDevices();
+    }
+
+    private void OnForgetDevice(object sender, RoutedEventArgs e)
+    {
+        if (DeviceCard.DataContext is not ScanDevice d) return;
+        if (MessageBox.Show(this, $"¿Quitar \"{d.DisplayName}\" de la lista? Si vuelve a conectarse, saldrá como nuevo.", "Olvidar aparato",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        DeviceBook.Forget(d.Mac);
+        _devices.Remove(d);
+        ShowDevices();
+    }
+
+    private void OnOpenDeviceWeb(object sender, RoutedEventArgs e)
+    {
+        if (DeviceCard.DataContext is not ScanDevice d) return;
+        string url = d.OpenPorts.Contains(443) ? $"https://{d.Ip}/" : d.OpenPorts.Contains(80) ? $"http://{d.Ip}/" :
+                     d.OpenPorts.Contains(8443) ? $"https://{d.Ip}:8443/" : $"http://{d.Ip}:8080/";
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
     }
 
     private async void OnSpeed(object sender, RoutedEventArgs e)
@@ -94,6 +267,7 @@ public partial class RouterWindow : Window
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         RouterCheck.SetHomeNetwork(_last.NetworkKey);
         Show(_last);
+        _ = ScanAsync();
     }
 
     private void OnOpenAdmin(object sender, RoutedEventArgs e)

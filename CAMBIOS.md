@@ -1,4 +1,15 @@
-Novedades de esta versión (0.12.0):
+Novedades de esta versión (0.13.0):
+
+- Escaneo de la red de casa en la ventana Router (idea de Jose, al estilo de programas de vigilancia de red como PRTG, pero hecho por nosotros y sin salir de casa). La ventana Router ahora va por pestañas y la primera es "Aparatos de la red".
+- Se pregunta a las 254 direcciones de casa quién está encendido, no solo a los aparatos que ya habían hablado con este PC. A cada uno se le pide su nombre (red de Windows, Bonjour de Apple/Android y el nombre que le ha dado el router), su modelo por UPnP (teles, consolas) y se prueban unas pocas puertas para saber qué es. Nunca se prueba ninguna contraseña.
+- Arriba, contadores de colores: verde = de casa, gris = sin nombre todavía, naranja = no se sabe qué es o tiene una puerta peligrosa abierta (Telnet, depuración de Android), rojo = se conocía pero ahora no contesta.
+- A la izquierda, el árbol de aparatos por grupos (Router, Ordenadores, Móviles y tablets, Teles y consolas, Impresoras, Otros, Desconocidos), cada uno con su cuadrito de color. A la derecha, la ficha del aparato elegido.
+- Botón "Ponerle nombre / es de casa": por ejemplo "Móvil de Elena" o "PS3 del salón". Los nombres se guardan en C:\ProgramData\FirewallFamiliar\aparatos.json y salen en el informe.
+- Solo se escanea la red de casa. Al abrir la ventana en casa, el escaneo se hace solo (tarda unos 15-20 segundos).
+- El servicio también mira las 254 direcciones cada 15 minutos (solo en casa), así el aviso de "aparato nuevo" no se pierde a nadie. El primer barrido después de actualizar se aprende sin avisar. El correo del aviso dice ya el nombre del aparato y qué parece. Si un aparato tiene nombre puesto como "de casa", no se avisa.
+- En el informe, la tabla de aparatos lleva el nombre puesto y si es de casa, y sale la libreta de aparatos con lo que se supo en el último escaneo.
+
+De la 0.12.0:
 
 - Archivos trampa (idea que vio Jose en Twitter). En la carpeta de cada usuario del PC se dejan tres archivos OCULTOS con contraseñas FALSAS: passwords.txt (en la carpeta del usuario), contraseñas.txt (en el Escritorio) y claves-banco.txt (en Documentos). Nadie de casa tiene por qué abrirlos, pero los programas que roban contraseñas los buscan.
 - Windows apunta quién los lee (se enciende su "auditoría de archivos", solo para estos archivos) y Firewall Familiar lo mira cada 10 segundos:

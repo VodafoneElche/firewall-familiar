@@ -34,6 +34,8 @@ internal sealed class RouterWatch
         public HashSet<string> Mappings { get; set; } = new();
         public HashSet<int> OpenPorts { get; set; } = new();
         public bool PortsKnown { get; set; }
+        /// <summary>Ya se ha hecho una vez el barrido de toda la red (lo que salga la primera vez se aprende sin avisar).</summary>
+        public bool Swept { get; set; }
         public bool? Upnp { get; set; }
         public DateTime FirstSeen { get; set; } = DateTime.Now;
     }
@@ -50,6 +52,16 @@ internal sealed class RouterWatch
         try
         {
             bool ports = DateTime.Now - _lastPorts > TimeSpan.FromHours(6);
+            // En casa se pregunta antes por ARP a toda la red: así salen también los aparatos que
+            // no han hablado con este PC (móviles, teles, visitas...), no solo los de la tabla ARP.
+            bool swept = false;
+            var (gw0, key0) = RouterCheck.CurrentNetwork();
+            string? home0 = RouterCheck.HomeNetwork();
+            if (gw0.Length > 0 && key0.Length > 0 && (home0 == null || home0 == key0))
+            {
+                NetScan.Sweep(gw0);
+                swept = true;
+            }
             var r = RouterCheck.Run(ports);
             if (ports && r.Ports.Count > 0) _lastPorts = DateTime.Now;
             if (r.Gateway.Length == 0 || r.GatewayMac.Length == 0) return;
@@ -63,13 +75,25 @@ internal sealed class RouterWatch
             if (homeKey == null) { RouterCheck.SetHomeNetwork(r.NetworkKey); homeKey = r.NetworkKey; }
             bool home = homeKey == r.NetworkKey;
 
-            // Aparatos
+            // Aparatos (el primer barrido de toda la red tras actualizar se aprende en silencio)
+            bool learn = first || (swept && home && !net.Swept);
+            var book = DeviceBook.Load();
             foreach (var d in r.Devices.Where(d => !d.IsThisPc))
             {
-                if (!net.Devices.Add(d.Mac) || first || !home) continue;
-                _log($"⚠ APARATO NUEVO EN LA RED DE CASA: {d.Ip} (MAC {d.Mac}, {d.VendorText}{(d.Kind.Length > 0 ? ", " + d.Kind.ToLowerInvariant() : "")}). " +
-                     "Si no sabes qué es (visita, móvil nuevo, tele...), cambia la contraseña del Wi-Fi.", "Alerta", null);
+                if (!net.Devices.Add(d.Mac) || learn || !home) continue;
+                if (book.TryGetValue(d.Mac, out var known) && known.Home) continue; // ya le has puesto nombre como de casa
+                var q = NetScan.Quick(d.Ip, d.Mac, r.Gateway);
+                var what = new List<string> { d.VendorText };
+                if (q.HostName.Length > 0) what.Insert(0, $"se llama \"{q.HostName}\"");
+                if (q.TypeText.Length > 0) what.Add("parece: " + q.TypeText.ToLowerInvariant());
+                else if (d.Kind.Length > 0) what.Add(d.Kind.ToLowerInvariant());
+                var danger = q.OpenPorts.Where(p => NetScan.PortLevel(p) >= 3).Select(p => $"{p} {NetScan.PortName(p)}").ToList();
+                _log($"⚠ APARATO NUEVO EN LA RED DE CASA: {d.Ip} (MAC {d.Mac}, {string.Join(", ", what)})" +
+                     (danger.Count > 0 ? $". Tiene abierta: {string.Join(", ", danger)}" : "") + ". " +
+                     "Si no sabes qué es (visita, móvil nuevo, tele...), cambia la contraseña del Wi-Fi. " +
+                     "Si es de casa, ponle nombre en Router > Aparatos de la red.", "Alerta", null);
             }
+            if (swept && home) net.Swept = true;
 
             // UPnP
             if (r.UpnpOn != null && net.Upnp != r.UpnpOn)
