@@ -372,7 +372,7 @@ public static class NetScan
         if (d.Randomized)
             return "Es una MAC PRIVADA: el propio aparato se la inventa para que no lo puedan seguir de un Wi-Fi a otro " +
                    "(lo hacen los móviles Android, los iPhone y algunos PCs con Windows 11). Por eso no se sabe el fabricante. " +
-                   "El nombre lo dice al conectarse al Wi-Fi" + (d.DhcpName.Length > 0 ? $": "{d.DhcpName}"." : " (aún no se ha oído; sale en cuanto se vuelva a conectar).");
+                   "El nombre lo dice al conectarse al Wi-Fi" + (d.DhcpName.Length > 0 ? $": \"{d.DhcpName}\"." : " (aún no se ha oído; sale en cuanto se vuelva a conectar).");
         if (d.Vendor.Length == 0)
             return "Fabricante desconocido: su prefijo no está en la lista del programa (puede ser muy nuevo o de una marca pequeña).";
         var hint = VendorHints.FirstOrDefault(h => h.Words.Any(w => d.Vendor.Contains(w, StringComparison.OrdinalIgnoreCase)));
