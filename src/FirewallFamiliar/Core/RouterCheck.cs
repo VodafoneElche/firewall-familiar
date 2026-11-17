@@ -57,6 +57,10 @@ public sealed class RouterReport
     public string RouterVendor { get; set; } = "";
     public string LocalIp { get; set; } = "";
     public string Adapter { get; set; } = "";
+    /// <summary>Número de la tarjeta de red por la que se llega al router (para no mezclar con otra tarjeta).</summary>
+    public int AdapterIndex { get; set; }
+    /// <summary>Otras tarjetas de este PC conectadas a la vez con direcciones del mismo rango (otra red distinta).</summary>
+    public List<string> OtherAdapters { get; set; } = new();
     public List<RouterPort> Ports { get; } = new();
     public bool RouterSilent { get; set; }
     /// <summary>null = no se ha mirado; true = el router contesta a UPnP.</summary>
@@ -170,10 +174,17 @@ public static class RouterCheck
     /// <summary>Router, red y dirección de este PC, sin preguntar nada a nadie.</summary>
     public static (string Gateway, string NetworkKey, string LocalIp) CurrentLocal()
     {
-        var r = new RouterReport();
-        try { FindGateway(r); if (r.Gateway.Length > 0) ReadDevices(r); } catch { }
+        var r = CurrentLocalFull();
         return (r.Gateway, r.NetworkKey, r.LocalIp);
     }
+
+    private static RouterReport CurrentLocalFull()
+    {
+        var r = new RouterReport();
+        try { FindGateway(r); if (r.Gateway.Length > 0) ReadDevices(r); } catch { }
+        return r;
+    }
+
 
     // ------------------------------------------------------------------ todo junto
     public static RouterReport Run(bool ports = true, CancellationToken cancel = default)
@@ -215,6 +226,15 @@ public static class RouterCheck
             r.Gateway = gw.ToString();
             r.LocalIp = me?.Address.ToString() ?? "";
             r.Adapter = nic.Name;
+            try { r.AdapterIndex = props.GetIPv4Properties()?.Index ?? 0; } catch { }
+            // ¿Hay otra tarjeta (cable/Wi-Fi) en otra red con las mismas direcciones (192.168.1.x)?
+            if (me != null)
+                foreach (var other in NetworkInterface.GetAllNetworkInterfaces().Where(n => n.OperationalStatus == OperationalStatus.Up && n.Id != nic.Id))
+                {
+                    var oip = other.GetIPProperties().UnicastAddresses.FirstOrDefault(u => u.Address.AddressFamily == AddressFamily.InterNetwork)?.Address;
+                    if (oip != null && SameNet(oip, gw))
+                        r.OtherAdapters.Add($"{(other.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ? "Wi-Fi" : "cable")} ({oip})");
+                }
             return;
         }
     }
@@ -418,6 +438,9 @@ public static class RouterCheck
             {
                 var row = Marshal.PtrToStructure<MibIpNetRow>(buf + 4 + i * rowSize);
                 if (row.Type == 2 || row.PhysAddrLen != 6) continue;
+                // Solo lo que se ve por la tarjeta del router: si el PC está a la vez en otra red con las
+                // mismas direcciones (cable a un router y Wi-Fi a otro), no se mezclan.
+                if (r.AdapterIndex > 0 && row.Index != r.AdapterIndex) continue;
                 var ip = new IPAddress(row.Addr);
                 byte[] b = ip.GetAddressBytes();
                 if (b[0] >= 224 || b[3] == 255 || b[3] == 0) continue;

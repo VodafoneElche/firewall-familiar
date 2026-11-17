@@ -327,9 +327,12 @@ public static class NetScan
         if (w < 320) ThreadPool.SetMinThreads(320, Math.Max(io, 32));
     }
 
-    public static List<(string Ip, string Mac)> Sweep(string gateway, CancellationToken cancel = default)
+    /// <param name="localIp">Dirección de este PC en esa red: las preguntas salen solo por esa tarjeta.</param>
+    public static List<(string Ip, string Mac)> Sweep(string gateway, string localIp = "", CancellationToken cancel = default)
     {
         EnoughThreads();
+        if (localIp.Length == 0) localIp = RouterCheck.CurrentLocal().LocalIp;
+        uint src = IPAddress.TryParse(localIp, out var lip) ? BitConverter.ToUInt32(lip.GetAddressBytes(), 0) : 0;
         var found = new ConcurrentBag<(string, string)>();
         if (!IPAddress.TryParse(gateway, out var gw)) return new();
         byte[] b = gw.GetAddressBytes();
@@ -342,7 +345,7 @@ public static class NetScan
                 int len = 6;
                 try
                 {
-                    if (SendARP(BitConverter.ToUInt32(ip.GetAddressBytes(), 0), 0, mac, ref len) != 0 || len != 6) return;
+                    if (SendARP(BitConverter.ToUInt32(ip.GetAddressBytes(), 0), src, mac, ref len) != 0 || len != 6) return;
                 }
                 catch { return; }
                 if (mac.All(x => x == 0) || (mac[0] & 1) == 1) return;
@@ -357,7 +360,7 @@ public static class NetScan
     public static List<ScanDevice> Run(RouterReport r, IProgress<string>? progress, CancellationToken cancel)
     {
         progress?.Report("Buscando aparatos en las 254 direcciones de casa...");
-        var arp = Sweep(r.Gateway, cancel);
+        var arp = Sweep(r.Gateway, r.LocalIp, cancel);
         var devices = new List<ScanDevice>();
         foreach (var (ip, mac) in arp)
             devices.Add(NewDevice(ip, mac, r));

@@ -1,4 +1,8 @@
-Novedades de esta versión (0.14.4):
+Novedades de esta versión (0.14.5):
+
+- Arreglado: si el portátil está conectado a la vez a dos redes que usan las mismas direcciones (por ejemplo, cable al router 5G donde están los Tapo y Wi-Fi al router de casa, las dos con 192.168.1.x), el escaneo mezclaba las dos. Ahora solo pregunta por la tarjeta que lleva al router (la del Wi-Fi o la del cable, la que sale arriba) y solo mira la MAC del router por esa tarjeta. Arriba avisa con un "OJO" si el PC está en dos redes a la vez.
+
+De la 0.14.4:
 
 - Cada escaneo muestra solo lo que hay en la red en ese momento (lo pidió Jose): nada de aparatos de antes. Así, en casa de un cliente se ve su red completa y limpia. En casa solo siguen saliendo, aunque estén apagados, los aparatos que has pedido vigilar.
 - La ficha de cada aparato empieza con un recuadro "En pocas palabras" que dice qué es en una frase sencilla.
