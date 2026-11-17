@@ -110,15 +110,28 @@ public static class RouterCheck
     // ------------------------------------------------------------------ red de casa
     private static readonly string HomeFile = Path.Combine(RuleStore.Folder, "router-casa.txt");
 
-    /// <summary>MAC del router de casa (null si aún no se ha visto ninguna red).</summary>
+    /// <summary>Se guarda cuando Jose dice que la red actual NO es la de casa y aún no se sabe cuál es.</summary>
+    public const string NoHome = "ninguna";
+
+    /// <summary>
+    /// MAC del router de casa (null si aún no se ha visto ninguna red). Si el archivo existe pero no se
+    /// puede leer (el antivirus lo tiene abierto un momento...), se reintenta y, si sigue sin poderse,
+    /// se dice NoHome: así nunca se toma por casa la red en la que se está (antes pasaba en la oficina).
+    /// </summary>
     public static string? HomeNetwork()
     {
-        try { return File.Exists(HomeFile) ? File.ReadAllText(HomeFile).Trim() is { Length: > 0 } k ? k : null : null; }
-        catch { return null; }
+        if (!File.Exists(HomeFile)) return null;
+        for (int i = 0; i < 5; i++)
+        {
+            try { return File.ReadAllText(HomeFile).Trim() is { Length: > 0 } k ? k : NoHome; }
+            catch { Thread.Sleep(200); }
+        }
+        return NoHome;
     }
 
     public static void SetHomeNetwork(string key)
     {
+        if (key.Length == 0) return;
         try { Directory.CreateDirectory(RuleStore.Folder); File.WriteAllText(HomeFile, key); } catch { }
     }
 

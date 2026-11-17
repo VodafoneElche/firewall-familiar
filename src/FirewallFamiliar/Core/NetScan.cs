@@ -369,11 +369,35 @@ public static class NetScan
             }
         }
         try { Task.WaitAll(tasks.ToArray(), cancel); } catch (AggregateException) { }
+        CleanNames(devices);
         foreach (var d in devices) Classify(d);
         // El nombre de este PC lo sabemos sin preguntar
         var thisPc = devices.FirstOrDefault(d => d.IsThisPc);
         if (thisPc != null && thisPc.NetbiosName.Length == 0) thisPc.NetbiosName = Environment.MachineName;
         return devices.OrderBy(d => IpOrder(d.Ip)).ToList();
+    }
+
+    /// <summary>
+    /// Quita nombres que no son de verdad: el nombre de ESTE PC puesto a otro aparato (algunos routers lo
+    /// devuelven para cualquier dirección) y el mismo nombre del router para varias direcciones distintas.
+    /// </summary>
+    public static void CleanNames(List<ScanDevice> devices)
+    {
+        string me = Environment.MachineName;
+        var dupDns = devices.Where(d => d.DnsName.Length > 0).GroupBy(d => d.DnsName, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var d in devices)
+        {
+            if (dupDns.Contains(d.DnsName)) d.DnsName = "";
+            if (d.IsThisPc) continue;
+            bool Mine(string n) => n.Length > 0 && (n.Equals(me, StringComparison.OrdinalIgnoreCase) || n.Split('.')[0].Equals(me, StringComparison.OrdinalIgnoreCase));
+            if (Mine(d.DnsName)) d.DnsName = "";
+            if (Mine(d.LlmnrName)) d.LlmnrName = "";
+            if (Mine(d.MdnsName)) d.MdnsName = "";
+            if (Mine(d.NetbiosName)) d.NetbiosName = "";
+            if (Mine(d.DhcpName)) d.DhcpName = "";
+            if (Mine(d.OldName)) d.OldName = "";
+        }
     }
 
     private static ScanDevice NewDevice(string ip, string mac, RouterReport r)
@@ -401,6 +425,7 @@ public static class NetScan
                 Task.Run(() => Mdns(d)), Task.Run(() => ReverseDns(d, gateway)), Task.Run(() => Llmnr(d)),
             }, 4000);
             AddDhcp(new List<ScanDevice> { d });
+            CleanNames(new List<ScanDevice> { d });
             ProbePorts(new List<ScanDevice> { d }, default);
             Classify(d);
         }

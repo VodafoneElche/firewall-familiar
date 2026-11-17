@@ -1,4 +1,10 @@
-Novedades de esta versión (0.14.1):
+Novedades de esta versión (0.14.2):
+
+- Arreglado: en la oficina la ventana Router decía "Red de casa" y no dejaba cambiarlo. Ahora el botón de abajo sirve para las dos cosas: en una red que no es la de casa pulsa "Esta NO es la red de casa" (oficina, cliente...), y en casa "Esta es la red de casa". Arriba sale la MAC del router en el que estás y la del router de casa, para ver si coinciden.
+- Si el archivo que dice cuál es la red de casa no se puede leer un momento (por ejemplo porque el antivirus lo está mirando), ya no se toma la red actual como casa.
+- Arreglado: el nombre de este PC (LAPTOP-...) salía puesto a otros aparatos, incluso al router. Algunos routers contestan con ese nombre para cualquier dirección: ahora se descarta, y también los nombres que el router repite para varias direcciones.
+
+De la 0.14.1:
 
 - Cada aparato lleva su dibujo (lo pidió Jose) en la lista, en la ficha y en el mapa: 🖥 ordenador de sobremesa, 💻 portátil, 📱 móvil o tablet, 🎮 consola, 📺 tele, 🖨 impresora, 📷 cámara, 🔊 altavoz, 💡 domótica, 📶 repetidor, 📡 router. El programa lo adivina (por ejemplo, GIGA-BYTE hace placas base, así que es un sobremesa; Toshiba y CyberTAN son de portátil).
 - Si no acierta, en "Ponerle nombre y dibujo" se puede elegir a mano qué es. Lo elegido manda también en qué grupo sale.

@@ -81,6 +81,8 @@ public static class DeviceBook
             e.LastIp = d.Ip;
             e.LastSeen = now;
             if (d.HostName.Length > 0) e.HostName = d.HostName;
+            // Limpia nombres viejos mal puestos (el nombre de este PC en otro aparato)
+            if (!d.IsThisPc && e.HostName.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)) e.HostName = "";
             if (d.TypeText.Length > 0 || e.Type.Length == 0) { e.Type = d.TypeText; e.Group = d.Group; }
             if (d.Vendor.Length > 0) e.Vendor = d.Vendor;
             e.Ports = d.OpenPorts.ToList();
@@ -108,6 +110,7 @@ public static class DeviceBook
             });
         }
         foreach (var d in result.Where(x => !x.Answered)) NetScan.ApplyKind(d);
+        NetScan.CleanNames(result);
         // El router puede contestar con dos MAC: una sola entrada por router (la que contesta, primero)
         return result.GroupBy(d => d.Group == DeviceGroup.Router ? "router " + d.Ip : d.Mac).Select(g => g.First()).ToList();
     }
