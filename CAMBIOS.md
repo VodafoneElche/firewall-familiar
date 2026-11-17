@@ -1,6 +1,8 @@
 Novedades de esta versión (0.14.6):
 
 - Arreglado de verdad lo de los Tapo en casa: Windows guarda en memoria los aparatos que vio por el cable en la oficina, aunque el cable esté desenchufado. El programa los tomaba como presentes. Ahora el escaneo solo cuenta lo que contesta en ese momento por la conexión que se está usando, y la memoria de la tarjeta desenchufada no se mira.
+- La pestaña "Aparatos de la red" es ahora una lista sencilla, como los escáneres de red (Advanced IP Scanner y parecidos): Estado, Nombre, IP, Fabricante, MAC y Servicios (web, carpetas compartidas, escritorio remoto...). Ordenada por IP; se puede ordenar pulsando en cada columna. Al pulsar un aparato sale su ficha a la derecha.
+- Al abrir la ventana ya no se enseña lo del escaneo anterior: en casa escanea solo, y fuera de casa espera a que pulses "Escanear la red".
 
 De la 0.14.5:
 

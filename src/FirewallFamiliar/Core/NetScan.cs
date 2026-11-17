@@ -119,6 +119,10 @@ public sealed class ScanDevice
         _ => "No ha contestado en este escaneo (apagado, fuera de casa o dormido)."
     };
 
+    public long IpSort => NetScan.IpOrder(Ip);
+    public string VendorShortText => Vendor.Length > 0 ? ShortVendor : Randomized ? "(MAC privada)" : "";
+    /// <summary>Lo que se puede usar de él, en corto (como "Web, Carpetas compartidas").</summary>
+    public string QuickServices => string.Join(", ", OpenPorts.Select(p => Regex.Replace(NetScan.PortName(p), @"\s*\(.*\)$", "")).Where(s => s.Length > 0).Distinct());
     public string IpText => Answered ? Ip : $"{Ip} (antes)";
 
     public string NamesText
