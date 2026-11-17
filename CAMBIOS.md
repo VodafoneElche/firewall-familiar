@@ -1,4 +1,8 @@
-Novedades de esta versión (0.14.5):
+Novedades de esta versión (0.14.6):
+
+- Arreglado de verdad lo de los Tapo en casa: Windows guarda en memoria los aparatos que vio por el cable en la oficina, aunque el cable esté desenchufado. El programa los tomaba como presentes. Ahora el escaneo solo cuenta lo que contesta en ese momento por la conexión que se está usando, y la memoria de la tarjeta desenchufada no se mira.
+
+De la 0.14.5:
 
 - Arreglado: si el portátil está conectado a la vez a dos redes que usan las mismas direcciones (por ejemplo, cable al router 5G donde están los Tapo y Wi-Fi al router de casa, las dos con 192.168.1.x), el escaneo mezclaba las dos. Ahora solo pregunta por la tarjeta que lleva al router (la del Wi-Fi o la del cable, la que sale arriba) y solo mira la MAC del router por esa tarjeta. Arriba avisa con un "OJO" si el PC está en dos redes a la vez.
 

@@ -364,11 +364,11 @@ public static class NetScan
         var devices = new List<ScanDevice>();
         foreach (var (ip, mac) in arp)
             devices.Add(NewDevice(ip, mac, r));
-        // Lo que ya estaba en la tabla ARP o ha contestado a UPnP en la revisión del router
         // Una sola entrada por IP (algunos routers, como los ZTE, contestan con dos MAC)
         devices = devices.GroupBy(d => d.Ip).Select(g => g.First()).ToList();
-        foreach (var d in r.Devices.Where(d => !devices.Any(x => x.Mac == d.Mac || x.Ip == d.Ip)))
-            devices.Add(NewDevice(d.Ip, d.Mac, r));
+        // Lo que solo está en la memoria de Windows (tabla ARP) NO se añade: puede ser de otra red en la
+        // que estuvo el PC (el cable de la oficina guarda sus aparatos aunque esté desenchufado). Solo
+        // cuenta lo que contesta ahora al barrido.
         if (r.LocalIp.Length > 0 && !devices.Any(d => d.IsThisPc))
         {
             var me = r.Devices.FirstOrDefault(d => d.IsThisPc);
