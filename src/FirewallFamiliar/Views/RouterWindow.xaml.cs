@@ -40,7 +40,6 @@ public partial class RouterWindow : Window
         {
             ShowHistory();
             await RefreshAsync();
-            if (IsHome()) ShowBook();
             // En casa, el escaneo se hace solo al abrir la ventana
             if (!_autoScanned && IsHome()) { _autoScanned = true; await ScanAsync(); }
         };
@@ -161,41 +160,11 @@ public partial class RouterWindow : Window
         }
     }
 
-    /// <summary>Al abrir, se enseña lo que se recuerda del último escaneo (como "no responde" hasta escanear).</summary>
-    private void ShowBook()
-    {
-        var book = DeviceBook.Load();
-        string? homeKey = RouterCheck.HomeNetwork();
-        if (homeKey == null || book.Count == 0) return;
-        _devices = DeviceBook.Merge(new List<ScanDevice>(), homeKey, _last?.Gateway ?? "");
-        foreach (var d in _devices) d.Answered = true; // aún no se sabe: se pinta según lo que se sabía
-        ShowDevices(remembered: true);
-        ScanText.Text = "Lo que se vio en el último escaneo de casa (se vuelve a escanear solo si estás en casa).";
-    }
-
-    private static readonly (DeviceGroup Group, string Icon, string Title)[] Groups =
-    {
-        (DeviceGroup.Router, "📡", "Router"),
-        (DeviceGroup.Ordenadores, "💻", "Ordenadores"),
-        (DeviceGroup.Moviles, "📱", "Móviles y tablets"),
-        (DeviceGroup.TeleConsolas, "📺", "Teles y consolas"),
-        (DeviceGroup.Impresoras, "🖨", "Impresoras"),
-        (DeviceGroup.Otros, "🔌", "Otros aparatos (domótica, cámaras, repetidores...)"),
-        (DeviceGroup.Desconocidos, "❓", "Desconocidos"),
-    };
-
     private void ShowDevices(bool remembered = false)
     {
         string? selected = (DeviceCard.DataContext as ScanDevice)?.Mac;
         _history = _awayScan ? new LanHistory.Data() : LanHistory.Load();
-        var nodes = new List<DeviceNode>();
-        foreach (var (group, icon, title) in Groups)
-        {
-            var items = _devices.Where(d => d.Group == group)
-                .OrderBy(d => d.Answered ? 0 : 1).ThenBy(d => NetScan.IpOrder(d.Ip)).ToList();
-            if (items.Count > 0) nodes.Add(new DeviceNode { Icon = icon, Title = $"{title} ({items.Count})", Items = items });
-        }
-        DeviceTree.ItemsSource = nodes;
+        DeviceGrid.ItemsSource = _devices.OrderBy(d => d.Answered ? 0 : 1).ThenBy(d => NetScan.IpOrder(d.Ip)).ToList();
         if (remembered)
         {
             CountHome.Text = $"{_devices.Count} recordados";
@@ -216,20 +185,14 @@ public partial class RouterWindow : Window
 
     private void SelectInTree(ScanDevice d)
     {
-        DeviceTree.UpdateLayout();
-        foreach (var node in DeviceTree.Items.OfType<DeviceNode>())
-        {
-            if (!node.Items.Contains(d)) continue;
-            if (DeviceTree.ItemContainerGenerator.ContainerFromItem(node) is TreeViewItem groupItem)
-            {
-                groupItem.IsExpanded = true;
-                groupItem.UpdateLayout();
-                if (groupItem.ItemContainerGenerator.ContainerFromItem(d) is TreeViewItem item) item.IsSelected = true;
-            }
-        }
+        DeviceGrid.SelectedItem = d;
+        DeviceGrid.ScrollIntoView(d);
     }
 
-    private void OnDeviceSelected(object sender, RoutedPropertyChangedEventArgs<object> e) => ShowCard(e.NewValue as ScanDevice);
+    private void OnDeviceSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (DeviceGrid.SelectedItem is ScanDevice d) ShowCard(d);
+    }
 
     private void ShowCard(ScanDevice? d)
     {
