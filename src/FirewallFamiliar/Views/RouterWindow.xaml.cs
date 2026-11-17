@@ -92,9 +92,11 @@ public partial class RouterWindow : Window
             int bad = open.Count(p => p.Level >= 2) + (r.WifiLevel >= 2 ? 1 : 0);
             string? homeKey = RouterCheck.HomeNetwork();
             bool home = homeKey == null || homeKey == r.NetworkKey;
-            BtnHome.IsEnabled = !home && r.NetworkKey.Length > 0;
+            BtnHome.IsEnabled = r.NetworkKey.Length > 0;
+            BtnHome.Content = home ? "Esta NO es la red de casa" : "Esta es la red de casa";
             RouterText.Text = (home ? "🏠 Red de casa (avisa de todo). " : "💼 Fuera de casa: solo avisa de lo crítico. ") +
-                              $"Router {r.Gateway}{(model.Length > 0 ? $" ({model})" : "")}. " +
+                              $"Router {r.Gateway}{(model.Length > 0 ? $" ({model})" : "")}, MAC {r.NetworkKey}" +
+                              (!home && homeKey != null && homeKey != RouterCheck.NoHome ? $" (el de casa es {homeKey})" : "") + ". " +
                               (r.RouterSilent ? "No contesta a nada (una VPN o el Wi-Fi de invitados lo tapan)."
                                : bad == 0 ? "No se ve nada peligroso." : $"⚠ Hay {bad} cosa(s) que conviene revisar.");
         }
@@ -446,6 +448,18 @@ public partial class RouterWindow : Window
     private void OnSetHome(object sender, RoutedEventArgs e)
     {
         if (_last == null || _last.NetworkKey.Length == 0) return;
+        if (IsHome())
+        {
+            if (MessageBox.Show(this, "¿Esta red NO es la de casa (oficina, cliente...)? Se tratará como \"fuera de casa\": " +
+                    "solo se avisa de lo crítico y no se vigilan sus aparatos. Cuando estés en casa, pulsa \"Esta es la red de casa\".",
+                    "Red de casa", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            RouterCheck.SetHomeNetwork(RouterCheck.NoHome);
+            _devices = new List<ScanDevice>();
+            _awayScan = true;
+            ShowDevices();
+            Show(_last);
+            return;
+        }
         if (MessageBox.Show(this, "¿Marcar esta red como la de casa? En casa se avisa de todo, también de cada aparato nuevo. " +
                 "La red que era la de casa pasará a tratarse como \"fuera de casa\".", "Red de casa",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
