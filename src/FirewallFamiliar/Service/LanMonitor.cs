@@ -32,7 +32,7 @@ internal sealed class LanMonitor
         {
             var (gateway, key, _) = RouterCheck.CurrentLocal();
             string? home = RouterCheck.HomeNetwork();
-            if (gateway.Length == 0 || key.Length == 0 || (home != null && home != key)) return;
+            if (gateway.Length == 0 || key.Length == 0 || (home != null && !RouterCheck.SameNet(home, key))) return;
 
             var found = NetScan.Sweep(gateway).GroupBy(x => x.Ip).Select(g => g.First()).ToList();
             var values = new Dictionary<string, int>();
@@ -61,7 +61,7 @@ internal sealed class LanMonitor
 
             // Aparatos vigilados: avisar si dejan de contestar (y cuando vuelven)
             var book = DeviceBook.Load();
-            foreach (var (mac, e) in book.Where(x => x.Value.Watch && x.Value.Network == key))
+            foreach (var (mac, e) in book.Where(x => x.Value.Watch && DeviceBook.SameNetwork(x.Value, key, gateway)))
             {
                 string name = e.Name.Length > 0 ? e.Name : e.HostName.Length > 0 ? e.HostName : mac;
                 if (values.ContainsKey(mac))

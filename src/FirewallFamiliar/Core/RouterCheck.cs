@@ -72,8 +72,11 @@ public sealed class RouterReport
     public int WifiLevel { get; set; }
     public string Error { get; set; } = "";
 
-    /// <summary>Clave de la red de casa: la MAC del router (un portátil fuera de casa ve otra red).</summary>
-    public string NetworkKey => GatewayMac.Length > 0 ? GatewayMac : Gateway;
+    /// <summary>
+    /// Clave de la red: la MAC del router y su IP ("MAC@IP"). Con la IP también, dos redes nunca se
+    /// confunden aunque los routers se parezcan (en la oficina pasó con dos ZTE en 192.168.1.x).
+    /// </summary>
+    public string NetworkKey => GatewayMac.Length > 0 ? $"{GatewayMac}@{Gateway}" : Gateway;
 }
 
 /// <summary>
@@ -127,6 +130,27 @@ public static class RouterCheck
             catch { Thread.Sleep(200); }
         }
         return NoHome;
+    }
+
+    /// <summary>
+    /// ¿Es la misma red? Las claves antiguas (solo la MAC, hasta la 0.14.2) valen si la MAC coincide.
+    /// </summary>
+    public static bool SameNet(string? a, string? b)
+    {
+        if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+        if (a == b) return true;
+        return (!a.Contains('@') && b.StartsWith(a + "@")) || (!b.Contains('@') && a.StartsWith(b + "@"));
+    }
+
+    /// <summary>¿Es la red de casa? null = aún no se sabe cuál es la de casa.</summary>
+    public static bool? IsHomeNetwork(string key)
+    {
+        string? home = HomeNetwork();
+        if (home == null) return null;
+        if (home == NoHome) return false;
+        if (!SameNet(home, key)) return false;
+        if (home != key && key.Contains('@')) SetHomeNetwork(key); // se pasa la clave antigua a la nueva
+        return true;
     }
 
     public static void SetHomeNetwork(string key)
@@ -535,7 +559,7 @@ public static class RouterCheck
         sb.AppendLine("## 11. Router y red de casa");
         sb.AppendLine();
         string? homeKey = HomeNetwork();
-        if (r.NetworkKey.Length > 0 && homeKey != null && homeKey != r.NetworkKey)
+        if (r.NetworkKey.Length > 0 && homeKey != null && !SameNet(homeKey, r.NetworkKey))
         {
             sb.AppendLine("**Este PC NO está ahora en la red de casa** (oficina u otro sitio): fuera de casa solo se avisa de lo crítico para este PC.");
             sb.AppendLine();
@@ -606,7 +630,7 @@ public static class RouterCheck
             sb.AppendLine();
             // Lo que se sabe del último escaneo hecho en la ventana Router (si se ha hecho alguno)
             string net = r.NetworkKey;
-            var scanned = book.Where(x => x.Value.Network == net).OrderBy(x => NetScan.IpOrder(x.Value.LastIp)).ToList();
+            var scanned = book.Where(x => DeviceBook.SameNetwork(x.Value, net, r.Gateway)).OrderBy(x => NetScan.IpOrder(x.Value.LastIp)).ToList();
             if (scanned.Count > 0)
             {
                 sb.AppendLine($"### Libreta de aparatos de esta red (escaneos de la ventana Router: {scanned.Count})");

@@ -76,7 +76,7 @@ public static class DhcpNames
         {
             var (_, key, localIp) = RouterCheck.CurrentLocal();
             string? home = RouterCheck.HomeNetwork();
-            if (localIp.Length == 0 || key.Length == 0 || (home != null && home != key))
+            if (localIp.Length == 0 || key.Length == 0 || (home != null && !RouterCheck.SameNet(home, key)))
             {
                 stop.WaitHandle.WaitOne(TimeSpan.FromMinutes(1));
                 continue;

@@ -18,6 +18,8 @@ public sealed class DeviceEntry
     /// <summary>Qué es (dibujo), elegido a mano. Vacío = lo adivina el programa.</summary>
     public string Kind { get; set; } = "";
     public string Network { get; set; } = "";
+    /// <summary>IP del router de la red donde se vio (para no mezclar redes distintas aunque se confundan).</summary>
+    public string Gateway { get; set; } = "";
     public string LastIp { get; set; } = "";
     public string HostName { get; set; } = "";
     public string Type { get; set; } = "";
@@ -70,7 +72,11 @@ public static class DeviceBook
     /// Junta el escaneo con la libreta: guarda lo nuevo, pone a cada aparato su nombre de la libreta y
     /// añade como "no responde" los aparatos de esta red que se conocían y ahora no han contestado.
     /// </summary>
-    public static List<ScanDevice> Merge(List<ScanDevice> scan, string network)
+    /// <summary>¿Es de la red actual? Misma MAC de router Y mismo router (IP): así nunca se mezclan redes.</summary>
+    public static bool SameNetwork(DeviceEntry e, string network, string gateway) =>
+        RouterCheck.SameNet(e.Network, network) && e.Gateway.Length > 0 && e.Gateway == gateway;
+
+    public static List<ScanDevice> Merge(List<ScanDevice> scan, string network, string gateway)
     {
         var book = Load();
         var now = DateTime.Now;
@@ -78,6 +84,7 @@ public static class DeviceBook
         {
             if (!book.TryGetValue(d.Mac, out var e)) book[d.Mac] = e = new DeviceEntry { FirstSeen = now };
             e.Network = network;
+            e.Gateway = gateway;
             e.LastIp = d.Ip;
             e.LastSeen = now;
             if (d.HostName.Length > 0) e.HostName = d.HostName;
@@ -99,7 +106,7 @@ public static class DeviceBook
         }
         Save(book);
         var result = scan.ToList();
-        foreach (var (mac, e) in book.Where(x => x.Value.Network == network && !scan.Any(d => d.Mac == x.Key)))
+        foreach (var (mac, e) in book.Where(x => SameNetwork(x.Value, network, gateway) && !scan.Any(d => d.Mac == x.Key)))
         {
             result.Add(new ScanDevice
             {

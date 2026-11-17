@@ -54,7 +54,7 @@ public partial class RouterWindow : Window
     {
         if (_last == null || _last.NetworkKey.Length == 0 || _last.Gateway.Length == 0) return false;
         string? homeKey = RouterCheck.HomeNetwork();
-        return homeKey == null || homeKey == _last.NetworkKey;
+        return homeKey == null || RouterCheck.SameNet(homeKey, _last.NetworkKey);
     }
 
     private void ShowHistory()
@@ -91,11 +91,11 @@ public partial class RouterWindow : Window
             var open = r.Ports.Where(p => p.Open).ToList();
             int bad = open.Count(p => p.Level >= 2) + (r.WifiLevel >= 2 ? 1 : 0);
             string? homeKey = RouterCheck.HomeNetwork();
-            bool home = homeKey == null || homeKey == r.NetworkKey;
+            bool home = homeKey == null || RouterCheck.IsHomeNetwork(r.NetworkKey) == true;
             BtnHome.IsEnabled = r.NetworkKey.Length > 0;
             BtnHome.Content = home ? "Esta NO es la red de casa" : "Esta es la red de casa";
             RouterText.Text = (home ? "🏠 Red de casa (avisa de todo). " : "💼 Fuera de casa: solo avisa de lo crítico. ") +
-                              $"Router {r.Gateway}{(model.Length > 0 ? $" ({model})" : "")}, MAC {r.NetworkKey}" +
+                              $"Router {r.Gateway}{(model.Length > 0 ? $" ({model})" : "")}, MAC {r.GatewayMac}" +
                               (!home && homeKey != null && homeKey != RouterCheck.NoHome ? $" (el de casa es {homeKey})" : "") + ". " +
                               (r.RouterSilent ? "No contesta a nada (una VPN o el Wi-Fi de invitados lo tapan)."
                                : bad == 0 ? "No se ve nada peligroso." : $"⚠ Hay {bad} cosa(s) que conviene revisar.");
@@ -133,7 +133,7 @@ public partial class RouterWindow : Window
             var progress = new Progress<string>(t => ScanText.Text = t);
             var found = await Task.Run(() => NetScan.Run(r, progress, cancel), cancel);
             _awayScan = !home;
-            if (home) _devices = DeviceBook.Merge(found, r.NetworkKey);
+            if (home) _devices = DeviceBook.Merge(found, r.NetworkKey, r.Gateway);
             else
             {
                 // Red de otro (cliente, oficina): no se guarda en la libreta de casa. Los que
@@ -164,7 +164,7 @@ public partial class RouterWindow : Window
         var book = DeviceBook.Load();
         string? homeKey = RouterCheck.HomeNetwork();
         if (homeKey == null || book.Count == 0) return;
-        _devices = DeviceBook.Merge(new List<ScanDevice>(), homeKey);
+        _devices = DeviceBook.Merge(new List<ScanDevice>(), homeKey, _last?.Gateway ?? "");
         foreach (var d in _devices) d.Answered = true; // aún no se sabe: se pinta según lo que se sabía
         ShowDevices(remembered: true);
         ScanText.Text = "Lo que se vio en el último escaneo de casa (se vuelve a escanear solo si estás en casa).";

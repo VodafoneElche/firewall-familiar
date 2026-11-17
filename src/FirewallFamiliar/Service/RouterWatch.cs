@@ -57,7 +57,7 @@ internal sealed class RouterWatch
             bool swept = false;
             var (gw0, key0) = RouterCheck.CurrentNetwork();
             string? home0 = RouterCheck.HomeNetwork();
-            if (gw0.Length > 0 && key0.Length > 0 && (home0 == null || home0 == key0))
+            if (gw0.Length > 0 && key0.Length > 0 && (home0 == null || RouterCheck.SameNet(home0, key0)))
             {
                 NetScan.Sweep(gw0);
                 swept = true;
@@ -66,6 +66,8 @@ internal sealed class RouterWatch
             if (ports && r.Ports.Count > 0) _lastPorts = DateTime.Now;
             if (r.Gateway.Length == 0 || r.GatewayMac.Length == 0) return;
 
+            // Estado guardado con la clave antigua (solo MAC, hasta la 0.14.2): se pasa a la nueva
+            if (!_nets.ContainsKey(r.NetworkKey) && _nets.Remove(r.GatewayMac, out var oldNet)) _nets[r.NetworkKey] = oldNet;
             bool first = !_nets.TryGetValue(r.NetworkKey, out var net);
             net ??= _nets[r.NetworkKey] = new Net();
             string where = $"red del router {r.Gateway}";
@@ -73,7 +75,7 @@ internal sealed class RouterWatch
             // Fuera de casa (oficina, casa de amigos...) solo se avisa de lo crítico para este PC.
             string? homeKey = RouterCheck.HomeNetwork();
             if (homeKey == null) { RouterCheck.SetHomeNetwork(r.NetworkKey); homeKey = r.NetworkKey; }
-            bool home = homeKey == r.NetworkKey;
+            bool home = RouterCheck.IsHomeNetwork(r.NetworkKey) == true;
 
             // Aparatos (el primer barrido de toda la red tras actualizar se aprende en silencio)
             bool learn = first || (swept && home && !net.Swept);

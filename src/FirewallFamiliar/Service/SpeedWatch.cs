@@ -27,11 +27,11 @@ internal sealed class SpeedWatch
         {
             if (DateTime.Now - _started < TimeSpan.FromMinutes(15)) return;
             var (gateway, network) = RouterCheck.CurrentNetwork();
-            if (gateway.Length == 0 || network.Length == 0 || RouterCheck.HomeNetwork() != network) return; // solo en casa
+            if (gateway.Length == 0 || network.Length == 0 || RouterCheck.IsHomeNetwork(network) != true) return; // solo en casa
             var history = SpeedHistory.Load();
             bool retry = DateTime.Now >= _retryAt;
             if (!retry && _retryAt != DateTime.MaxValue) return; // esperando la repetición
-            bool doneToday = history.Any(h => !h.Manual && h.Network == network && h.Time.Date == DateTime.Today);
+            bool doneToday = history.Any(h => !h.Manual && RouterCheck.SameNet(h.Network, network) && h.Time.Date == DateTime.Today);
             if (doneToday && !retry) return;
 
             var r = SpeedTest.RunAsync(gateway, null).GetAwaiter().GetResult();
