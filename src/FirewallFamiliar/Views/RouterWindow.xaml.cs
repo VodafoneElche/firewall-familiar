@@ -97,6 +97,7 @@ public partial class RouterWindow : Window
             RouterText.Text = (home ? "🏠 Red de casa (avisa de todo). " : "💼 Fuera de casa: solo avisa de lo crítico. ") +
                               $"Router {r.Gateway}{(model.Length > 0 ? $" ({model})" : "")}, MAC {r.GatewayMac}" +
                               (!home && homeKey != null && homeKey != RouterCheck.NoHome ? $" (el de casa es {homeKey})" : "") + ". " +
+                              (r.OtherAdapters.Count > 0 ? $"OJO: este PC está conectado a la vez a otra red por {string.Join(", ", r.OtherAdapters)} con las mismas direcciones; solo se mira la red de \"{r.Adapter}\". " : "") +
                               (r.RouterSilent ? "No contesta a nada (una VPN o el Wi-Fi de invitados lo tapan)."
                                : bad == 0 ? "No se ve nada peligroso." : $"⚠ Hay {bad} cosa(s) que conviene revisar.");
         }
