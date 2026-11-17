@@ -132,6 +132,12 @@
                                             <Button x:Name="BtnForget" Content="Olvidar" Padding="10,3" Margin="0,0,6,4" Click="OnForgetDevice"
                                                     ToolTip="Lo quita de la lista. Si vuelve a aparecer, saldrá como nuevo."/>
                                         </WrapPanel>
+                                        <Border Background="#EEF4FB" BorderBrush="#C9D9EC" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,8,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="En pocas palabras" FontWeight="SemiBold"/>
+                                                <TextBlock Style="{StaticResource Val}" Text="{Binding Summary}" FontSize="14"/>
+                                            </StackPanel>
+                                        </Border>
                                         <TextBlock Style="{StaticResource Lbl}" Text="Qué parece"/>
                                         <TextBlock Style="{StaticResource Val}" Text="{Binding TypeDisplay}"/>
                                         <TextBlock Style="{StaticResource Lbl}" Text="Dirección (IP) y MAC"/>

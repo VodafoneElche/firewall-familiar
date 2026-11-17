@@ -30,6 +30,12 @@ public sealed class ScanDevice
     public bool Randomized { get; set; }
     public bool IsGateway { get; set; }
     public bool IsThisPc { get; set; }
+    /// <summary>Es este PC, pero por su otra conexión ("Wi-Fi" o "cable"): no es otro aparato.</summary>
+    public string OtherCard { get; set; } = "";
+    /// <summary>Otras direcciones en las que contesta el mismo aparato (el router a veces contesta en dos).</summary>
+    public List<string> AlsoIps { get; set; } = new();
+    /// <summary>Producto reconocido por su nombre (por ejemplo "enchufe inteligente Tapo P100 de TP-Link").</summary>
+    public string Product { get; set; } = "";
     public bool Answered { get; set; } = true;
     public int Ttl { get; set; }
     public long PingMs { get; set; } = -1;
@@ -69,6 +75,7 @@ public sealed class ScanDevice
 
     public string DisplayName =>
         Label.Length > 0 ? Label :
+        IsThisPc && OtherCard.Length > 0 ? $"Este PC, por {OtherCard}" :
         IsThisPc ? $"Este PC{(HostName.Length > 0 ? $" ({HostName})" : "")}" :
         HostName.Length > 0 ? HostName :
         TypeShort.Length > 0 && Vendor.Length > 0 && !TypeShort.Contains(ShortVendor, StringComparison.OrdinalIgnoreCase) ? $"{TypeShort} {ShortVendor}" :
@@ -137,6 +144,29 @@ public sealed class ScanDevice
 
     /// <summary>Qué es esta MAC, explicado: fabricante y qué suele fabricar, o por qué no se sabe.</summary>
     public string MacText => NetScan.ExplainMac(this);
+
+    /// <summary>Explicación sencilla de qué es, para la ficha.</summary>
+    public string Summary
+    {
+        get
+        {
+            string also = AlsoIps.Count > 0
+                ? $" También contesta en {string.Join(", ", AlsoIps)}: es el mismo aparato (misma MAC), no otro." : "";
+            string s =
+                IsGateway ? "Es el router de esta red: por él sale todo a Internet." + also :
+                IsThisPc && OtherCard.Length > 0 ? $"Es este mismo ordenador, conectado también por {OtherCard}. Tiene dos conexiones a la vez (cable y Wi-Fi), por eso sale dos veces. No es otro aparato." :
+                IsThisPc ? "Es este ordenador, desde el que estás mirando." :
+                Label.Length > 0 ? $"Es \"{Label}\" (nombre que le pusiste)." :
+                Product.Length > 0 ? $"Es {Product}." :
+                Group == DeviceGroup.Desconocidos ? "No se sabe qué es: no dice su nombre y su fabricante no da pistas. Si no te suena, míralo en la lista de aparatos conectados de la página del router." :
+                $"Parece {Lower(Regex.Replace(TypeText, @"\s*\(.*\)$", ""))}{(Vendor.Length > 0 ? $" de la marca {ShortVendor}" : "")}." +
+                (HostName.Length > 0 ? $" Se llama a sí mismo \"{HostName}\"." : " No dice su nombre.");
+            if (!Answered) s += " Ahora no contesta (apagado o fuera).";
+            return s;
+        }
+    }
+
+    private static string Lower(string s) => s.Length > 1 && !char.IsUpper(s[1]) ? char.ToLower(s[0]) + s[1..] : s;
 
     public string TypeDisplay => TypeText.Length > 0 ? TypeText : "No se sabe.";
 
@@ -243,7 +273,7 @@ public static class NetScan
             case DeviceGroup.Otros:
                 if (Has(names, "cámara", "camara", "cam")) return "camara";
                 if (Has(names, "altavoz", "alexa", "sonos", "echo", "speaker")) return "altavoz";
-                if (Has(names, "domótica", "domotica", "plug", "bombilla")) return "domotica";
+                if (Has(names, "domótica", "domotica", "plug", "bombilla", "enchufe", "sensor", "interruptor", "luz")) return "domotica";
                 if (Has(names, "red", "repetidor", "router")) return "red";
                 return "otro";
         }
@@ -371,6 +401,15 @@ public static class NetScan
         try { Task.WaitAll(tasks.ToArray(), cancel); } catch (AggregateException) { }
         CleanNames(devices);
         foreach (var d in devices) Classify(d);
+        // El router a veces contesta en dos direcciones con la misma MAC (el MC888 de la oficina en .1 y .2):
+        // es un solo aparato. Se queda el de la dirección del router y se apunta la otra.
+        var router = devices.FirstOrDefault(d => d.Ip == r.Gateway);
+        if (router != null)
+            foreach (var alias in devices.Where(d => d != router && d.IsGateway).ToList())
+            {
+                router.AlsoIps.Add(alias.Ip);
+                devices.Remove(alias);
+            }
         // El nombre de este PC lo sabemos sin preguntar
         var thisPc = devices.FirstOrDefault(d => d.IsThisPc);
         if (thisPc != null && thisPc.NetbiosName.Length == 0) thisPc.NetbiosName = Environment.MachineName;
@@ -407,8 +446,57 @@ public static class NetScan
         {
             Ip = ip, Mac = mac, Randomized = random,
             Vendor = random ? "" : RouterCheck.Vendor(mac),
-            IsGateway = ip == r.Gateway, IsThisPc = ip == r.LocalIp,
+            IsGateway = ip == r.Gateway || (r.GatewayMac.Length > 0 && mac == r.GatewayMac),
+            IsThisPc = ip == r.LocalIp || LocalMacs().ContainsKey(mac),
+            OtherCard = ip != r.LocalIp && LocalMacs().TryGetValue(mac, out var how) ? how : "",
         };
+    }
+
+    /// <summary>MAC de las tarjetas de red de este PC → "Wi-Fi" o "cable".</summary>
+    public static Dictionary<string, string> LocalMacs()
+    {
+        var map = new Dictionary<string, string>();
+        try
+        {
+            foreach (var n in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                var b = n.GetPhysicalAddress().GetAddressBytes();
+                if (b.Length != 6) continue;
+                map[string.Join("-", b.Select(x => x.ToString("X2")))] =
+                    n.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ? "Wi-Fi" : "cable";
+            }
+        }
+        catch { }
+        return map;
+    }
+
+    /// <summary>
+    /// Productos que se reconocen por el nombre que dicen en la red. Los Tapo de TP-Link se llaman como
+    /// su modelo: H100 (centro de sensores), P100/P110 (enchufe), C200 (cámara), L530 (bombilla), T110 (sensor).
+    /// </summary>
+    private static (DeviceGroup, string Type, string Kind, string Product)? KnownProduct(ScanDevice d)
+    {
+        string names = $"{d.DhcpName} {d.MdnsName} {d.NetbiosName} {d.LlmnrName} {d.DnsName} {d.SsdpName} {d.SsdpModel} {d.OldName}";
+        bool tplink = Has(d.Vendor, "TP-Link", "TP-LINK") || Has(names, "tapo", "kasa");
+        if (!tplink) return null;
+        var m = Regex.Match(names, @"(?<![A-Za-z0-9])(H1\d\d|H2\d\d|KH\d+|P1\d\d[A-Z]?|P3\d\d|KP\d+|HS1\d\d|C\d{3}[A-Z]?|TC\d+|L[5-9]\d\d|KL\d+|T[1-3]\d\d|S2\d\d|D\d{3})(?![A-Za-z0-9])", RegexOptions.IgnoreCase);
+        if (!m.Success) return null;
+        string model = m.Value.ToUpperInvariant();
+        string brand = model.StartsWith("K") || model.StartsWith("HS") ? "Kasa" : "Tapo";
+        (string type, string kind, string what) = model[0] switch
+        {
+            'H' when !model.StartsWith("HS") => ("Centro de sensores (hub)", "domotica", "el centro de sensores"),
+            'K' when model.StartsWith("KH") => ("Centro de sensores (hub)", "domotica", "el centro de sensores"),
+            'P' or 'K' when !model.StartsWith("KL") => ("Enchufe inteligente", "domotica", "un enchufe inteligente"),
+            'H' => ("Enchufe inteligente", "domotica", "un enchufe inteligente"),
+            'C' or 'T' when model.StartsWith("C") || model.StartsWith("TC") => ("Cámara", "camara", "una cámara"),
+            'L' or 'K' => ("Bombilla o tira de luz inteligente", "domotica", "una bombilla o tira de luz inteligente"),
+            'T' => ("Sensor (puerta, movimiento, temperatura)", "domotica", "un sensor"),
+            'S' => ("Interruptor inteligente", "domotica", "un interruptor inteligente"),
+            'D' => ("Timbre con cámara", "camara", "un timbre con cámara"),
+            _ => ("Aparato de domótica", "domotica", "un aparato de domótica"),
+        };
+        return (DeviceGroup.Otros, $"{type} {brand} {model}", kind, $"{what} {brand} {model} de TP-Link");
     }
 
     /// <summary>Nombre y tipo rápidos de un aparato (para el aviso de aparato nuevo del servicio).</summary>
@@ -703,6 +791,11 @@ public static class NetScan
             return (DeviceGroup.Desconocidos, "");
         }
         (d.Group, d.TypeText) = Pick();
+        if (!d.IsGateway && !d.IsThisPc && KnownProduct(d) is { } k)
+        {
+            (d.Group, d.TypeText) = (k.Item1, k.Type);
+            d.Product = k.Product;
+        }
     }
 
     // ------------------------------------------------------------------ ayudas DNS/UDP

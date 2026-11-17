@@ -133,7 +133,9 @@ public partial class RouterWindow : Window
             var progress = new Progress<string>(t => ScanText.Text = t);
             var found = await Task.Run(() => NetScan.Run(r, progress, cancel), cancel);
             _awayScan = !home;
-            if (home) _devices = DeviceBook.Merge(found, r.NetworkKey, r.Gateway);
+            // Cada escaneo muestra solo lo que hay AHORA (lo pidió Jose, para no liarse). En casa se
+            // guarda en la libreta, pero de lo de antes solo sale lo que él ha pedido vigilar.
+            if (home) _devices = DeviceBook.Merge(found, r.NetworkKey, r.Gateway).Where(d => d.Answered || d.Watch).ToList();
             else
             {
                 // Red de otro (cliente, oficina): no se guarda en la libreta de casa. Los que

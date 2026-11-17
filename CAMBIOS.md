@@ -1,4 +1,12 @@
-Novedades de esta versión (0.14.3):
+Novedades de esta versión (0.14.4):
+
+- Cada escaneo muestra solo lo que hay en la red en ese momento (lo pidió Jose): nada de aparatos de antes. Así, en casa de un cliente se ve su red completa y limpia. En casa solo siguen saliendo, aunque estén apagados, los aparatos que has pedido vigilar.
+- La ficha de cada aparato empieza con un recuadro "En pocas palabras" que dice qué es en una frase sencilla.
+- El router que contesta en dos direcciones (el MC888 de la oficina en 192.168.1.1 y 192.168.1.2, con la misma MAC) sale una sola vez, como router, con una nota de que también contesta en la otra.
+- Si este PC está conectado a la vez por cable y por Wi-Fi, la segunda conexión sale como "Este PC, por Wi-Fi" y no como un ordenador desconocido.
+- Los aparatos Tapo y Kasa de TP-Link se reconocen por su nombre: H100 centro de sensores, P100/P110 enchufe, C200 cámara, L530 bombilla, T110 sensor...
+
+De la 0.14.3:
 
 - Cada red tiene su propio mapa y su propia lista de aparatos (lo pidió Jose): al escanear en una red nueva (oficina, cliente...) solo salen los aparatos de esa red, nunca los de casa mezclados. Ahora una red se reconoce por la MAC del router Y por su dirección (192.168.1.1, 192.168.1.2...), así dos routers parecidos ya no se confunden.
 - Los aparatos que se vieron antes de esta versión vuelven a salir en cuanto contesten en el siguiente escaneo de su red.
