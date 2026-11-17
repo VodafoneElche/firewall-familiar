@@ -1,4 +1,10 @@
-Novedades de esta versión (0.14.2):
+Novedades de esta versión (0.14.3):
+
+- Cada red tiene su propio mapa y su propia lista de aparatos (lo pidió Jose): al escanear en una red nueva (oficina, cliente...) solo salen los aparatos de esa red, nunca los de casa mezclados. Ahora una red se reconoce por la MAC del router Y por su dirección (192.168.1.1, 192.168.1.2...), así dos routers parecidos ya no se confunden.
+- Los aparatos que se vieron antes de esta versión vuelven a salir en cuanto contesten en el siguiente escaneo de su red.
+- La red de casa, la velocidad guardada y lo que se sabía del router se conservan al actualizar.
+
+De la 0.14.2:
 
 - Arreglado: en la oficina la ventana Router decía "Red de casa" y no dejaba cambiarlo. Ahora el botón de abajo sirve para las dos cosas: en una red que no es la de casa pulsa "Esta NO es la red de casa" (oficina, cliente...), y en casa "Esta es la red de casa". Arriba sale la MAC del router en el que estás y la del router de casa, para ver si coinciden.
 - Si el archivo que dice cuál es la red de casa no se puede leer un momento (por ejemplo porque el antivirus lo está mirando), ya no se toma la red actual como casa.

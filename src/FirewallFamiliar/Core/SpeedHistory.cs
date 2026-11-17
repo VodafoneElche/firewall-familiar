@@ -86,7 +86,7 @@ public static class SpeedHistory
     /// <summary>Lo normal en esta red: la mediana de las últimas mediciones buenas.</summary>
     public static (double? Down, double? Up) Normal(IEnumerable<SpeedSample> history, string network)
     {
-        var good = history.Where(h => h.Network == network && !h.Bad && h.Down != null && h.Up != null).TakeLast(10).ToList();
+        var good = history.Where(h => RouterCheck.SameNet(h.Network, network) && !h.Bad && h.Down != null && h.Up != null).TakeLast(10).ToList();
         if (good.Count < 3) return (null, null);
         return (Median(good.Select(g => g.Down!.Value)), Median(good.Select(g => g.Up!.Value)));
     }
