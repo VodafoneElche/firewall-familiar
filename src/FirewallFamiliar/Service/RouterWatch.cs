@@ -84,6 +84,7 @@ internal sealed class RouterWatch
             {
                 if (!net.Devices.Add(d.Mac) || learn || !home) continue;
                 if (book.TryGetValue(d.Mac, out var known) && known.Home) continue; // ya le has puesto nombre como de casa
+                if (Family.Lookup(d.Mac) != null || NetScan.LocalMacs().ContainsKey(d.Mac)) continue; // PC de la familia o este mismo PC
                 var q = NetScan.Quick(d.Ip, d.Mac, r.Gateway);
                 var what = new List<string> { d.VendorText };
                 if (q.HostName.Length > 0) what.Insert(0, $"se llama \"{q.HostName}\"");
