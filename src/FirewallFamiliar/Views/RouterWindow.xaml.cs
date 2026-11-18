@@ -140,7 +140,11 @@ public partial class RouterWindow : Window
             {
                 // Red de otro (cliente, oficina): no se guarda en la libreta de casa. Los que
                 // contestan salen en verde; en naranja, los que no se sabe qué son o tienen algo peligroso.
-                foreach (var d in found) { d.Home = true; d.Away = true; d.FirstSeen = d.LastSeen = DateTime.Now; }
+                foreach (var d in found)
+                {
+                    d.Home = true; d.Away = true; d.FirstSeen = d.LastSeen = DateTime.Now;
+                    if (Family.Lookup(d.Mac) is { } fam) { d.Label = fam.Name; d.Kind = fam.Kind; NetScan.ApplyKind(d); }
+                }
                 _devices = found;
             }
             ShowDevices();

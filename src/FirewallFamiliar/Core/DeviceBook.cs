@@ -93,6 +93,8 @@ public static class DeviceBook
             if (d.TypeText.Length > 0 || e.Type.Length == 0) { e.Type = d.TypeText; e.Group = d.Group; }
             if (d.Vendor.Length > 0) e.Vendor = d.Vendor;
             e.Ports = d.OpenPorts.ToList();
+            // Los PCs de la familia se conocen por su MAC: nombre y "de casa" sin tener que ponerlo a mano
+            if (e.Name.Length == 0 && Family.Lookup(d.Mac) is { } fam) { e.Name = fam.Name; e.Home = true; if (e.Kind.Length == 0) e.Kind = fam.Kind; }
             d.Label = e.Name;
             d.Home = e.Home;
             d.Watch = e.Watch;
